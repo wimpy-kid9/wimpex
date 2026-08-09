@@ -13,6 +13,7 @@ export default function FeedPage() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
 
   useEffect(() => {
     const loadPosts = async () => {
@@ -157,6 +158,7 @@ export default function FeedPage() {
       </section>
 
       {error ? <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
+      {actionMessage ? <p className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-200">{actionMessage}</p> : null}
       {loading ? <p className="text-sm text-slate-400">Loading feed…</p> : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -172,9 +174,22 @@ export default function FeedPage() {
                     <p className="text-lg font-semibold text-white">{post.author}</p>
                     <p className="text-sm text-slate-400">{post.handle}</p>
                   </div>
-                  <span className={`thread-pill rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-300`}>
-                    {post.visibility}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={async () => {
+                      const response = await fetch('/api/reports', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reported_post_id: post.id, report_type: 'content', reason: 'Inappropriate content' })
+                      });
+                      const payload = await response.json();
+                      setActionMessage(payload.ok ? 'Report recorded.' : payload.error || 'Unable to submit report.');
+                    }} className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-300 transition hover:bg-white/10">
+                      Report
+                    </button>
+                    <span className={`thread-pill rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-300`}>
+                      {post.visibility}
+                    </span>
+                  </div>
                 </div>
                 {post.videoUrl ? (
                   <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-900/70">

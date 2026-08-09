@@ -1,10 +1,12 @@
 "use client";
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { getUserAccent } from '@/lib/ui-theme';
 
 export default function ProfilePage() {
   const accent = getUserAccent('ayo-t');
+  const [message, setMessage] = useState('');
 
   return (
     <main className="space-y-6">
@@ -54,6 +56,23 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+          <div className="mt-4 flex gap-2">
+            <button type="button" onClick={async () => {
+              const response = await fetch('/api/reports', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reported_user_id: 'demo-user', report_type: 'user', reason: 'Harassment' })
+              });
+              const payload = await response.json();
+              setMessage(payload.ok ? 'Report recorded.' : payload.error || 'Unable to submit report.');
+            }} className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/20">
+              Report profile
+            </button>
+            <button type="button" className="rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+              Block user
+            </button>
+          </div>
+          {message ? <p className="mt-3 text-sm text-cyan-200">{message}</p> : null}
         </div>
       </section>
     </main>

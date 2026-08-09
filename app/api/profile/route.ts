@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at } = body;
+  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at, message_privacy } = body;
 
   if (username && !usernamePattern.test(username)) {
     return NextResponse.json({ error: 'Username must be 3–20 letters, numbers, or underscores.' }, { status: 400 });
@@ -73,20 +73,41 @@ export async function POST(request: NextRequest) {
   if (gender !== undefined) updates.gender = gender;
   if (onboarding_completed_at) updates.onboarding_completed_at = onboarding_completed_at;
 
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: 'No profile data provided.' }, { status: 400 });
+  if (Object.keys(updates).length > 0) {
+    const { error: upsertError } = await supabaseServer.from('wpx_profiles').upsert(
+      {
+        user_id: authContext.user.id,
+        ...updates
+      },
+      { onConflict: 'user_id' }
+    );
+
+    if (upsertError) {
+      return NextResponse.json({ error: upsertError.message }, { status: 500 });
+    }
   }
 
-  const { error: upsertError } = await supabaseServer.from('wpx_profiles').upsert(
-    {
-      user_id: authContext.user.id,
-      ...updates
-    },
-    { onConflict: 'user_id' }
-  );
+  if (message_privacy) {
+    const privacyValue = ['everyone', 'connections', 'no_one'].includes(message_privacy) ? message_privacy : null;
+    if (!privacyValue) {
+      return NextResponse.json({ error: 'Invalid privacy selection.' }, { status: 400 });
+    }
 
-  if (upsertError) {
-    return NextResponse.json({ error: upsertError.message }, { status: 500 });
+    const { error: privacyError } = await supabaseServer.from('wpx_privacy_settings').upsert(
+      {
+        user_id: authContext.user.id,
+        message_privacy: privacyValue
+      },
+      { onConflict: 'user_id' }
+    );
+
+    if (privacyError) {
+      return NextResponse.json({ error: privacyError.message }, { status: 500 });
+    }
+  }
+
+  if (Object.keys(updates).length === 0 && !message_privacy) {
+    return NextResponse.json({ error: 'No profile data provided.' }, { status: 400 });
   }
 
   return NextResponse.json({ ok: true });

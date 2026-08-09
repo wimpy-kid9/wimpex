@@ -19,6 +19,7 @@ export default function OnboardingPage() {
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [bio, setBio] = useState('');
   const [gender, setGender] = useState('');
+  const [messagePrivacy, setMessagePrivacy] = useState('connections');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -154,6 +155,24 @@ export default function OnboardingPage() {
       return;
     }
 
+    const privacyResponse = await fetch('/api/profile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        message_privacy: messagePrivacy
+      })
+    });
+
+    if (!privacyResponse.ok) {
+      setError('Profile saved, but privacy settings could not be updated.');
+      setSaving(false);
+      router.replace('/feed');
+      return;
+    }
+
     setStatusMessage('Profile saved to Supabase.');
     setSaving(false);
     router.replace('/feed');
@@ -257,6 +276,19 @@ export default function OnboardingPage() {
                 <option value="nonbinary">Non-binary</option>
                 <option value="other">Other</option>
               </select>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+              <label className="block text-sm font-medium text-slate-300">Who can message you?</label>
+              <select
+                className="mt-3 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-white outline-none"
+                value={messagePrivacy}
+                onChange={(event) => setMessagePrivacy(event.target.value)}
+              >
+                <option value="connections">Accepted connections only</option>
+                <option value="everyone">Anyone</option>
+                <option value="no_one">No one</option>
+              </select>
+              <p className="mt-2 text-sm text-slate-400">This keeps the messaging gating rule explicit from the start.</p>
             </div>
             {error ? <p className="text-sm text-rose-400">{error}</p> : null}
             {statusMessage ? <p className="text-sm text-cyan-300">{statusMessage}</p> : null}
