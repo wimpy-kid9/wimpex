@@ -1,0 +1,194 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --ink-950: #020617;
+  --ink-900: #0f172a;
+  --ink-800: #111827;
+  --ink-700: #1f2937;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --line: rgba(255, 255, 255, 0.12);
+  --accent: #22d3ee;
+  --accent-2: #f472b6;
+  --accent-3: #f59e0b;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% 15%, rgba(34, 211, 238, 0.15), transparent 24%),
+    radial-gradient(circle at 85% 20%, rgba(244, 114, 182, 0.16), transparent 22%),
+    linear-gradient(135deg, var(--ink-950) 0%, var(--ink-900) 48%, var(--ink-800) 100%);
+  color: var(--text);
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.25);
+  color: white;
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  src: local('Inter Variable'), local('Inter'), url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 500 700;
+  src: local('Cormorant Garamond'), url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap') format('woff2');
+  font-display: swap;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+button,
+input,
+textarea,
+select {
+  letter-spacing: -0.01em;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-weight: 700;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+.text-display {
+  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-weight: 700;
+}
+
+.surface-veil {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: 0 20px 70px rgba(2, 6, 23, 0.4);
+}
+
+.surface-veil::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.06), transparent 38%, rgba(255, 255, 255, 0.04)),
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.14), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(244, 114, 182, 0.12), transparent 38%);
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.surface-veil > * {
+  position: relative;
+  z-index: 1;
+}
+
+.thread-line {
+  position: relative;
+}
+
+.thread-line::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.35), transparent);
+  transform-origin: center;
+  animation: threadPulse 6s ease-in-out infinite;
+}
+
+@keyframes threadPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleX(0.8);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scaleX(1);
+  }
+}
+
+.thread-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.thread-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, rgba(34, 211, 238, 0.16), transparent 28%, rgba(244, 114, 182, 0.16) 72%, transparent);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.thread-card::after {
+  content: '';
+  position: absolute;
+  left: 1.5rem;
+  right: 1.5rem;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  opacity: 0.7;
+}
+
+.thread-pill {
+  position: relative;
+  overflow: hidden;
+}
+
+.thread-pill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.16), transparent 45%, rgba(244, 114, 182, 0.16));
+  pointer-events: none;
+}
+
+@keyframes driftIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-drift {
+  animation: driftIn 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
