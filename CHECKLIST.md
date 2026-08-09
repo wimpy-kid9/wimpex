@@ -78,7 +78,7 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [ ] Perform accessibility pass on design system
 - [ ] Confirm the app can scale past closed testing
 
-## Phase 7 — Reading rooms
+## Phase 9 — Reading rooms
 - [x] Add reading-room schema scaffolding and RLS entries
 - [ ] Build reading-room participant and recap flows
 

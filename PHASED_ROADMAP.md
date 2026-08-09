@@ -65,7 +65,7 @@ Companion to `wimpex-build-prompt.md`, which has full technical detail (API call
 
 **Goal:** real-time calling between connected users. This is flagged as the highest-effort phase in the original scope — budget accordingly.
 
-- Make and document the platform decision: managed WebRTC (Twilio/Agora/Daily) vs. raw WebRTC — §6. This choice affects everything else in this phase, so it should be locked before writing call UI.
+- Make and document the platform decision: managed WebRTC (Twilio/Agora/Daily) vs. raw WebRTC — §6. This choice affects everything else in this phase, so it should be locked before writing call UI. Decision: use Daily for Phase 4.
 - Gate calling to accepted connections by default, matching the messaging decision from Phase 3, with a "who can call me" setting exposed to override it — §6.
 - Mobile: full-screen call UI with draggable self-view thumbnail — §5.
 - Desktop: multi-window/picture-in-picture so a call can be minimized while browsing continues — §5.

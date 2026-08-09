@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -20,6 +21,9 @@ export default function OnboardingPage() {
   const [bio, setBio] = useState('');
   const [gender, setGender] = useState('');
   const [messagePrivacy, setMessagePrivacy] = useState('connections');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -65,6 +69,14 @@ export default function OnboardingPage() {
         if (nextProfile?.gender) {
           setGender(nextProfile.gender);
         }
+        if (nextProfile?.avatar_url) {
+          setAvatarPreview(nextProfile.avatar_url);
+        }
+
+        const derivedStep = nextProfile?.username || nextProfile?.display_name || nextProfile?.date_of_birth || nextProfile?.bio || nextProfile?.gender || nextProfile?.avatar_url
+          ? 2
+          : 1;
+        setStep(derivedStep);
       }
 
       setLoading(false);
@@ -122,11 +134,44 @@ export default function OnboardingPage() {
     setSaving(false);
   };
 
+  const uploadAvatar = async () => {
+    if (!session || !avatarFile) return;
+
+    setUploadingAvatar(true);
+    setError('');
+
+    const formData = new FormData();
+    formData.append('avatar', avatarFile);
+
+    const response = await fetch('/api/upload-avatar', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: formData
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setError(payload.error || 'Unable to upload avatar.');
+      setUploadingAvatar(false);
+      return;
+    }
+
+    setAvatarPreview(payload.avatarUrl || null);
+    setUploadingAvatar(false);
+    setStatusMessage('Avatar uploaded.');
+  };
+
   const completeOnboarding = async () => {
     if (!session) return;
     if (!displayName || !dateOfBirth) {
       setError('Display name and date of birth are required.');
       return;
+    }
+
+    if (avatarFile) {
+      await uploadAvatar();
     }
 
     setSaving(true);
@@ -263,6 +308,31 @@ export default function OnboardingPage() {
                 placeholder="Tell people a little about yourself"
               />
             </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+              <label className="block text-sm font-medium text-slate-300">Profile photo</label>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <label className="cursor-pointer rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] || null;
+                      if (file) {
+                        setAvatarFile(file);
+                        setAvatarPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                  {avatarFile ? `Selected: ${avatarFile.name}` : 'Upload photo'}
+                </label>
+                <button type="button" className="rounded-2xl border border-slate-700 px-4 py-2 text-sm text-slate-200" onClick={() => setAvatarFile(null)}>
+                  Skip for now
+                </button>
+              </div>
+              {avatarPreview ? <div className="mt-4 flex items-center gap-3"><Image src={avatarPreview} alt="Avatar preview" width={56} height={56} className="h-14 w-14 rounded-full object-cover" /><p className="text-sm text-slate-400">A generated initials fallback is used if you skip this step.</p></div> : null}
+              <p className="mt-2 text-sm text-slate-400">Your avatar is optional; if you skip it, WIMPEX will fall back to initials.</p>
+            </div>
             <div className="space-y-3">
               <label className="block text-sm font-medium text-slate-300">Gender (optional)</label>
               <select
@@ -296,9 +366,9 @@ export default function OnboardingPage() {
               type="button"
               className="inline-flex items-center justify-center rounded-2xl bg-sky-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={completeOnboarding}
-              disabled={saving}
+              disabled={saving || uploadingAvatar}
             >
-              {saving ? 'Completing…' : 'Finish onboarding'}
+              {saving ? 'Completing…' : uploadingAvatar ? 'Uploading avatar…' : 'Finish onboarding'}
             </button>
           </section>
         )}

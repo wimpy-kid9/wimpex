@@ -245,3 +245,87 @@ ALTER TABLE wpx_room_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wpx_room_highlights ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wpx_room_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wpx_room_recaps ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY IF NOT EXISTS wpx_profiles_select_own_or_all ON wpx_profiles
+  FOR SELECT USING (true);
+
+CREATE POLICY IF NOT EXISTS wpx_profiles_update_own ON wpx_profiles
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY IF NOT EXISTS wpx_profiles_insert_own ON wpx_profiles
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY IF NOT EXISTS wpx_posts_select_by_visibility ON wpx_posts
+  FOR SELECT USING (
+    visibility = 'public'
+    OR author_id = auth.uid()
+    OR (
+      visibility = 'connections'
+      AND EXISTS (
+        SELECT 1 FROM wpx_connections c
+        WHERE ((c.requester_id = author_id AND c.recipient_id = auth.uid()) OR (c.requester_id = auth.uid() AND c.recipient_id = author_id))
+          AND c.status = 'accepted'
+      )
+    )
+  );
+
+CREATE POLICY IF NOT EXISTS wpx_posts_write_own ON wpx_posts
+  FOR INSERT WITH CHECK (author_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_posts_update_own ON wpx_posts
+  FOR UPDATE USING (author_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_posts_delete_own ON wpx_posts
+  FOR DELETE USING (author_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_connections_access_own ON wpx_connections
+  FOR SELECT USING (requester_id = auth.uid() OR recipient_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_connections_modify_own ON wpx_connections
+  FOR INSERT WITH CHECK (requester_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_connections_update_own ON wpx_connections
+  FOR UPDATE USING (requester_id = auth.uid() OR recipient_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_conversations_members_view ON wpx_conversations
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM wpx_conversation_members cm
+      WHERE cm.conversation_id = wpx_conversations.id AND cm.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY IF NOT EXISTS wpx_conversation_members_access ON wpx_conversation_members
+  FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_messages_members_view ON wpx_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM wpx_conversation_members cm
+      WHERE cm.conversation_id = wpx_messages.conversation_id AND cm.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY IF NOT EXISTS wpx_messages_insert_own ON wpx_messages
+  FOR INSERT WITH CHECK (sender_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_notifications_own ON wpx_notifications
+  FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_notifications_update_own ON wpx_notifications
+  FOR UPDATE USING (user_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_streaks_own ON wpx_streaks
+  FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_streaks_update_own ON wpx_streaks
+  FOR UPDATE USING (user_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_streaks_insert_own ON wpx_streaks
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_reports_insert_own ON wpx_reports
+  FOR INSERT WITH CHECK (reporter_id = auth.uid());
+
+CREATE POLICY IF NOT EXISTS wpx_blocks_insert_own ON wpx_blocks
+  FOR INSERT WITH CHECK (blocker_id = auth.uid());
