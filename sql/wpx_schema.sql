@@ -177,6 +177,8 @@ CREATE TABLE IF NOT EXISTS wpx_streaks (
   current_count integer NOT NULL DEFAULT 0,
   current_start timestamp with time zone,
   longest_count integer NOT NULL DEFAULT 0,
+  banked_days integer NOT NULL DEFAULT 0,
+  bank_cap integer NOT NULL DEFAULT 3,
   last_activity_at timestamp with time zone,
   status text NOT NULL DEFAULT 'active',
   created_at timestamp with time zone DEFAULT now()
@@ -195,3 +197,51 @@ ALTER TABLE wpx_blocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wpx_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wpx_calls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wpx_streaks ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE wpx_privacy_settings ADD COLUMN IF NOT EXISTS presence_pulses_enabled boolean NOT NULL DEFAULT true;
+
+CREATE TABLE IF NOT EXISTS wpx_reading_rooms (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id uuid NOT NULL REFERENCES auth.users(id),
+  title text NOT NULL,
+  description text,
+  is_live boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS wpx_room_participants (
+  room_id uuid NOT NULL REFERENCES wpx_reading_rooms(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  role text NOT NULL DEFAULT 'listener',
+  joined_at timestamp with time zone DEFAULT now(),
+  PRIMARY KEY (room_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS wpx_room_highlights (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id uuid NOT NULL REFERENCES wpx_reading_rooms(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  note text NOT NULL,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS wpx_room_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id uuid NOT NULL REFERENCES wpx_reading_rooms(id) ON DELETE CASCADE,
+  sender_id uuid NOT NULL REFERENCES auth.users(id),
+  body text NOT NULL,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS wpx_room_recaps (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id uuid NOT NULL REFERENCES wpx_reading_rooms(id) ON DELETE CASCADE,
+  summary text NOT NULL,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+ALTER TABLE wpx_reading_rooms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wpx_room_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wpx_room_highlights ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wpx_room_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wpx_room_recaps ENABLE ROW LEVEL SECURITY;

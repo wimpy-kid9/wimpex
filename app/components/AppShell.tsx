@@ -1,5 +1,7 @@
+'use client';
+
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { getUserAccent } from '@/lib/ui-theme';
 
 interface AppShellProps {
@@ -8,6 +10,7 @@ interface AppShellProps {
 
 export default function AppShell({ children }: AppShellProps) {
   const accent = getUserAccent('wimpex-shell');
+  const [notifications, setNotifications] = useState<any[]>([]);
   const navItems = [
     { label: 'Feed', href: '/feed' },
     { label: 'Messages', href: '/messages' },
@@ -15,6 +18,20 @@ export default function AppShell({ children }: AppShellProps) {
     { label: 'Profile', href: '/profile' },
     { label: 'Settings', href: '/settings' }
   ];
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const response = await fetch('/api/notifications');
+        const payload = await response.json();
+        setNotifications(payload.notifications || []);
+      } catch {
+        setNotifications([]);
+      }
+    };
+
+    void loadNotifications();
+  }, []);
 
   return (
     <div className="min-h-screen text-slate-100">
@@ -29,6 +46,18 @@ export default function AppShell({ children }: AppShellProps) {
             <h1 className="text-display text-2xl tracking-[0.24em] text-slate-100">WIMPEX</h1>
             <p className="mt-2 text-sm text-slate-400">Social video, connections, and calling.</p>
           </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-slate-400">Live signals</p>
+            <div className="mt-2 space-y-2">
+              {notifications.length > 0 ? notifications.slice(0, 3).map((item) => (
+                <div key={item.id} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">
+                  <p className="font-medium text-white">{item.type.replace(/_/g, ' ')}</p>
+                  <p className="mt-1 text-xs text-slate-400">{item.metadata?.conversation_id ? 'Message activity' : 'Connection activity'}</p>
+                </div>
+              )) : <p className="text-sm text-slate-400">No notifications yet.</p>}
+            </div>
+          </div>
+
           <nav className="space-y-2">
             {navItems.map((item) => (
               <Link

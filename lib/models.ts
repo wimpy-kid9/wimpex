@@ -20,6 +20,8 @@ export interface FeedPost {
   visibility: FeedVisibility;
   createdAt: string;
   accent: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
 }
 
 const FEED_STORAGE_KEY = 'wimpex-demo-posts';

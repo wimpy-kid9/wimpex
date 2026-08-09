@@ -9,6 +9,7 @@ export default function FeedPage() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [draft, setDraft] = useState('');
   const [visibility, setVisibility] = useState<FeedVisibility>('public');
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -47,20 +48,48 @@ export default function FeedPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!draft.trim()) return;
+    if (!draft.trim() && !videoFile) return;
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    };
+    const headers: Record<string, string> = {};
 
     if (session?.access_token) {
       headers.Authorization = `Bearer ${session.access_token}`;
     }
 
+    if (!videoFile) {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caption: draft.trim(), visibility })
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        setError(payload.error || 'Unable to publish post.');
+        return;
+      }
+
+      const payload = await response.json();
+      if (payload.post) {
+        setPosts((current) => [payload.post, ...current]);
+        setError('');
+      }
+
+      setDraft('');
+      setVisibility('public');
+      setVideoFile(null);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('video', videoFile);
+    formData.append('caption', draft.trim());
+    formData.append('visibility', visibility);
+
     const response = await fetch('/api/posts', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ caption: draft.trim(), visibility })
+      body: formData
     });
 
     if (!response.ok) {
@@ -77,6 +106,7 @@ export default function FeedPage() {
 
     setDraft('');
     setVisibility('public');
+    setVideoFile(null);
   };
 
   return (
@@ -104,15 +134,21 @@ export default function FeedPage() {
             className="min-h-[96px] w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none"
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <select
-              value={visibility}
-              onChange={(event) => setVisibility(event.target.value as FeedVisibility)}
-              className="rounded-2xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100"
-            >
-              <option value="public">Public</option>
-              <option value="connections">Connections only</option>
-              <option value="private">Private</option>
-            </select>
+            <div className="flex flex-wrap items-center gap-3">
+              <select
+                value={visibility}
+                onChange={(event) => setVisibility(event.target.value as FeedVisibility)}
+                className="rounded-2xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100"
+              >
+                <option value="public">Public</option>
+                <option value="connections">Connections only</option>
+                <option value="private">Private</option>
+              </select>
+              <label className="rounded-2xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-200">
+                <input type="file" accept="video/*" className="sr-only" onChange={(event) => setVideoFile(event.target.files?.[0] || null)} />
+                {videoFile ? `Video ready: ${videoFile.name}` : 'Upload video'}
+              </label>
+            </div>
             <button type="submit" className="rounded-2xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300">
               Publish update
             </button>
@@ -140,6 +176,11 @@ export default function FeedPage() {
                     {post.visibility}
                   </span>
                 </div>
+                {post.videoUrl ? (
+                  <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-900/70">
+                    <video controls src={post.videoUrl} className="h-56 w-full object-cover" />
+                  </div>
+                ) : null}
                 <p className="mt-4 text-sm leading-7 text-slate-300">{post.caption}</p>
                 <p className="mt-4 text-xs uppercase tracking-[0.24em] text-slate-500">
                   {new Date(post.createdAt).toLocaleString()}

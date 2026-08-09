@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 
 const usernamePattern = /^[A-Za-z0-9_]{3,20}$/;
@@ -8,26 +9,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ profile: null });
   }
 
-  const authHeader = request.headers.get('authorization');
-
-  if (!authHeader?.startsWith('Bearer ')) {
+  let authContext;
+  try {
+    authContext = await requireAuth(request);
+  } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const token = authHeader.split(' ')[1];
-  const {
-    data: { user },
-    error: userError
-  } = await supabaseServer.auth.getUser(token);
-
-  if (userError || !user) {
-    return NextResponse.json({ error: userError?.message || 'Unauthorized' }, { status: 401 });
   }
 
   const { data: profile, error: profileError } = await supabaseServer
     .from('wpx_profiles')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', authContext.user.id)
     .maybeSingle();
 
   if (profileError) {
@@ -42,21 +34,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, profile: null });
   }
 
-  const authHeader = request.headers.get('authorization');
   const body = await request.json();
 
-  if (!authHeader?.startsWith('Bearer ')) {
+  let authContext;
+  try {
+    authContext = await requireAuth(request);
+  } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const token = authHeader.split(' ')[1];
-  const {
-    data: { user },
-    error: userError
-  } = await supabaseServer.auth.getUser(token);
-
-  if (userError || !user) {
-    return NextResponse.json({ error: userError?.message || 'Unauthorized' }, { status: 401 });
   }
 
   const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at } = body;
@@ -76,7 +60,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: existingError.message }, { status: 500 });
     }
 
-    if (existing && existing.user_id !== user.id) {
+    if (existing && existing.user_id !== authContext.user.id) {
       return NextResponse.json({ error: 'Username already taken.' }, { status: 409 });
     }
   }
@@ -95,7 +79,7 @@ export async function POST(request: NextRequest) {
 
   const { error: upsertError } = await supabaseServer.from('wpx_profiles').upsert(
     {
-      user_id: user.id,
+      user_id: authContext.user.id,
       ...updates
     },
     { onConflict: 'user_id' }

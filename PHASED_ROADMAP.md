@@ -84,6 +84,8 @@ Companion to `wimpex-build-prompt.md`, which has full technical detail (API call
 - Streak visualization following §4's woven/knot motif rather than a generic flame icon, including the "unravel on break" state.
 - Push/in-app notifications tied to streak preservation — §6.
 - Share/repost flow for posts — §1.
+- Streak bank support with banked-day tracking and bank caps in the streak model for retention loops.
+- Presence pulses as ephemeral Realtime broadcasts with an opt-out toggle in privacy settings.
 - Connection-thread visual motif (§4) on shared screens (call screen, shared post) now that both calling (Phase 4) and sharing exist to display it on.
 - WimpyAI integration (chat surface or AI-assisted captions) once WimpyAI's cross-product `context` parameter is finalized — §2.
 - WimpyBooks deep link/embed if in scope — §2.
@@ -122,6 +124,14 @@ Companion to `wimpex-build-prompt.md`, which has full technical detail (API call
 **Done when:** the app can sustain organic growth without immediately breaking under spam, slow connections, or moderation load.
 
 ---
+
+## Phase 7 — Reading rooms
+
+**Goal:** make room-based social reading available in the data model so it can be implemented later without losing the feature plan.
+
+- Add the reading-room tables and RLS scaffolding now to keep the schema aligned with the build prompt.
+- Track room participants, highlights, messages, and recaps as future work rather than a full UI implementation yet.
+- Keep room support separate from the Phase 4 calling decision so the feature guide remains accurate.
 
 ## Phase 8 — Advanced / exploratory
 
