@@ -246,16 +246,20 @@ ALTER TABLE wpx_room_highlights ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wpx_room_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wpx_room_recaps ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS wpx_profiles_select_own_or_all ON wpx_profiles
+DROP POLICY IF EXISTS wpx_profiles_select_own_or_all ON wpx_profiles;
+CREATE POLICY wpx_profiles_select_own_or_all ON wpx_profiles
   FOR SELECT USING (true);
 
-CREATE POLICY IF NOT EXISTS wpx_profiles_update_own ON wpx_profiles
+DROP POLICY IF EXISTS wpx_profiles_update_own ON wpx_profiles;
+CREATE POLICY wpx_profiles_update_own ON wpx_profiles
   FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS wpx_profiles_insert_own ON wpx_profiles
+DROP POLICY IF EXISTS wpx_profiles_insert_own ON wpx_profiles;
+CREATE POLICY wpx_profiles_insert_own ON wpx_profiles
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS wpx_posts_select_by_visibility ON wpx_posts
+DROP POLICY IF EXISTS wpx_posts_select_by_visibility ON wpx_posts;
+CREATE POLICY wpx_posts_select_by_visibility ON wpx_posts
   FOR SELECT USING (
     visibility = 'public'
     OR author_id = auth.uid()
@@ -269,25 +273,32 @@ CREATE POLICY IF NOT EXISTS wpx_posts_select_by_visibility ON wpx_posts
     )
   );
 
-CREATE POLICY IF NOT EXISTS wpx_posts_write_own ON wpx_posts
+DROP POLICY IF EXISTS wpx_posts_write_own ON wpx_posts;
+CREATE POLICY wpx_posts_write_own ON wpx_posts
   FOR INSERT WITH CHECK (author_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_posts_update_own ON wpx_posts
+DROP POLICY IF EXISTS wpx_posts_update_own ON wpx_posts;
+CREATE POLICY wpx_posts_update_own ON wpx_posts
   FOR UPDATE USING (author_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_posts_delete_own ON wpx_posts
+DROP POLICY IF EXISTS wpx_posts_delete_own ON wpx_posts;
+CREATE POLICY wpx_posts_delete_own ON wpx_posts
   FOR DELETE USING (author_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_connections_access_own ON wpx_connections
+DROP POLICY IF EXISTS wpx_connections_access_own ON wpx_connections;
+CREATE POLICY wpx_connections_access_own ON wpx_connections
   FOR SELECT USING (requester_id = auth.uid() OR recipient_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_connections_modify_own ON wpx_connections
+DROP POLICY IF EXISTS wpx_connections_modify_own ON wpx_connections;
+CREATE POLICY wpx_connections_modify_own ON wpx_connections
   FOR INSERT WITH CHECK (requester_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_connections_update_own ON wpx_connections
+DROP POLICY IF EXISTS wpx_connections_update_own ON wpx_connections;
+CREATE POLICY wpx_connections_update_own ON wpx_connections
   FOR UPDATE USING (requester_id = auth.uid() OR recipient_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_conversations_members_view ON wpx_conversations
+DROP POLICY IF EXISTS wpx_conversations_members_view ON wpx_conversations;
+CREATE POLICY wpx_conversations_members_view ON wpx_conversations
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM wpx_conversation_members cm
@@ -295,10 +306,12 @@ CREATE POLICY IF NOT EXISTS wpx_conversations_members_view ON wpx_conversations
     )
   );
 
-CREATE POLICY IF NOT EXISTS wpx_conversation_members_access ON wpx_conversation_members
+DROP POLICY IF EXISTS wpx_conversation_members_access ON wpx_conversation_members;
+CREATE POLICY wpx_conversation_members_access ON wpx_conversation_members
   FOR SELECT USING (user_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_messages_members_view ON wpx_messages
+DROP POLICY IF EXISTS wpx_messages_members_view ON wpx_messages;
+CREATE POLICY wpx_messages_members_view ON wpx_messages
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM wpx_conversation_members cm
@@ -306,26 +319,94 @@ CREATE POLICY IF NOT EXISTS wpx_messages_members_view ON wpx_messages
     )
   );
 
-CREATE POLICY IF NOT EXISTS wpx_messages_insert_own ON wpx_messages
+DROP POLICY IF EXISTS wpx_messages_insert_own ON wpx_messages;
+CREATE POLICY wpx_messages_insert_own ON wpx_messages
   FOR INSERT WITH CHECK (sender_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_notifications_own ON wpx_notifications
+DROP POLICY IF EXISTS wpx_notifications_own ON wpx_notifications;
+CREATE POLICY wpx_notifications_own ON wpx_notifications
   FOR SELECT USING (user_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_notifications_update_own ON wpx_notifications
+DROP POLICY IF EXISTS wpx_notifications_update_own ON wpx_notifications;
+CREATE POLICY wpx_notifications_update_own ON wpx_notifications
   FOR UPDATE USING (user_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_streaks_own ON wpx_streaks
+DROP POLICY IF EXISTS wpx_streaks_own ON wpx_streaks;
+CREATE POLICY wpx_streaks_own ON wpx_streaks
   FOR SELECT USING (user_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_streaks_update_own ON wpx_streaks
+DROP POLICY IF EXISTS wpx_streaks_update_own ON wpx_streaks;
+CREATE POLICY wpx_streaks_update_own ON wpx_streaks
   FOR UPDATE USING (user_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_streaks_insert_own ON wpx_streaks
+DROP POLICY IF EXISTS wpx_streaks_insert_own ON wpx_streaks;
+CREATE POLICY wpx_streaks_insert_own ON wpx_streaks
   FOR INSERT WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_reports_insert_own ON wpx_reports
+DROP POLICY IF EXISTS wpx_reports_insert_own ON wpx_reports;
+CREATE POLICY wpx_reports_insert_own ON wpx_reports
   FOR INSERT WITH CHECK (reporter_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS wpx_blocks_insert_own ON wpx_blocks
+DROP POLICY IF EXISTS wpx_blocks_insert_own ON wpx_blocks;
+CREATE POLICY wpx_blocks_insert_own ON wpx_blocks
   FOR INSERT WITH CHECK (blocker_id = auth.uid());
+
+DROP POLICY IF EXISTS wpx_reading_rooms_select ON wpx_reading_rooms;
+CREATE POLICY wpx_reading_rooms_select ON wpx_reading_rooms
+  FOR SELECT USING (is_live = true OR creator_id = auth.uid());
+
+DROP POLICY IF EXISTS wpx_reading_rooms_insert_own ON wpx_reading_rooms;
+CREATE POLICY wpx_reading_rooms_insert_own ON wpx_reading_rooms
+  FOR INSERT WITH CHECK (creator_id = auth.uid());
+
+DROP POLICY IF EXISTS wpx_reading_rooms_update_own ON wpx_reading_rooms;
+CREATE POLICY wpx_reading_rooms_update_own ON wpx_reading_rooms
+  FOR UPDATE USING (creator_id = auth.uid());
+
+DROP POLICY IF EXISTS wpx_room_participants_select ON wpx_room_participants;
+CREATE POLICY wpx_room_participants_select ON wpx_room_participants
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM wpx_room_participants p
+      WHERE p.room_id = wpx_room_participants.room_id AND p.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS wpx_room_participants_insert_own ON wpx_room_participants;
+CREATE POLICY wpx_room_participants_insert_own ON wpx_room_participants
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS wpx_room_highlights_select ON wpx_room_highlights;
+CREATE POLICY wpx_room_highlights_select ON wpx_room_highlights
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM wpx_room_participants p
+      WHERE p.room_id = wpx_room_highlights.room_id AND p.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS wpx_room_highlights_insert_own ON wpx_room_highlights;
+CREATE POLICY wpx_room_highlights_insert_own ON wpx_room_highlights
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS wpx_room_messages_select ON wpx_room_messages;
+CREATE POLICY wpx_room_messages_select ON wpx_room_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM wpx_room_participants p
+      WHERE p.room_id = wpx_room_messages.room_id AND p.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS wpx_room_messages_insert_own ON wpx_room_messages;
+CREATE POLICY wpx_room_messages_insert_own ON wpx_room_messages
+  FOR INSERT WITH CHECK (sender_id = auth.uid());
+
+DROP POLICY IF EXISTS wpx_room_recaps_select ON wpx_room_recaps;
+CREATE POLICY wpx_room_recaps_select ON wpx_room_recaps
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM wpx_room_participants p
+      WHERE p.room_id = wpx_room_recaps.room_id AND p.user_id = auth.uid()
+    )
+  );
