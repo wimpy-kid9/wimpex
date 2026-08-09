@@ -19,26 +19,26 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [x] Create username claim screen with live availability checks
 - [ ] Add profile photo upload / camera capture flow
 - [x] Collect display name, DOB, bio, and gender
-- [ ] Add optional messaging privacy prompt
+- [x] Add optional messaging privacy prompt
 - [ ] Support resumable onboarding
 - [x] Add basic account settings screen
 - [x] Verify new users complete onboarding and returning users skip it
 
 ## Phase 2 — Core posting, feed, and visual identity
-- [ ] Implement video upload pipeline
+- [x] Implement video upload pipeline
 - [x] Add per-post visibility controls (public / connections-only / private)
 - [x] Build mobile and desktop feed layouts
 - [x] Apply the Adire Signal visual identity
-- [ ] Add report/block affordances on posts and profiles
-- [ ] Confirm video posts can be created, viewed, and filtered correctly
+- [x] Add report/block affordances on posts and profiles
+- [x] Confirm video posts can be created, viewed, and filtered correctly
 
 ## Phase 3 — Connections & messaging
-- [ ] Build `wpx_connections` request/accept/decline flow
-- [ ] Define and enforce messaging gating rules
-- [ ] Implement 1:1 text messaging
-- [ ] Add persistent desktop messaging panel
-- [ ] Add mobile full-screen messaging UI
-- [ ] Create `wpx_notifications` for requests and messages
+- [x] Build `wpx_connections` request/accept/decline flow
+- [x] Define and enforce messaging gating rules
+- [x] Implement 1:1 text messaging
+- [x] Add persistent desktop messaging panel
+- [x] Add mobile full-screen messaging UI
+- [x] Create `wpx_notifications` for requests and messages
 - [ ] Confirm two users can connect and message each other
 
 ## Phase 4 — Voice & video calling
