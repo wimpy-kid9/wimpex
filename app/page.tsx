@@ -16,10 +16,10 @@ export default function HomePage() {
   return (
     <main className="flex min-h-[70vh] items-center justify-center px-2 py-8 sm:px-6 lg:px-8">
       <div className="surface-veil w-full max-w-4xl rounded-[2rem] bg-slate-900/70 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl sm:p-10">
-        <p className="text-sm font-medium uppercase tracking-[0.3em] text-cyan-300">WIMPEX • Phase 1</p>
-        <h1 className="text-display mt-4 text-4xl text-white sm:text-5xl">A social video app with room to grow.</h1>
+        <p className="text-sm font-medium uppercase tracking-[0.3em] text-cyan-300">WIMPEX</p>
+        <h1 className="text-display mt-4 text-4xl text-white sm:text-5xl">A living social video layer for real connections.</h1>
         <p className="mt-4 max-w-2xl text-lg text-slate-400">
-          The shell is now live with onboarding, feed, posting, and profile surfaces so the next build step can focus on real integration rather than empty placeholders.
+          Share video, build trusted circles, and move from feed to calls without leaving the same intimate space.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">
