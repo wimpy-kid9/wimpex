@@ -61,12 +61,12 @@ export default function FeedPage() {
       {actionMessage ? <p className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">{actionMessage}</p> : null}
       {loading ? <p className="text-sm text-slate-400">Loading feed…</p> : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="feed-snap-stack flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-4">
         {posts.map((post) => {
           const accent = getUserAccent(post.author || post.handle || 'wimpex-post');
           const accentClass = post.accent || `${accent.gradient}`;
           return (
-            <article key={post.id} className="thread-card surface-veil rounded-[2rem] bg-slate-900/80 p-5 shadow-lg shadow-black/20 backdrop-blur-xl">
+            <article key={post.id} className="feed-snap-item thread-card surface-veil rounded-[2rem] bg-slate-900/80 p-5 shadow-lg shadow-black/20 backdrop-blur-xl min-h-[78vh] md:min-h-0">
               <div className={`rounded-[1.5rem] bg-gradient-to-r ${accentClass} p-[1px]`}>
                 <div className="rounded-[1.4rem] bg-slate-950/90 p-4">
                   <div className="flex items-center justify-between">
@@ -93,7 +93,7 @@ export default function FeedPage() {
                   </div>
                   {post.videoUrl ? (
                     <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-900/70">
-                      <video controls src={post.videoUrl} className="h-56 w-full object-cover" />
+                      <video controls src={post.videoUrl} className="h-[56vh] w-full object-cover md:h-56" />
                     </div>
                   ) : null}
                   <p className="mt-4 text-sm leading-7 text-slate-300">{post.caption}</p>

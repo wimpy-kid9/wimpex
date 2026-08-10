@@ -91,17 +91,17 @@ export default function ConnectionsPage() {
                     <p className="text-xs text-slate-400">@{person.username}</p>
                     {person.bio ? <p className="mt-1 text-xs text-slate-500">{person.bio}</p> : null}
                   </div>
-                  <span className="rounded-full bg-cyan-400/10 px-2 py-1 text-[11px] uppercase tracking-[0.2em] text-cyan-200">Select</span>
+                  <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[11px] uppercase tracking-[0.2em] text-amber-200">Select</span>
                 </button>
               ))}
             </div>
           ) : null}
           <div className="flex gap-3">
             <input value={recipientId} readOnly placeholder="Selected recipient id" className="flex-1 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm text-slate-100" />
-            <button onClick={sendRequest} className="rounded-2xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950">Send request</button>
+            <button onClick={sendRequest} className="rounded-2xl bg-gradient-to-r from-amber-400 to-sky-500 px-4 py-2 text-sm font-semibold text-slate-950">Send request</button>
           </div>
         </div>
-        {message ? <p className="mt-3 text-sm text-cyan-200">{message}</p> : null}
+        {message ? <p className="mt-3 text-sm text-amber-200">{message}</p> : null}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -113,7 +113,7 @@ export default function ConnectionsPage() {
                 <p className="text-sm text-slate-200">{request.requester_id}</p>
                 <p className="mt-1 text-xs uppercase tracking-[0.24em] text-slate-500">Pending request</p>
                 <div className="mt-2 flex gap-2">
-                  <button onClick={() => respond(request.id, 'accept')} className="rounded-xl bg-emerald-500 px-3 py-2 text-sm font-semibold text-slate-950">Accept</button>
+                  <button onClick={() => respond(request.id, 'accept')} className="rounded-xl bg-gradient-to-r from-amber-400 to-sky-500 px-3 py-2 text-sm font-semibold text-slate-950">Accept</button>
                   <button onClick={() => respond(request.id, 'decline')} className="rounded-xl bg-rose-500 px-3 py-2 text-sm font-semibold text-slate-950">Decline</button>
                 </div>
               </div>

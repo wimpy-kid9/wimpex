@@ -75,15 +75,15 @@ export default function MessagesPage() {
                     <p className="text-xs text-slate-400">@{person.username}</p>
                     {person.bio ? <p className="mt-1 text-xs text-slate-500">{person.bio}</p> : null}
                   </div>
-                  <span className="rounded-full bg-cyan-400/10 px-2 py-1 text-[11px] uppercase tracking-[0.2em] text-cyan-200">Select</span>
+                  <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[11px] uppercase tracking-[0.2em] text-amber-200">Select</span>
                 </button>
               ))}
             </div>
           ) : null}
           <input value={recipientId} readOnly placeholder="Selected recipient id" className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm text-slate-100" />
           <textarea value={body} onChange={(event) => setBody(event.target.value)} placeholder="Write a message" className="min-h-[96px] w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm text-slate-100" />
-          <button onClick={sendMessage} className="rounded-2xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950">Send message</button>
-          {message ? <p className="text-sm text-cyan-200">{message}</p> : null}
+          <button onClick={sendMessage} className="rounded-2xl bg-gradient-to-r from-amber-400 to-sky-500 px-4 py-2 text-sm font-semibold text-slate-950">Send message</button>
+          {message ? <p className="text-sm text-amber-200">{message}</p> : null}
         </div>
       </section>
     </main>

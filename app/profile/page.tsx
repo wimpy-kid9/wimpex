@@ -13,7 +13,7 @@ export default function ProfilePage() {
       <section className="surface-veil rounded-[2rem] bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Profile</p>
+            <p className="text-sm uppercase tracking-[0.3em] text-amber-300">Profile</p>
             <h1 className="text-display mt-3 text-3xl text-white">Ayo, creator and host</h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-400">
               This profile surface is ready for onboarding data, connection stats, and future WIMPEX media highlights.
@@ -27,7 +27,7 @@ export default function ProfilePage() {
         <div className="mt-8 grid gap-4 md:grid-cols-[1.25fr_0.75fr]">
           <div className="thread-card rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
             <div className="flex items-center gap-4">
-              <div className={`flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br ${accent.gradient} text-xl font-semibold text-white shadow-lg shadow-cyan-500/20`}>
+              <div className={`flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br ${accent.gradient} text-xl font-semibold text-white shadow-lg shadow-amber-500/20`}>
                 A
               </div>
               <div>
@@ -72,7 +72,7 @@ export default function ProfilePage() {
               Block user
             </button>
           </div>
-          {message ? <p className="mt-3 text-sm text-cyan-200">{message}</p> : null}
+          {message ? <p className="mt-3 text-sm text-amber-200">{message}</p> : null}
         </div>
       </section>
     </main>

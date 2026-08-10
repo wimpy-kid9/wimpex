@@ -269,7 +269,7 @@ export default function OnboardingPage() {
               </p>
             </div>
             {error ? <p className="text-sm text-rose-400">{error}</p> : null}
-            {statusMessage ? <p className="text-sm text-cyan-300">{statusMessage}</p> : null}
+            {statusMessage ? <p className="text-sm text-amber-200">{statusMessage}</p> : null}
             <button
               type="button"
               className="inline-flex items-center justify-center rounded-2xl bg-sky-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
@@ -377,7 +377,7 @@ export default function OnboardingPage() {
               <p className="text-sm text-slate-400">These privacy rules now gate both messaging and calls from the server side.</p>
             </div>
             {error ? <p className="text-sm text-rose-400">{error}</p> : null}
-            {statusMessage ? <p className="text-sm text-cyan-300">{statusMessage}</p> : null}
+            {statusMessage ? <p className="text-sm text-amber-200">{statusMessage}</p> : null}
             <button
               type="button"
               className="inline-flex items-center justify-center rounded-2xl bg-sky-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"

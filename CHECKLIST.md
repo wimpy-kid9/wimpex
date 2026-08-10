@@ -28,12 +28,13 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 ## Phase 2 — Core posting, feed, and visual identity
 - [x] Implement video upload pipeline
 - [x] Add per-post visibility controls (public / connections-only / private)
-- [x] Build mobile and desktop feed layouts
+- [ ] Build mobile and desktop feed layouts
 - [x] Apply the Adire Signal visual identity
 - [x] Add report/block affordances on posts and profiles
 - [x] Confirm video posts can be created, viewed, and filtered correctly
 - [x] Ship a dedicated create-post screen and a read-focused feed experience
 - [x] Rebrand the app to the gold/black/blue palette
+- [x] Build a mobile-first snap-stack feed with desktop card layout preserved
 
 ## Phase 3 — Connections & messaging
 - [x] Build `wpx_connections` request/accept/decline flow

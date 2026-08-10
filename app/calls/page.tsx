@@ -304,7 +304,7 @@ export default function CallsPage() {
             )}
           </div>
 
-          {statusMessage ? <p className="mt-3 text-sm text-cyan-300">{statusMessage}</p> : null}
+          {statusMessage ? <p className="mt-3 text-sm text-amber-200">{statusMessage}</p> : null}
         </div>
       </section>
 

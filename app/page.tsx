@@ -31,9 +31,6 @@ export default function HomePage() {
           <Link href="/signup" className="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
             Create account
           </Link>
-          <Link href="/onboarding" className="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
-            View onboarding flow
-          </Link>
         </div>
       </div>
     </main>

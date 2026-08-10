@@ -178,6 +178,14 @@ select {
   pointer-events: none;
 }
 
+.feed-snap-stack {
+  scroll-snap-type: y mandatory;
+}
+
+.feed-snap-item {
+  scroll-snap-align: start;
+}
+
 @keyframes driftIn {
   from {
     opacity: 0;
