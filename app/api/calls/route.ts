@@ -151,12 +151,30 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    await requireAuth(request);
+    const authContext = await requireAuth(request);
     const body = await request.json();
     const { id, status, ended_at, started_at } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'A call id is required.' }, { status: 400 });
+    }
+
+    const { data: existingCall, error: existingCallError } = await supabaseServer
+      .from('wpx_calls')
+      .select('id, caller_id, callee_id, room_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingCallError) {
+      return NextResponse.json({ error: existingCallError.message }, { status: 500 });
+    }
+
+    if (!existingCall) {
+      return NextResponse.json({ error: 'Call not found.' }, { status: 404 });
+    }
+
+    if (existingCall.caller_id !== authContext.user.id && existingCall.callee_id !== authContext.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const nextStatus = normalizeStatus(status);

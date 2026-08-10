@@ -1,7 +1,7 @@
 "use client";
 
 import DailyIframe from '@daily-co/daily-js';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
 
@@ -70,7 +70,7 @@ export default function CallsPage() {
     setConnections((connectionsPayload.connections ?? []).filter((connection: ConnectionRecord) => connection.status === 'accepted'));
   };
 
-  async function updateCallStatus(callId: string, status: string) {
+  const updateCallStatus = useCallback(async (callId: string, status: string) => {
     if (!session?.access_token) return;
 
     const response = await fetch('/api/calls', {
@@ -86,7 +86,7 @@ export default function CallsPage() {
     if (payload.call) {
       setCalls((current) => current.map((call) => (call.id === callId ? { ...call, status: payload.call.status } : call)));
     }
-  }
+  }, [session?.access_token]);
 
   useEffect(() => {
     const init = async () => {

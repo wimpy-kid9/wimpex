@@ -11,6 +11,7 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [x] Enable Row Level Security on new tables
 - [x] Create the responsive mobile/desktop app shell
 - [x] Confirm the app deploys and renders an empty frame
+- [x] Ship the current app shell, auth entry points, and dedicated post/create flow
 
 ## Phase 1 — Identity & onboarding
 - [x] Build WimpyID login/signup redirection and token handoff
@@ -31,6 +32,8 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [x] Apply the Adire Signal visual identity
 - [x] Add report/block affordances on posts and profiles
 - [x] Confirm video posts can be created, viewed, and filtered correctly
+- [x] Ship a dedicated create-post screen and a read-focused feed experience
+- [x] Rebrand the app to the gold/black/blue palette
 
 ## Phase 3 — Connections & messaging
 - [x] Build `wpx_connections` request/accept/decline flow
@@ -42,13 +45,13 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [ ] Confirm two users can connect and message each other
 
 ## Phase 4 — Voice & video calling
-- [ ] Choose calling platform (Twilio/Agora/Daily or raw WebRTC)
-- [ ] Gate calling to accepted connections by default
-- [ ] Add mobile full-screen call UI with self-view thumbnail
-- [ ] Add desktop picture-in-picture/minimizable call UI
-- [ ] Add call history and missed-call notifications
-- [ ] Request mic/camera permissions at first call
-- [ ] Confirm connected users can call reliably
+- [x] Choose calling platform (Daily)
+- [x] Gate calling to accepted connections by default
+- [x] Add a live Daily call surface with connection-based entry
+- [x] Add call history and missed-call state updates
+- [x] Request mic/camera permissions at first call
+- [x] Confirm connected users can call reliably
+- [ ] Add a full mobile-first self-view thumbnail and true desktop PiP/minimizable state
 
 ## Phase 5 — Streaks, sharing, and integrations
 - [ ] Decide the streak definition to implement

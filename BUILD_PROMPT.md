@@ -9,10 +9,10 @@
 ## 1. Core product
 
 - **Messaging** — 1:1 (and, decide later, group) text messaging between users.
-- **Voice calls** and **video calls** — real-time calling between users.
+- **Voice calls** and **video calls** — real-time calling between users. Daily-based rooms are now wired into the app and exposed through the calls screen.
 - **Video posts** — users can post videos either **privately** (visible only to approved connections) or **publicly** (visible to anyone).
 - **Streaks** — a recurring-engagement mechanic (decide early whether this means a daily-posting streak, a daily-interaction-with-a-friend streak, or both — these have different data models). **New: a "streak bank."** Instead of an all-or-nothing streak that resets to zero on a missed day, banking spare streak days from over-performing (e.g. posting several days in a row banks a small buffer) lets a user auto-cover one missed day. This softens the anxiety-driven design of a typical streak feature while keeping the retention hook. Needs a `banked_days` counter on the streak record and a rule for how banking accrues (e.g. capped bank size, one bank day earned per N consecutive days).
-- **Share post** — users can share/repost another user's post.
+- **Share post** — users can share/repost another user's post. The current build includes post creation and reporting hooks, with the feed now focused on consumption and the dedicated create-post experience living on its own route.
 - **Add each other (friend/connection system)** — users can send and accept "add" requests to form a mutual connection, distinct from a one-way public "follow." Suggested shape:
 - A `wpx_connections` table: `id`, `requester_id`, `recipient_id`, `status` (`pending`/`accepted`/`declined`), `created_at`, `responded_at`.
 - Sending a request creates a `pending` row; the recipient can accept (→ `accepted`, now mutual — both can message/call each other if messaging/calling is gated to connections) or decline.

@@ -5,15 +5,15 @@
 :root {
   color-scheme: dark;
   --ink-950: #020617;
-  --ink-900: #0f172a;
+  --ink-900: #0b1222;
   --ink-800: #111827;
-  --ink-700: #1f2937;
+  --ink-700: #162033;
   --text: #f8fafc;
   --muted: #94a3b8;
   --line: rgba(255, 255, 255, 0.12);
-  --accent: #22d3ee;
-  --accent-2: #f472b6;
-  --accent-3: #f59e0b;
+  --accent: #fbbf24;
+  --accent-2: #60a5fa;
+  --accent-3: #fde68a;
 }
 
 html {
@@ -24,8 +24,8 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 10% 15%, rgba(34, 211, 238, 0.15), transparent 24%),
-    radial-gradient(circle at 85% 20%, rgba(244, 114, 182, 0.16), transparent 22%),
+    radial-gradient(circle at 10% 15%, rgba(251, 191, 36, 0.16), transparent 24%),
+    radial-gradient(circle at 85% 20%, rgba(96, 165, 250, 0.18), transparent 22%),
     linear-gradient(135deg, var(--ink-950) 0%, var(--ink-900) 48%, var(--ink-800) 100%);
   color: var(--text);
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -38,7 +38,7 @@ body {
 }
 
 ::selection {
-  background: rgba(34, 211, 238, 0.25);
+  background: rgba(251, 191, 36, 0.25);
   color: white;
 }
 
@@ -103,8 +103,8 @@ select {
   inset: 0;
   background:
     linear-gradient(125deg, rgba(255, 255, 255, 0.06), transparent 38%, rgba(255, 255, 255, 0.04)),
-    radial-gradient(circle at top left, rgba(34, 211, 238, 0.14), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(244, 114, 182, 0.12), transparent 38%);
+    radial-gradient(circle at top left, rgba(251, 191, 36, 0.16), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.14), transparent 38%);
   pointer-events: none;
   mix-blend-mode: screen;
 }
@@ -123,7 +123,7 @@ select {
   position: absolute;
   inset: auto 0 0 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.35), transparent);
+  background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.35), transparent);
   transform-origin: center;
   animation: threadPulse 6s ease-in-out infinite;
 }
@@ -149,7 +149,7 @@ select {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(110deg, rgba(34, 211, 238, 0.16), transparent 28%, rgba(244, 114, 182, 0.16) 72%, transparent);
+  background: linear-gradient(110deg, rgba(251, 191, 36, 0.16), transparent 28%, rgba(96, 165, 250, 0.16) 72%, transparent);
   opacity: 0.7;
   pointer-events: none;
 }
@@ -174,7 +174,7 @@ select {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(34, 211, 238, 0.16), transparent 45%, rgba(244, 114, 182, 0.16));
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.16), transparent 45%, rgba(96, 165, 250, 0.16));
   pointer-events: none;
 }
 

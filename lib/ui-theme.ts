@@ -1,23 +1,23 @@
 const palette = [
   {
-    gradient: 'from-cyan-400 via-sky-500 to-fuchsia-500',
-    glow: 'shadow-cyan-500/25',
-    line: 'from-cyan-400/90 via-sky-500/70 to-fuchsia-500/90'
-  },
-  {
-    gradient: 'from-emerald-400 via-lime-500 to-cyan-500',
-    glow: 'shadow-emerald-500/25',
-    line: 'from-emerald-400/90 via-lime-500/70 to-cyan-500/90'
-  },
-  {
-    gradient: 'from-amber-400 via-orange-500 to-rose-500',
+    gradient: 'from-amber-300 via-yellow-400 to-sky-500',
     glow: 'shadow-amber-500/25',
-    line: 'from-amber-400/90 via-orange-500/70 to-rose-500/90'
+    line: 'from-amber-400/90 via-yellow-500/70 to-sky-500/90'
   },
   {
-    gradient: 'from-violet-500 via-fuchsia-500 to-sky-500',
-    glow: 'shadow-violet-500/25',
-    line: 'from-violet-400/90 via-fuchsia-500/70 to-sky-500/90'
+    gradient: 'from-slate-100 via-amber-200 to-sky-400',
+    glow: 'shadow-slate-400/20',
+    line: 'from-slate-100/90 via-amber-300/70 to-sky-400/90'
+  },
+  {
+    gradient: 'from-amber-500 via-orange-400 to-blue-600',
+    glow: 'shadow-orange-500/25',
+    line: 'from-amber-500/90 via-orange-400/70 to-blue-600/90'
+  },
+  {
+    gradient: 'from-sky-400 via-blue-500 to-amber-300',
+    glow: 'shadow-sky-500/25',
+    line: 'from-sky-400/90 via-blue-500/70 to-amber-300/90'
   }
 ];
 
