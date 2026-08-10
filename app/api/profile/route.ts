@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at, message_privacy } = body;
+  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at, message_privacy, call_privacy } = body;
 
   if (username && !usernamePattern.test(username)) {
     return NextResponse.json({ error: 'Username must be 3–20 letters, numbers, or underscores.' }, { status: 400 });
@@ -87,16 +87,23 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (message_privacy) {
-    const privacyValue = ['everyone', 'connections', 'no_one'].includes(message_privacy) ? message_privacy : null;
-    if (!privacyValue) {
-      return NextResponse.json({ error: 'Invalid privacy selection.' }, { status: 400 });
+  if (message_privacy || call_privacy) {
+    const privacyValue = message_privacy ? (['everyone', 'connections', 'no_one'].includes(message_privacy) ? message_privacy : null) : null;
+    const callPrivacyValue = call_privacy ? (['everyone', 'connections', 'no_one'].includes(call_privacy) ? call_privacy : null) : null;
+
+    if (message_privacy && !privacyValue) {
+      return NextResponse.json({ error: 'Invalid message privacy selection.' }, { status: 400 });
+    }
+
+    if (call_privacy && !callPrivacyValue) {
+      return NextResponse.json({ error: 'Invalid call privacy selection.' }, { status: 400 });
     }
 
     const { error: privacyError } = await supabaseServer.from('wpx_privacy_settings').upsert(
       {
         user_id: authContext.user.id,
-        message_privacy: privacyValue
+        message_privacy: privacyValue ?? 'connections',
+        call_privacy: callPrivacyValue ?? 'connections'
       },
       { onConflict: 'user_id' }
     );
@@ -106,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (Object.keys(updates).length === 0 && !message_privacy) {
+  if (Object.keys(updates).length === 0 && !message_privacy && !call_privacy) {
     return NextResponse.json({ error: 'No profile data provided.' }, { status: 400 });
   }
 

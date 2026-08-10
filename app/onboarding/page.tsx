@@ -21,6 +21,7 @@ export default function OnboardingPage() {
   const [bio, setBio] = useState('');
   const [gender, setGender] = useState('');
   const [messagePrivacy, setMessagePrivacy] = useState('connections');
+  const [callPrivacy, setCallPrivacy] = useState('connections');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -73,9 +74,9 @@ export default function OnboardingPage() {
           setAvatarPreview(nextProfile.avatar_url);
         }
 
-        const derivedStep = nextProfile?.username || nextProfile?.display_name || nextProfile?.date_of_birth || nextProfile?.bio || nextProfile?.gender || nextProfile?.avatar_url
-          ? 2
-          : 1;
+        const hasUsername = Boolean(nextProfile?.username);
+        const hasProfileDetails = Boolean(nextProfile?.display_name || nextProfile?.date_of_birth || nextProfile?.bio || nextProfile?.gender || nextProfile?.avatar_url);
+        const derivedStep = hasUsername ? (hasProfileDetails ? 3 : 2) : 1;
         setStep(derivedStep);
       }
 
@@ -207,7 +208,8 @@ export default function OnboardingPage() {
         Authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
-        message_privacy: messagePrivacy
+        message_privacy: messagePrivacy,
+        call_privacy: callPrivacy
       })
     });
 
@@ -347,18 +349,32 @@ export default function OnboardingPage() {
                 <option value="other">Other</option>
               </select>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
-              <label className="block text-sm font-medium text-slate-300">Who can message you?</label>
-              <select
-                className="mt-3 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-white outline-none"
-                value={messagePrivacy}
-                onChange={(event) => setMessagePrivacy(event.target.value)}
-              >
-                <option value="connections">Accepted connections only</option>
-                <option value="everyone">Anyone</option>
-                <option value="no_one">No one</option>
-              </select>
-              <p className="mt-2 text-sm text-slate-400">This keeps the messaging gating rule explicit from the start.</p>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300">Who can message you?</label>
+                <select
+                  className="mt-3 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-white outline-none"
+                  value={messagePrivacy}
+                  onChange={(event) => setMessagePrivacy(event.target.value)}
+                >
+                  <option value="connections">Accepted connections only</option>
+                  <option value="everyone">Anyone</option>
+                  <option value="no_one">No one</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300">Who can call you?</label>
+                <select
+                  className="mt-3 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-white outline-none"
+                  value={callPrivacy}
+                  onChange={(event) => setCallPrivacy(event.target.value)}
+                >
+                  <option value="connections">Accepted connections only</option>
+                  <option value="everyone">Anyone</option>
+                  <option value="no_one">No one</option>
+                </select>
+              </div>
+              <p className="text-sm text-slate-400">These privacy rules now gate both messaging and calls from the server side.</p>
             </div>
             {error ? <p className="text-sm text-rose-400">{error}</p> : null}
             {statusMessage ? <p className="text-sm text-cyan-300">{statusMessage}</p> : null}

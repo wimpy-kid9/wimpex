@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.91.0",
     "@supabase/supabase-js": "^2.112.2",
     "katex": "^0.16.0",
     "next": "14.2.4",

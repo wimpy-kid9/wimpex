@@ -164,6 +164,7 @@ CREATE TABLE IF NOT EXISTS wpx_calls (
   room_id text,
   started_at timestamp with time zone,
   ended_at timestamp with time zone,
+  updated_at timestamp with time zone DEFAULT now(),
   duration_seconds integer,
   is_missed boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),

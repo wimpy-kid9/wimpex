@@ -35,3 +35,4 @@ export function getUserAccent(seed: string) {
   const index = hashString(normalized) % palette.length;
   return palette[index];
 }
+   

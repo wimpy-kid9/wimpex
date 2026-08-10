@@ -125,7 +125,7 @@ Companion to `wimpex-build-prompt.md`, which has full technical detail (API call
 
 ---
 
-## Phase 7 — Reading rooms
+## Phase 9 — Reading rooms
 
 **Goal:** make room-based social reading available in the data model so it can be implemented later without losing the feature plan.
 

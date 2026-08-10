@@ -1,6 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
+import { hasAcceptedConnection } from '@/lib/connections';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
+
+async function createNotification(userId: string, actorId: string | null, type: string, resourceId: string | null, metadata: Record<string, unknown> = {}) {
+  if (!isSupabaseServerConfigured) return;
+  await supabaseServer.from('wpx_notifications').insert({
+    user_id: userId,
+    actor_id: actorId,
+    type,
+    resource_type: 'call',
+    resource_id: resourceId,
+    metadata
+  });
+}
+
+async function createDailyRoom(name: string) {
+  const apiKey = process.env.CALLING_PLATFORM_API_KEY;
+  if (!apiKey) {
+    return {
+      roomUrl: `https://wimpex.daily.co/${name}`
+    };
+  }
+
+  const response = await fetch('https://api.daily.co/v1/rooms', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name,
+      properties: {
+        enable_chat: false,
+        enable_recording: false,
+        start_audio_off: true,
+        start_video_off: true,
+        max_participants: 2
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const payload = await response.text();
+    throw new Error(payload || 'Unable to create a Daily room.');
+  }
+
+  const payload = await response.json();
+  return {
+    roomUrl: payload.url || payload.room_url || `https://wimpex.daily.co/${name}`
+  };
+}
+
+function normalizeStatus(value: string) {
+  if (value === 'active') return 'in_progress';
+  if (value === 'ended') return 'completed';
+  return value;
+}
 
 export async function GET(request: NextRequest) {
   if (!isSupabaseServerConfigured) {
@@ -40,13 +96,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'A callee is required.' }, { status: 400 });
     }
 
+    if (callee_id === authContext.user.id) {
+      return NextResponse.json({ error: 'You cannot call yourself.' }, { status: 400 });
+    }
+
+    if (!(await hasAcceptedConnection(authContext.user.id, callee_id))) {
+      return NextResponse.json({ error: 'Calls are limited to accepted connections.' }, { status: 403 });
+    }
+
+    const { data: privacyData, error: privacyError } = await supabaseServer
+      .from('wpx_privacy_settings')
+      .select('call_privacy')
+      .eq('user_id', callee_id)
+      .maybeSingle();
+
+    if (privacyError) {
+      return NextResponse.json({ error: privacyError.message }, { status: 500 });
+    }
+
+    const callPrivacy = privacyData?.call_privacy ?? 'connections';
+    if (callPrivacy === 'no_one') {
+      return NextResponse.json({ error: 'This user is not accepting calls right now.' }, { status: 403 });
+    }
+
+    if (callPrivacy === 'connections' && !(await hasAcceptedConnection(authContext.user.id, callee_id))) {
+      return NextResponse.json({ error: 'Calls are limited to accepted connections.' }, { status: 403 });
+    }
+
+    const roomName = `wimpex-${crypto.randomUUID()}`;
+    const { roomUrl } = await createDailyRoom(roomName);
+
     const { data, error } = await supabaseServer.from('wpx_calls').insert({
       caller_id: authContext.user.id,
       callee_id,
       connection_id: connection_id ?? null,
       call_type,
       status: 'ringing',
-      room_id: `wimpex-${crypto.randomUUID()}`
+      room_id: roomUrl
     }).select().maybeSingle();
 
     if (error) {
@@ -54,7 +140,61 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ call: data });
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || 'Unauthorized' }, { status: 401 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  if (!isSupabaseServerConfigured) {
+    return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 500 });
+  }
+
+  try {
+    await requireAuth(request);
+    const body = await request.json();
+    const { id, status, ended_at, started_at } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'A call id is required.' }, { status: 400 });
+    }
+
+    const nextStatus = normalizeStatus(status);
+    const updatePayload: Record<string, unknown> = {
+      status: nextStatus,
+      updated_at: new Date().toISOString()
+    };
+
+    if (nextStatus === 'completed' || nextStatus === 'missed') {
+      updatePayload.ended_at = ended_at ?? new Date().toISOString();
+      updatePayload.is_missed = nextStatus === 'missed';
+    }
+
+    if (nextStatus === 'in_progress') {
+      updatePayload.started_at = started_at ?? new Date().toISOString();
+    }
+
+    const { data, error } = await supabaseServer
+      .from('wpx_calls')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: 'Call not found.' }, { status: 404 });
+    }
+
+    if (nextStatus === 'missed') {
+      await createNotification(data.caller_id, data.callee_id, 'missed_call', data.id, { call_id: data.id, room_id: data.room_id });
+    }
+
+    return NextResponse.json({ call: data });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || 'Unauthorized' }, { status: 401 });
   }
 }

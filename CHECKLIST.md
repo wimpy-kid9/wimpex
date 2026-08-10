@@ -8,7 +8,7 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [x] Set `persistSession: true` on the Supabase client
 - [ ] Add WIMPEX domain to Supabase Auth redirect URLs
 - [x] Establish `wpx_` table prefix convention
-- [ ] Enable Row Level Security on new tables
+- [x] Enable Row Level Security on new tables
 - [x] Create the responsive mobile/desktop app shell
 - [x] Confirm the app deploys and renders an empty frame
 
@@ -17,10 +17,10 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [x] Implement server-side `getUser(bearerToken)` verification
 - [x] Add `wpx_profiles` table and onboarding detection logic
 - [x] Create username claim screen with live availability checks
-- [ ] Add profile photo upload / camera capture flow
+- [x] Add profile photo upload / camera capture flow
 - [x] Collect display name, DOB, bio, and gender
 - [x] Add optional messaging privacy prompt
-- [ ] Support resumable onboarding
+- [x] Support resumable onboarding
 - [x] Add basic account settings screen
 - [x] Verify new users complete onboarding and returning users skip it
 
