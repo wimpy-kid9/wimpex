@@ -185,6 +185,7 @@ export default function OnboardingPage() {
         Authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
+        username,
         display_name: displayName,
         date_of_birth: dateOfBirth,
         bio,
