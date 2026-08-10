@@ -14,7 +14,7 @@ export default function SignupPage() {
           <p className="text-lg font-semibold text-white">Continue with WimpyID</p>
           <p className="mt-2 text-sm text-slate-400">Use the same trusted sign-in flow to create your account and come back here to complete onboarding.</p>
           <div className="mt-5 flex flex-wrap gap-3">
-            <a href="https://id.wimpy-corp.com.ng/login?redirect=https://wimpex.app" className="rounded-[1.1rem] bg-gradient-to-r from-amber-400 to-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">
+            <a href="https://id.wimpy-corp.com.ng/signup?redirect=https://wimpex.app" className="rounded-[1.1rem] bg-gradient-to-r from-amber-400 to-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">
               Continue to WimpyID
             </a>
             <Link href="/login" className="rounded-[1.1rem] border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
