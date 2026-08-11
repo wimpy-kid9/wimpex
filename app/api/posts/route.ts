@@ -317,11 +317,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const authorMap = await loadAuthors([authContext.user.id]);
+  const enrichedAuthor = authorMap[authContext.user.id] || {};
+
   return NextResponse.json({
     post: {
       id: data.id,
-      author: 'WIMPEX user',
-      handle: '@wimpex',
+      author: enrichedAuthor.display_name || 'WIMPEX user',
+      handle: enrichedAuthor.username ? `@${enrichedAuthor.username}` : '@wimpex',
+      avatar_url: enrichedAuthor.avatar_url || null,
       caption: data.caption || '',
       visibility: data.visibility || 'public',
       createdAt: data.created_at,

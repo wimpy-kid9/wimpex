@@ -51,6 +51,7 @@ function getConversationSummary(conversation: any, members: any[], profiles: any
   const lastMessage = messages.find((message) => message.conversation_id === conversation.id) ?? null;
   const otherMemberIds = members.map((member) => member.user_id).filter((id: string) => id !== conversation.currentUserId);
   const otherProfiles = profiles.filter((profile: any) => otherMemberIds.includes(profile.user_id));
+  const otherUser = otherProfiles[0] || null;
 
   return {
     id: conversation.id,
@@ -62,6 +63,7 @@ function getConversationSummary(conversation: any, members: any[], profiles: any
     previewAt: lastMessage?.created_at ?? conversation.last_activity_at,
     isGroup: conversation.type === 'group',
     otherUsers: otherProfiles,
+    otherUser,
     currentUserId: conversation.currentUserId
   };
 }
@@ -191,11 +193,49 @@ export async function GET(request: NextRequest) {
   const participantId = request.nextUrl.searchParams.get('participant_id');
 
   if (conversationId) {
-    const { data, error } = await supabaseServer.from('wpx_messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    const { data: conversation, error: conversationError } = await supabaseServer.from('wpx_conversations').select('*').eq('id', conversationId).maybeSingle();
+    if (conversationError) {
+      return NextResponse.json({ error: conversationError.message }, { status: 500 });
     }
-    return NextResponse.json({ messages: data || [] });
+    if (!conversation) {
+      return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
+    }
+
+    const [{ data: messages, error: messagesError }, { data: members, error: membersError }] = await Promise.all([
+      supabaseServer.from('wpx_messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true }),
+      supabaseServer.from('wpx_conversation_members').select('conversation_id, user_id').eq('conversation_id', conversationId)
+    ]);
+
+    if (messagesError) {
+      return NextResponse.json({ error: messagesError.message }, { status: 500 });
+    }
+    if (membersError) {
+      return NextResponse.json({ error: membersError.message }, { status: 500 });
+    }
+
+    const otherUserIds = Array.from(
+      new Set(
+        (members || []).map((row: any) => row.user_id).filter((id: string) => id !== authContext.user.id)
+      )
+    );
+
+    const { data: profiles, error: profileError } = await supabaseServer
+      .from('wpx_profiles')
+      .select('user_id, username, display_name, avatar_url')
+      .in('user_id', otherUserIds);
+
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    const summary = getConversationSummary(
+      { ...conversation, currentUserId: authContext.user.id },
+      members || [],
+      profiles || [],
+      messages || []
+    );
+
+    return NextResponse.json({ messages: messages || [], conversation: summary });
   }
 
   if (participantId) {

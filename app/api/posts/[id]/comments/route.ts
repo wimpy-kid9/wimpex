@@ -10,9 +10,32 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data, error } = await supabaseServer.from('wpx_post_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true });
+  const { data: comments, error } = await supabaseServer.from('wpx_post_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ comments: data || [] });
+
+  const authorIds = Array.from(new Set((comments || []).map((comment: any) => comment.author_id).filter(Boolean)));
+  const authorMap: Record<string, any> = {};
+
+  if (authorIds.length > 0) {
+    const { data: profiles, error: profileError } = await supabaseServer
+      .from('wpx_profiles')
+      .select('user_id, username, display_name, avatar_url')
+      .in('user_id', authorIds);
+
+    if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
+    (profiles || []).forEach((profile: any) => {
+      if (profile?.user_id) authorMap[profile.user_id] = profile;
+    });
+  }
+
+  return NextResponse.json({
+    comments: (comments || []).map((comment: any) => ({
+      ...comment,
+      author: authorMap[comment.author_id]?.display_name || authorMap[comment.author_id]?.username || null,
+      author_handle: authorMap[comment.author_id]?.username ? `@${authorMap[comment.author_id]?.username}` : null,
+      author_avatar_url: authorMap[comment.author_id]?.avatar_url || null
+    }))
+  });
 }
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
