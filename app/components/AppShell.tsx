@@ -12,17 +12,16 @@ interface AppShellProps {
 }
 
 export default function AppShell({ children }: AppShellProps) {
-  const accent = getUserAccent('wimpex-shell');
+  const [accent, setAccent] = useState(() => getUserAccent('wimpex-shell'));
   const pathname = usePathname();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [indicatorStyle, setIndicatorStyle] = useState<{ top?: number; height?: number }>({});
   const itemRefs = useRef<Array<HTMLAnchorElement | null>>([]);
   const navItems = [
     { label: 'Feed', href: '/feed' },
-    { label: 'Calls', href: '/calls' },
-    { label: 'Connections', href: '/connections' },
-    { label: 'Messages', href: '/messages' },
     { label: 'Post', href: '/post' },
+    { label: 'Messages', href: '/messages' },
+    { label: 'Calls', href: '/calls' },
     { label: 'Profile', href: '/profile' }
   ];
   // mobileNavItems was removed in redesign; keep navItems for desktop and mobile BottomNav
@@ -41,6 +40,22 @@ export default function AppShell({ children }: AppShellProps) {
     };
 
     void loadNotifications();
+  }, []);
+
+  useEffect(() => {
+    const loadProfileAccent = async () => {
+      try {
+        const resp = await authedFetch('/api/profile');
+        if (!resp.ok) return;
+        const payload = await resp.json();
+        const userId = payload.profile?.id;
+        if (!userId) return;
+        setAccent(getUserAccent(userId));
+      } catch {
+        // keep default accent
+      }
+    };
+    void loadProfileAccent();
   }, []);
 
   return (

@@ -56,26 +56,6 @@ export default function FeedPage() {
 
   return (
     <main className="space-y-6">
-      <section className="surface-veil rounded-md bg-panel-2/75 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-gold">Feed</p>
-            <h1 className="text-display mt-3 text-3xl text-ivory">The latest from your circle</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate">
-              The feed is now a review surface, while the create experience lives on its own page for a calmer, more intentional post flow.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/search" className="inline-flex rounded-md border border-hairline bg-panel/80 px-4 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/10">
-              Search people
-            </Link>
-            <Link href="/post" className="inline-flex rounded-md bg-gradient-to-r from-gold to-gold-deep px-4 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">
-              Create a post
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {error ? <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
       {loading ? <p className="text-sm text-slate">Loading feed…</p> : null}
 
