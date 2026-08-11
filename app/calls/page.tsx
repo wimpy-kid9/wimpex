@@ -255,7 +255,7 @@ export default function CallsPage() {
                 <p className="text-xs uppercase tracking-[0.32em] text-slate">Live calling</p>
                 <h1 className="text-display text-3xl text-ivory">Calls</h1>
               </div>
-              <div className={`rounded-full border border-hairline bg-gradient-to-r ${accent.gradient} px-3 py-1 text-sm font-medium text-slate-950`}>
+              <div className={`rounded-full border border-hairline bg-gradient-to-r ${accent.gradient} px-3 py-1 text-sm font-medium text-obsidian`}>
                 {permissionState === 'ready' ? 'Mic + camera ready' : permissionState === 'requesting' ? 'Asking for access…' : 'Ready to connect'}
               </div>
             </div>
@@ -286,7 +286,7 @@ export default function CallsPage() {
                     <button
                       type="button"
                       onClick={() => void startCall(connection)}
-                      className={`rounded-2xl bg-gradient-to-r ${accent.gradient} px-4 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
+                      className={`rounded-2xl bg-gradient-to-r ${accent.gradient} px-4 py-2 text-sm font-semibold text-obsidian transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
                       disabled={busy}
                     >
                       {busy ? 'Starting…' : 'Start call'}
@@ -309,7 +309,7 @@ export default function CallsPage() {
                 <button
                   type="button"
                   onClick={() => void leaveCall()}
-                  className={`rounded-2xl border border-hairline bg-gradient-to-r ${accent.gradient} px-3 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110`}
+                  className={`rounded-2xl border border-hairline bg-gradient-to-r ${accent.gradient} px-3 py-2 text-sm font-semibold text-obsidian transition hover:brightness-110`}
                 >
                   Leave call
                 </button>
@@ -338,7 +338,7 @@ export default function CallsPage() {
                   <p className="mt-1 text-sm text-slate">Room: {call.room_id || 'pending'}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[call.status] || 'bg-slate-500/15 text-slate'}`}>
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[call.status] || 'bg-slate/15 text-slate'}`}>
                     {call.status}
                   </span>
                   <button

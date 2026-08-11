@@ -97,7 +97,7 @@ export default function ConnectionsPage() {
           ) : null}
           <div className="flex gap-3">
             <input value={recipientId} readOnly placeholder="Selected recipient id" className="flex-1 rounded-2xl border border-hairline bg-panel/70 px-4 py-2 text-sm text-ivory" />
-            <button onClick={sendRequest} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-2 text-sm font-semibold text-slate-950">Send request</button>
+            <button onClick={sendRequest} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-2 text-sm font-semibold text-obsidian">Send request</button>
           </div>
         </div>
         {message ? <p className="mt-3 text-sm text-gold">{message}</p> : null}
@@ -112,7 +112,7 @@ export default function ConnectionsPage() {
                 <p className="text-sm text-ivory">{request.requester_id}</p>
                 <p className="mt-1 text-xs uppercase tracking-[0.24em] text-slate">Pending request</p>
                 <div className="mt-2 flex gap-2">
-                  <button onClick={() => respond(request.id, 'accept')} className="rounded-xl bg-gradient-to-r from-gold to-gold-deep px-3 py-2 text-sm font-semibold text-slate-950">Accept</button>
+                  <button onClick={() => respond(request.id, 'accept')} className="rounded-xl bg-gradient-to-r from-gold to-gold-deep px-3 py-2 text-sm font-semibold text-obsidian">Accept</button>
                   <button onClick={() => respond(request.id, 'decline')} className="rounded-xl bg-rose-500 px-3 py-2 text-sm font-semibold text-slate-950">Decline</button>
                 </div>
               </div>

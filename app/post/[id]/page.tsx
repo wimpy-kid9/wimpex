@@ -18,7 +18,7 @@ export default async function PostPage({ params }: Props) {
     return (
       <main className="p-8">
         <h1 className="text-3xl font-semibold">Post</h1>
-        <p className="mt-2 text-slate-600">Unable to load post.</p>
+        <p className="mt-2 text-slate">Unable to load post.</p>
       </main>
     );
   }

@@ -23,7 +23,7 @@ export default function AuthActionPrompt({
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/login" className="inline-flex rounded-md bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">
+          <Link href="/login" className="inline-flex rounded-md bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110">
             Log in
           </Link>
           <Link href="/signup" className="inline-flex rounded-md border border-hairline px-5 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/10">

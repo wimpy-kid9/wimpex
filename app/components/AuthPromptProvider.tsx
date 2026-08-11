@@ -36,7 +36,7 @@ function AuthPromptModal({ onClose }: { onClose: () => void }) {
         </p>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Link href="/login" className="inline-flex grow items-center justify-center rounded-md bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">
+          <Link href="/login" className="inline-flex grow items-center justify-center rounded-md bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110">
             Log in
           </Link>
           <Link href="/signup" className="inline-flex grow items-center justify-center rounded-md border border-hairline bg-panel/70 px-5 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/10">

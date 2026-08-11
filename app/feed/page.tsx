@@ -70,7 +70,7 @@ export default function FeedPage() {
           <div className="mt-4 rounded-2xl border border-hairline bg-panel-2/70 p-6 text-slate">
             <p className="text-sm">WimpyBooks</p>
             <p className="mt-2 text-sm">Open the WimpyBooks reader.</p>
-            <a href="https://wimpybooks.netlify.app" target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-2 text-sm font-semibold text-slate-950">Open WimpyBooks</a>
+            <a href="https://wimpybooks.netlify.app" target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-2 text-sm font-semibold text-obsidian">Open WimpyBooks</a>
           </div>
         ) : (
           <div className="feed-snap-stack flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-4 mt-4">
@@ -87,7 +87,7 @@ export default function FeedPage() {
         )}
       </div>
         {showCreatedToast ? (
-          <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-gold/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg">Post published</div>
+          <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-gold/90 px-4 py-2 text-sm font-semibold text-obsidian shadow-lg">Post published</div>
         ) : null}
     </main>
   );

@@ -267,7 +267,7 @@ export default function CreatePostPage() {
                 <p className="text-xs uppercase tracking-[0.32em] text-slate">Create</p>
                 <h1 className="text-display mt-2 text-3xl text-ivory">Share a new post</h1>
               </div>
-              <div className={`rounded-full border border-hairline bg-gradient-to-r ${accent.gradient} px-3 py-1 text-sm font-semibold text-slate-950`}>
+              <div className={`rounded-full border border-hairline bg-gradient-to-r ${accent.gradient} px-3 py-1 text-sm font-semibold text-obsidian`}>
                 {visibility === 'public' ? 'Public' : visibility === 'connections' ? 'Connections only' : 'Private'}
               </div>
             </div>
@@ -393,7 +393,7 @@ export default function CreatePostPage() {
                     </div>
                   ) : null}
 
-                  <div className="mt-6 rounded-md border border-hairline bg-gradient-to-r from-slate-900 to-slate-950 p-[1px]">
+                  <div className="mt-6 rounded-md border border-hairline bg-gradient-to-r from-obsidian to-panel p-[1px]">
                     <div className="rounded-[calc(1.2rem-1px)] bg-panel/90 p-4 text-sm text-slate">
                       <p className="font-semibold text-ivory">Visibility</p>
                       <p className="mt-2 text-slate">Choose who can see this post once it goes live.</p>
@@ -423,7 +423,7 @@ export default function CreatePostPage() {
                 <p className="text-sm text-slate">Posting uses the same upload logic as the feed composer.</p>
                 <button
                   type="submit"
-                  className={`rounded-md bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
+                  className={`rounded-md bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
                   disabled={busy}
                 >
                   {busy ? 'Publishing…' : editingId ? 'Update post' : 'Publish post'}

@@ -207,7 +207,7 @@ export default function PostCard({ post }: { post: any }) {
               <div className="space-y-2">
                 <textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} className="w-full rounded-2xl bg-panel px-3 py-2 text-sm text-ivory" placeholder="Write a comment" />
                 <div className="flex gap-2">
-                  <button onClick={postComment} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-3 py-2 text-sm font-semibold text-slate-950">Post</button>
+                  <button onClick={postComment} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-3 py-2 text-sm font-semibold text-obsidian">Post</button>
                   <button onClick={() => setShowComments(false)} className="rounded-2xl border border-hairline px-3 py-2 text-sm text-ivory">Close</button>
                 </div>
               </div>

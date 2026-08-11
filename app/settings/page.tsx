@@ -72,7 +72,7 @@ export default function SettingsPage() {
 
   return (
     <main className="p-8">
-      <div className="surface-veil rounded-md bg-panel-2/80 p-8 shadow-xl shadow-slate-950/20">
+      <div className="surface-veil rounded-md bg-panel-2/80 p-8 shadow-xl shadow-obsidian/20">
         <h1 className="text-display text-3xl text-ivory">Account Settings</h1>
         <p className="mt-2 text-slate">Edit the profile data you submitted during onboarding.</p>
 

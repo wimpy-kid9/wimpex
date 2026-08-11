@@ -273,7 +273,7 @@ export default function OnboardingPage() {
             {statusMessage ? <p className="text-sm text-gold">{statusMessage}</p> : null}
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-2xl bg-gold px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-gold-deep disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-2xl bg-gold px-6 py-3 text-sm font-semibold text-obsidian transition hover:bg-gold-deep disabled:cursor-not-allowed disabled:opacity-50"
               onClick={saveUsername}
               disabled={!canProceedStep1 || saving}
             >
@@ -381,7 +381,7 @@ export default function OnboardingPage() {
             {statusMessage ? <p className="text-sm text-gold">{statusMessage}</p> : null}
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-2xl bg-gold px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-gold-deep disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-2xl bg-gold px-6 py-3 text-sm font-semibold text-obsidian transition hover:bg-gold-deep disabled:cursor-not-allowed disabled:opacity-50"
               onClick={completeOnboarding}
               disabled={saving || uploadingAvatar}
             >

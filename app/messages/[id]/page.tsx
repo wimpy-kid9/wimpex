@@ -146,7 +146,7 @@ export default function ThreadPage() {
           </div>
           <div className="flex flex-col justify-between gap-3">
             <div className="text-sm text-slate">{conversation?.otherUser ? `Sending to ${conversation.otherUser.display_name || conversation.otherUser.username}` : 'Sending'}</div>
-            <button onClick={sendMessage} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">Send</button>
+            <button onClick={sendMessage} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110">Send</button>
           </div>
         </div>
       </div>

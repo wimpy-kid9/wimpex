@@ -270,7 +270,7 @@ export default function MessagesPage() {
                         // ignore conversation creation errors
                       }
                     }}
-                    className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-2 text-sm font-semibold text-slate-950"
+                    className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-2 text-sm font-semibold text-obsidian"
                   >
                     Accept
                   </button>
@@ -279,12 +279,12 @@ export default function MessagesPage() {
                       await authedFetch('/api/connections', { method: 'POST', body: JSON.stringify({ action: 'decline', connection_id: request.id }) });
                       setRequests((cur) => cur.filter((item) => item.id !== request.id));
                     }}
-                    className="rounded-2xl bg-rose-500 px-4 py-2 text-sm font-semibold text-slate-950"
+                    className="rounded-2xl bg-rose-500 px-4 py-2 text-sm font-semibold text-obsidian"
                   >
                     Decline
                   </button>
                   <a href={`/user/${request.requester_id}`} className="inline-flex items-center justify-center rounded-2xl border border-hairline bg-panel px-4 py-2 text-sm text-ivory">View profile</a>
-                  <a href={`/messages?recipient_id=${request.requester_id}`} className="inline-flex items-center justify-center rounded-2xl bg-gold px-4 py-2 text-sm font-semibold text-slate-950">Message</a>
+                  <a href={`/messages?recipient_id=${request.requester_id}`} className="inline-flex items-center justify-center rounded-2xl bg-gold px-4 py-2 text-sm font-semibold text-obsidian">Message</a>
                 </div>
               </div>
             )) : (
@@ -441,7 +441,7 @@ export default function MessagesPage() {
                 <button
                   type="button"
                   onClick={recording ? stopRecording : startRecording}
-                  className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+                  className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110"
                 >
                   {recording ? 'Stop recording' : 'Record voice note'}
                 </button>
@@ -463,7 +463,7 @@ export default function MessagesPage() {
                   ? `Active thread with ${activeConversation.otherUser?.display_name || activeConversation.otherUser?.username}`
                   : 'Pick a recipient to start.'}
               </div>
-              <button onClick={sendMessage} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">Send</button>
+              <button onClick={sendMessage} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110">Send</button>
             </div>
           </div>
         </div>
