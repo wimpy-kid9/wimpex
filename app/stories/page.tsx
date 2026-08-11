@@ -45,7 +45,11 @@ export default function StoriesPage() {
             <div key={post.id} className={`rounded-[1.5rem] bg-gradient-to-r ${accentClass} p-[1px]`}>
               <div className="rounded-[1.4rem] bg-slate-950/90 p-4">
                 <p className="font-semibold text-white">{post.author}</p>
-                {post.videoUrl ? <video src={post.videoUrl} className="mt-2 h-44 w-full object-cover rounded-md" controls /> : null}
+                {post.mediaType === 'image' && post.imageUrl ? (
+                  <img src={post.imageUrl} alt={post.caption || 'Story image'} className="mt-2 h-44 w-full object-cover rounded-md" />
+                ) : post.mediaType === 'video' && post.videoUrl ? (
+                  <video src={post.videoUrl} className="mt-2 h-44 w-full object-cover rounded-md" controls />
+                ) : null}
               </div>
             </div>
           );

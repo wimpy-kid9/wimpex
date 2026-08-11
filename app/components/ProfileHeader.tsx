@@ -1,6 +1,7 @@
 "use client";
 
 import FollowButton from './FollowButton';
+import BlockButton from './BlockButton';
 import { useEffect, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
 
@@ -35,7 +36,12 @@ export default function ProfileHeader({ profile }: { profile: any }) {
           {isOwn ? (
             <a href="/settings" className="rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Edit profile</a>
           ) : (
-            profile?.user_id ? <FollowButton userId={profile.user_id} /> : null
+            profile?.user_id ? (
+              <div className="flex flex-wrap gap-2">
+                <FollowButton userId={profile.user_id} />
+                <BlockButton userId={profile.user_id} />
+              </div>
+            ) : null
           )}
         </div>
       </div>

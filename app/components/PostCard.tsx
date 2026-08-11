@@ -5,6 +5,15 @@ import { useRouter } from 'next/navigation';
 import { authedFetch } from '@/lib/api-client';
 import { getUserAccent } from '@/lib/ui-theme';
 
+const FILTER_CLASSES: Record<string, string> = {
+  none: '',
+  vivid: 'filter saturate-150 contrast-110',
+  mono: 'filter grayscale contrast-110',
+  warm: 'filter sepia contrast-105 saturate-110',
+  cool: 'filter hue-rotate-190 saturate-120 contrast-105',
+  neon: 'filter saturate-200 drop-shadow-[0_0_20px_rgba(56,189,248,0.45)]'
+};
+
 export default function PostCard({ post }: { post: any }) {
   const [liked, setLiked] = useState<boolean>(post?.liked_by_me ?? false);
   const [likeCount, setLikeCount] = useState<number | null>(post?.like_count ?? null);
@@ -140,12 +149,43 @@ export default function PostCard({ post }: { post: any }) {
               <span className="thread-pill rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-300">{post.visibility}</span>
             </div>
           </div>
-          {post.videoUrl ? (
-            <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-900/70">
-              <video controls src={post.videoUrl} className="h-[56vh] w-full object-cover md:h-56" />
+          <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-900/70">
+            {post.mediaType === 'image' && post.imageUrl ? (
+              <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`h-[56vh] w-full object-cover md:h-56 ${FILTER_CLASSES[post.filterPreset || 'none'] || ''}`} />
+            ) : post.mediaType === 'video' && post.videoUrl ? (
+              <video controls src={post.videoUrl} className={`h-[56vh] w-full object-cover md:h-56 ${FILTER_CLASSES[post.filterPreset || 'none'] || ''}`} />
+            ) : (
+              <div className="flex h-[56vh] items-center justify-center bg-slate-950/70 text-slate-400 md:h-56">No media attached.</div>
+            )}
+          </div>
+          <p className="mt-4 text-sm leading-7 text-slate-300">{post.caption}</p>
+          {post.filterPreset && post.filterPreset !== 'none' ? (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-300">
+              Filter: {post.filterPreset}
             </div>
           ) : null}
-          <p className="mt-4 text-sm leading-7 text-slate-300">{post.caption}</p>
+          {post.audioTrackName ? (
+            <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-slate-950/80 p-4 text-sm text-slate-200">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  {post.audioCoverArtUrl ? (
+                    <img src={post.audioCoverArtUrl} alt={post.audioTrackName} className="h-16 w-16 rounded-3xl object-cover" />
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-900 text-xs uppercase tracking-[0.3em] text-slate-500">Audio</div>
+                  )}
+                  <div>
+                    <p className="font-semibold text-white">{post.audioTrackName}</p>
+                    <p className="text-sm text-slate-400">{post.audioArtistName}</p>
+                  </div>
+                </div>
+                {post.audioPreviewUrl ? (
+                  <audio controls src={post.audioPreviewUrl} className="w-full md:w-auto" />
+                ) : (
+                  <p className="text-xs text-slate-500">Preview not available</p>
+                )}
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-4 flex items-center gap-3">
             <button onClick={toggleLike} className={`rounded-xl px-3 py-2 ${liked ? 'bg-amber-400/20 text-amber-200' : 'bg-white/5 text-slate-200'}`}>{liked ? 'Liked' : 'Like'}{likeCount !== null ? ` (${likeCount})` : ''}</button>

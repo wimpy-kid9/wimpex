@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import PostCard from '@/app/components/PostCard';
 
 export default function FeedPage() {
-  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   // const [actionMessage, setActionMessage] = useState('');
@@ -22,20 +22,7 @@ export default function FeedPage() {
       try {
         const response = await authedFetch('/api/posts');
         const payload = await response.json();
-        const nextPosts = Array.isArray(payload.posts)
-          ? payload.posts.map((post: any) => ({
-              id: post.id,
-              author: post.author,
-              handle: post.handle,
-              caption: post.caption,
-              visibility: post.visibility,
-              createdAt: post.createdAt,
-              accent: post.accent,
-              author_id: post.author_id
-            }))
-          : [];
-
-        setPosts(nextPosts);
+        setPosts(Array.isArray(payload.posts) ? payload.posts : []);
         setError(payload.error ? payload.error : '');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unable to load feed.');
@@ -80,9 +67,14 @@ export default function FeedPage() {
               The feed is now a review surface, while the create experience lives on its own page for a calmer, more intentional post flow.
             </p>
           </div>
-          <Link href="/post" className="inline-flex rounded-[1.1rem] bg-gradient-to-r from-amber-400 to-sky-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">
-            Create a post
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/search" className="inline-flex rounded-[1.1rem] border border-white/10 bg-slate-950/80 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+              Search people
+            </Link>
+            <Link href="/post" className="inline-flex rounded-[1.1rem] bg-gradient-to-r from-amber-400 to-sky-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">
+              Create a post
+            </Link>
+          </div>
         </div>
       </section>
 

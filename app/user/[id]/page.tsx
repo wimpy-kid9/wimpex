@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import ProfileHeader from '@/app/components/ProfileHeader';
+import ProfileTabs from '@/app/components/ProfileTabs';
 import { supabaseServer } from '@/lib/supabase-server';
 
 interface Props {
@@ -25,11 +26,9 @@ export default async function UserPage({ params }: Props) {
   }
 
   return (
-    <main className="p-8">
+    <main className="p-8 space-y-6">
       <ProfileHeader profile={profile} />
-      <section className="mt-6">
-        <p className="text-slate-400">Public profile content for {profile?.display_name ?? id}.</p>
-      </section>
+      <ProfileTabs profile={profile} isOwn={false} />
     </main>
   );
 }

@@ -20,16 +20,15 @@ export default function FollowButton({ userId }: { userId: string }) {
           setCurrentUserId(meId);
         }
 
-        const fResp = await authedFetch(`/api/follow?user_id=${userId}&type=followers`);
-        if (!fResp.ok) {
+        const summaryResp = await authedFetch(`/api/follow?user_id=${userId}&summary=true`);
+        if (!summaryResp.ok) {
           setFollowerCount(null);
           setFollowing(false);
           return;
         }
-        const j = await fResp.json();
-        const followers = j.followers || [];
-        setFollowerCount(followers.length);
-        setFollowing(meId ? followers.includes(meId) : false);
+        const summary = await summaryResp.json();
+        setFollowerCount(summary.followerCount ?? null);
+        setFollowing(!!summary.isFollowing);
       } catch (err) {
         setFollowerCount(null);
         setFollowing(false);

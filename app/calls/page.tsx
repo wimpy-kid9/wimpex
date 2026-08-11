@@ -3,7 +3,9 @@
 import DailyIframe from '@daily-co/daily-js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { authedFetch } from '@/lib/api-client';
 import { getUserAccent } from '@/lib/ui-theme';
+import AuthActionPrompt from '@/app/components/AuthActionPrompt';
 
 type CallRecord = {
   id: string;
@@ -34,7 +36,7 @@ const statusStyles: Record<string, string> = {
 export default function CallsPage() {
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [connections, setConnections] = useState<ConnectionRecord[]>([]);
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<any | null | undefined>(undefined);
   const [activeCall, setActiveCall] = useState<CallRecord | null>(null);
   const [activeRoomUrl, setActiveRoomUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -57,10 +59,10 @@ export default function CallsPage() {
     setPermissionState('ready');
   };
 
-  const loadData = async (accessToken: string) => {
+  const loadData = async () => {
     const [callsResponse, connectionsResponse] = await Promise.all([
-      fetch('/api/calls', { headers: { Authorization: `Bearer ${accessToken}` } }),
-      fetch('/api/connections', { headers: { Authorization: `Bearer ${accessToken}` } })
+      authedFetch('/api/calls'),
+      authedFetch('/api/connections')
     ]);
 
     const callsPayload = await callsResponse.json().catch(() => ({ calls: [] }));
@@ -73,11 +75,10 @@ export default function CallsPage() {
   const updateCallStatus = useCallback(async (callId: string, status: string) => {
     if (!session?.access_token) return;
 
-    const response = await fetch('/api/calls', {
+    const response = await authedFetch('/api/calls', {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ id: callId, status })
     });
@@ -95,7 +96,7 @@ export default function CallsPage() {
       setSession(sessionData);
 
       if (sessionData?.access_token) {
-        await loadData(sessionData.access_token);
+        await loadData();
       }
     };
 
@@ -171,11 +172,10 @@ export default function CallsPage() {
     setStatusMessage('Creating a Daily room…');
 
     const recipientId = connection.requester_id === session.user.id ? connection.recipient_id : connection.requester_id;
-    const response = await fetch('/api/calls', {
+    const response = await authedFetch('/api/calls', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ callee_id: recipientId, connection_id: connection.id, call_type: 'video' })
     });
@@ -227,6 +227,23 @@ export default function CallsPage() {
     setActiveCall(null);
     setStatusMessage('Call ended.');
   };
+
+  if (session === undefined) {
+    return (
+      <main className="min-h-[70vh] px-4 py-8 sm:px-6 lg:px-8">
+        <p className="text-sm text-slate-400">Loading call settings…</p>
+      </main>
+    );
+  }
+
+  if (!session) {
+    return (
+      <AuthActionPrompt
+        title="Sign in to join calls"
+        description="Call creation and joining require a WimpyID session."
+      />
+    );
+  }
 
   return (
     <main className="space-y-6 p-4 sm:p-8">

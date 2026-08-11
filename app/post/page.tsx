@@ -5,13 +5,37 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
+import AuthActionPrompt from '@/app/components/AuthActionPrompt';
+
+const FILTER_PRESETS = [
+  { key: 'none', label: 'None', description: 'Natural colors' },
+  { key: 'vivid', label: 'Vivid', description: 'High contrast and saturation' },
+  { key: 'mono', label: 'Mono', description: 'Black and white' },
+  { key: 'warm', label: 'Warm', description: 'Soft golden tones' },
+  { key: 'cool', label: 'Cool', description: 'Crisp blue shadows' },
+  { key: 'neon', label: 'Neon', description: 'Bright, punchy glow' }
+];
+
+const filterClasses: Record<string, string> = {
+  none: '',
+  vivid: 'filter saturate-150 contrast-110',
+  mono: 'filter grayscale contrast-110',
+  warm: 'filter sepia contrast-105 saturate-110',
+  cool: 'filter hue-rotate-190 saturate-120 contrast-105',
+  neon: 'filter saturate-200 drop-shadow-[0_0_20px_rgba(56,189,248,0.45)]'
+};
 
 export default function CreatePostPage() {
   const router = useRouter();
   const [draft, setDraft] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'connections' | 'private'>('public');
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [session, setSession] = useState<any>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaType, setMediaType] = useState<'video' | 'image'>('video');
+  const [filterPreset, setFilterPreset] = useState('none');
+  const [spotifyQuery, setSpotifyQuery] = useState('');
+  const [trackResults, setTrackResults] = useState<any[]>([]);
+  const [selectedTrack, setSelectedTrack] = useState<any | null>(null);
+  const [session, setSession] = useState<any | null | undefined>(undefined);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -40,6 +64,15 @@ export default function CreatePostPage() {
         if (post) {
           setDraft(post.caption || '');
           setVisibility(post.visibility || 'public');
+          setMediaType(post.mediaType || 'video');
+          setFilterPreset(post.filterPreset || 'none');
+          if (post.imageUrl) {
+            setMediaFile(null);
+            setPreviewUrl(post.imageUrl);
+          } else if (post.videoUrl) {
+            setMediaFile(null);
+            setPreviewUrl(post.videoUrl);
+          }
         }
       } catch {
         // ignore
@@ -49,24 +82,79 @@ export default function CreatePostPage() {
   }, [editingId]);
 
   useEffect(() => {
-    if (!videoFile) {
-      setPreviewUrl(null);
+    if (!mediaFile) {
       return;
     }
 
-    const nextUrl = URL.createObjectURL(videoFile);
+    const nextUrl = URL.createObjectURL(mediaFile);
     setPreviewUrl(nextUrl);
 
     return () => URL.revokeObjectURL(nextUrl);
-  }, [videoFile]);
+  }, [mediaFile]);
+
+  useEffect(() => {
+    if (!spotifyQuery.trim()) {
+      setTrackResults([]);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setTrackResults([]);
+      try {
+        const resp = await fetch(`/api/spotify/search?q=${encodeURIComponent(spotifyQuery.trim())}`);
+        const payload = await resp.json();
+        if (resp.ok) {
+          setTrackResults(payload.tracks || []);
+        }
+      } catch {
+        // ignore
+      }
+    }, 220);
+
+    return () => window.clearTimeout(timer);
+  }, [spotifyQuery]);
 
   const accent = useMemo(() => getUserAccent(session?.user?.id ?? 'post-creator'), [session?.user?.id]);
   const characterCount = draft.length;
 
+  const handleMediaChange = (file: File | null) => {
+    if (!file) {
+      setMediaFile(null);
+      return;
+    }
+
+    if (file.type.startsWith('image/')) {
+      setMediaType('image');
+      setMediaFile(file);
+      setSelectedTrack(selectedTrack);
+    } else if (file.type.startsWith('video/')) {
+      setMediaType('video');
+      setMediaFile(file);
+    } else {
+      setError('Unsupported file type. Choose an image or video.');
+      setMediaFile(null);
+    }
+  };
+
+  const selectTrack = (track: any) => {
+    setSelectedTrack(track);
+    setSpotifyQuery('');
+    setTrackResults([]);
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!draft.trim() && !videoFile) {
-      setError('Add a caption or a video before publishing.');
+    if (!session) {
+      return;
+    }
+
+    if (!draft.trim() && !mediaFile && !previewUrl) {
+      setError('Add a caption and upload an image or video before publishing.');
+      return;
+    }
+
+    if (!mediaFile && !previewUrl) {
+      setError('Please attach an image or video to publish your post.');
       return;
     }
 
@@ -76,7 +164,7 @@ export default function CreatePostPage() {
     if (editingId) {
       const response = await authedFetch(`/api/posts/${editingId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ caption: draft.trim(), visibility })
+        body: JSON.stringify({ caption: draft.trim(), visibility, filter_preset: filterPreset })
       });
       setBusy(false);
       if (!response.ok) {
@@ -84,26 +172,29 @@ export default function CreatePostPage() {
         setError(payload.error || 'Unable to update post.');
         return;
       }
-      // redirect to the post detail page and show a confirmation toast
       router.push(`/post/${editingId}?edited=1`);
       return;
     }
 
-    const headers: Record<string, string> = {};
-    if (session?.access_token) {
-      headers.Authorization = `Bearer ${session.access_token}`;
-    }
-
     const formData = new FormData();
-    if (videoFile) {
-      formData.append('video', videoFile);
+    if (mediaFile) {
+      formData.append(mediaType === 'image' ? 'image' : 'video', mediaFile);
+      formData.append('media_type', mediaType);
     }
     formData.append('caption', draft.trim());
     formData.append('visibility', visibility);
+    formData.append('filter_preset', filterPreset);
+
+    if (selectedTrack) {
+      formData.append('audio_track_id', selectedTrack.id);
+      formData.append('audio_track_name', selectedTrack.title);
+      formData.append('audio_artist_name', selectedTrack.artist);
+      formData.append('audio_preview_url', selectedTrack.preview_url || '');
+      formData.append('audio_cover_art_url', selectedTrack.cover_art_url || '');
+    }
 
     const response = await authedFetch('/api/posts', {
       method: 'POST',
-      headers,
       body: formData
     });
 
@@ -115,9 +206,25 @@ export default function CreatePostPage() {
       return;
     }
 
-    // redirect to feed and show confirmation toast
     router.push('/feed?created=1');
   };
+
+  if (session === undefined) {
+    return (
+      <main className="min-h-[70vh] px-2 py-4 sm:px-6 lg:px-8">
+        <p className="text-sm text-slate-400">Loading...</p>
+      </main>
+    );
+  }
+
+  if (!session) {
+    return (
+      <AuthActionPrompt
+        title="Sign in to publish a post"
+        description="You can browse public posts, but publishing requires a WimpyID login or signup."
+      />
+    );
+  }
 
   return (
     <main className="min-h-[70vh] px-2 py-4 sm:px-6 lg:px-8">
@@ -152,37 +259,98 @@ export default function CreatePostPage() {
 
               <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="rounded-[1.4rem] border border-white/10 bg-slate-900/70 p-4">
-                  <label className="block text-sm font-medium text-slate-300">Video upload</label>
+                  <label className="block text-sm font-medium text-slate-300">Add media</label>
                   <label className="mt-3 flex cursor-pointer items-center justify-center rounded-[1.2rem] border border-dashed border-white/10 bg-slate-950/70 px-4 py-6 text-sm text-slate-300 transition hover:bg-slate-800">
-                    <input type="file" accept="video/*" className="sr-only" onChange={(event) => setVideoFile(event.target.files?.[0] || null)} />
-                    {videoFile ? `Selected: ${videoFile.name}` : 'Drop a video or tap to choose'}
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      className="sr-only"
+                      onChange={(event) => handleMediaChange(event.target.files?.[0] || null)}
+                    />
+                    {mediaFile ? `Selected: ${mediaFile.name}` : previewUrl ? 'Using existing media preview' : 'Drop an image or video or tap to choose'}
                   </label>
 
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {FILTER_PRESETS.map((preset) => (
+                      <button
+                        key={preset.key}
+                        type="button"
+                        onClick={() => setFilterPreset(preset.key)}
+                        className={`rounded-2xl border px-3 py-2 text-left text-sm ${filterPreset === preset.key ? 'border-amber-400 bg-amber-400/10 text-white' : 'border-white/10 text-slate-300 hover:border-white/20 hover:bg-white/5'}`}
+                      >
+                        <p className="font-semibold">{preset.label}</p>
+                        <p className="text-xs text-slate-500">{preset.description}</p>
+                      </button>
+                    ))}
+                  </div>
+
                   {previewUrl ? (
-                    <video src={previewUrl} controls className="mt-4 h-56 w-full rounded-[1.2rem] object-cover" />
+                    <div className={`mt-4 overflow-hidden rounded-[1.2rem] border border-white/10 bg-slate-900/70 ${filterClasses[filterPreset]}`}>
+                      {mediaType === 'image' ? (
+                        <img src={previewUrl} alt={draft || 'Post preview'} className="h-[28vh] w-full object-cover md:h-56" />
+                      ) : (
+                        <video controls src={previewUrl} className="h-[28vh] w-full object-cover md:h-56" />
+                      )}
+                    </div>
                   ) : (
                     <div className="mt-4 flex h-56 items-center justify-center rounded-[1.2rem] border border-white/10 bg-slate-950/60 text-sm text-slate-400">
-                      Your video preview will appear here.
+                      Your image or video preview will appear here.
                     </div>
                   )}
                 </div>
 
                 <div className="rounded-[1.4rem] border border-white/10 bg-slate-900/70 p-4">
-                  <label className="block text-sm font-medium text-slate-300">Visibility</label>
-                  <select
-                    value={visibility}
-                    onChange={(event) => setVisibility(event.target.value as 'public' | 'connections' | 'private')}
+                  <label className="block text-sm font-medium text-slate-300">Spotify audio</label>
+                  <input
+                    value={spotifyQuery}
+                    onChange={(event) => {
+                      setSpotifyQuery(event.target.value);
+                      setSelectedTrack(null);
+                    }}
+                    placeholder="Search for a track to attach"
                     className="mt-3 w-full rounded-[1.1rem] border border-white/10 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none"
-                  >
-                    <option value="public">Public</option>
-                    <option value="connections">Connections only</option>
-                    <option value="private">Private</option>
-                  </select>
+                  />
+                  {trackResults.length > 0 ? (
+                    <div className="mt-3 space-y-2 max-h-72 overflow-y-auto">
+                      {trackResults.map((track) => (
+                        <button
+                          key={track.id}
+                          type="button"
+                          onClick={() => selectTrack(track)}
+                          className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-left text-sm text-white transition hover:border-amber-400/40 hover:bg-slate-900"
+                        >
+                          <p className="font-semibold">{track.title}</p>
+                          <p className="text-xs text-slate-400">{track.artist}</p>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
 
-                  <div className={`mt-6 rounded-[1.2rem] border border-white/10 bg-gradient-to-r ${accent.gradient} p-[1px]`}>
+                  {selectedTrack ? (
+                    <div className="mt-4 rounded-[1.2rem] border border-amber-400/20 bg-slate-950/90 p-4 text-sm text-slate-200">
+                      <div className="flex items-center gap-3">
+                        {selectedTrack.cover_art_url ? (
+                          <img src={selectedTrack.cover_art_url} alt={`${selectedTrack.title} cover`} className="h-14 w-14 rounded-2xl object-cover" />
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-xs uppercase tracking-[0.25em] text-slate-400">Audio</div>
+                        )}
+                        <div>
+                          <p className="font-semibold text-white">{selectedTrack.title}</p>
+                          <p className="text-xs text-slate-400">{selectedTrack.artist}</p>
+                        </div>
+                      </div>
+                      {selectedTrack.preview_url ? (
+                        <audio controls src={selectedTrack.preview_url} className="mt-4 w-full" />
+                      ) : (
+                        <p className="mt-4 text-xs text-slate-500">No preview available for this track.</p>
+                      )}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-6 rounded-[1.2rem] border border-white/10 bg-gradient-to-r from-slate-900 to-slate-950 p-[1px]">
                     <div className="rounded-[calc(1.2rem-1px)] bg-slate-950/90 p-4 text-sm text-slate-300">
-                      <p className="font-semibold text-white">Post intent</p>
-                      <p className="mt-2 text-slate-400">The feed stays for viewing; this screen is the dedicated create surface for the next clip or moment.</p>
+                      <p className="font-semibold text-white">Visibility</p>
+                      <p className="mt-2 text-slate-400">Choose who can see this post once it goes live.</p>
                     </div>
                   </div>
                 </div>
@@ -197,7 +365,7 @@ export default function CreatePostPage() {
                   className={`rounded-[1.1rem] bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
                   disabled={busy}
                 >
-                  {busy ? 'Publishing…' : 'Publish post'}
+                  {busy ? 'Publishing…' : editingId ? 'Update post' : 'Publish post'}
                 </button>
               </div>
             </form>
