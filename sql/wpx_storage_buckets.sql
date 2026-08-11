@@ -10,7 +10,7 @@ BEGIN
       'public', true,
       'allowed_mime_types', ARRAY['video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/ogg'],
       'file_size_limit', 104857600
-    ));
+    )::jsonb);
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM storage.buckets WHERE name = 'wpx-avatars') THEN
@@ -18,6 +18,6 @@ BEGIN
       'public', true,
       'allowed_mime_types', ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
       'file_size_limit', 5242880
-    ));
+    )::jsonb);
   END IF;
 END$$;
