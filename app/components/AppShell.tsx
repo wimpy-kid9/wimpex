@@ -60,7 +60,7 @@ export default function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen text-ivory">
-      <div className="hidden md:fixed md:inset-y-0 md:w-64 md:border-r md:border-hairline md:bg-panel/70 md:px-4 md:py-8 md:backdrop-blur-xl">
+      <div className="hidden md:block md:fixed md:inset-y-0 md:w-64 md:border-r md:border-hairline md:bg-panel/70 md:px-4 md:py-8 md:backdrop-blur-xl">
         <div className="relative space-y-8">
           <div className="thread-line">
             <div className={`mb-3 inline-flex rounded-full bg-gradient-to-r ${accent.gradient} p-[1px]`}>
@@ -68,8 +68,13 @@ export default function AppShell({ children }: AppShellProps) {
                 Living accent
               </div>
             </div>
-            <h1 className="text-display text-2xl tracking-[0.24em] text-ivory">WIMPEX</h1>
-            <p className="mt-2 text-sm text-slate">Social video, connections, and calling.</p>
+            <Link href="/" className="flex items-center gap-3">
+              <img src="/wimpex-logo.png" alt="Wimpex logo" className="h-12 w-12 rounded-2xl object-cover ring-1 ring-white/10" />
+              <div>
+                <h1 className="text-display text-2xl tracking-[0.24em] text-ivory">WIMPEX</h1>
+                <p className="mt-1 text-sm text-slate">Social video, connections, and calling.</p>
+              </div>
+            </Link>
           </div>
           <div className="rounded-2xl border border-hairline bg-panel-2/70 p-3">
             <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-slate">Live signals</p>

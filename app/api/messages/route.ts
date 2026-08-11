@@ -335,16 +335,23 @@ export async function POST(request: NextRequest) {
 
   const recipients = Array.from(new Set(recipientIds)).filter((recipientId): recipientId is string => typeof recipientId === 'string');
   if (recipients.length > 0) {
-    for (const recipientId of recipients) {
+      for (const recipientId of recipients) {
       if (recipientId === authContext.user.id) continue;
+      // Fetch any connection rows between the two users and validate accepted status
       const { data: connectionRows, error: connectionError } = await supabaseServer
         .from('wpx_connections')
         .select('*')
-        .or(`(requester_id.eq.${authContext.user.id},recipient_id.eq.${recipientId}),(requester_id.eq.${recipientId},recipient_id.eq.${authContext.user.id})`);
+        .or(`requester_id.eq.${authContext.user.id},recipient_id.eq.${authContext.user.id},requester_id.eq.${recipientId},recipient_id.eq.${recipientId}`);
       if (connectionError) {
         return NextResponse.json({ error: connectionError.message }, { status: 500 });
       }
-      const isAcceptedConnection = (connectionRows || []).some((row: any) => row.status === 'accepted');
+      const pairMatch = (connectionRows || []).some((row: any) => {
+        return (
+          (row.requester_id === authContext.user.id && row.recipient_id === recipientId) ||
+          (row.requester_id === recipientId && row.recipient_id === authContext.user.id)
+        );
+      });
+      const isAcceptedConnection = (connectionRows || []).some((row: any) => pairMatch && row.status === 'accepted');
       if (!isAcceptedConnection) {
         return NextResponse.json({ error: 'All recipients must be accepted connections.' }, { status: 403 });
       }
