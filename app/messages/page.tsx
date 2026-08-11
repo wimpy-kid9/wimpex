@@ -75,6 +75,21 @@ export default function MessagesPage() {
   useEffect(() => {
     void loadConversations();
     void loadRequests();
+    // preselect a recipient if the route contains a recipient_id query
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const recipientId = params.get('recipient_id');
+      if (recipientId) {
+        (async () => {
+          const r = await authedFetch(`/api/people?q=${encodeURIComponent(recipientId)}`);
+          const p = await r.json();
+          if (r.ok && p.people && p.people.length > 0) {
+            setSelectedRecipient(p.people[0]);
+            setSearchTerm(`${p.people[0].display_name || p.people[0].username} (@${p.people[0].username})`);
+          }
+        })();
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -224,7 +239,12 @@ export default function MessagesPage() {
           <div className="space-y-3 rounded-3xl border border-hairline bg-panel-2/70 p-4">
             {requests.length > 0 ? requests.map((request) => (
               <div key={request.id} className="rounded-3xl border border-hairline bg-panel/80 p-4">
-                <p className="font-semibold text-ivory">Connection request from {request.requester_id}</p>
+                <p className="font-semibold text-ivory">
+                  Connection request from {request.requester_display_name || request.requester_username || (
+                    <a href={`/user/${request.requester_id}`} className="underline">{request.requester_id.slice(0, 8)}…</a>
+                  )}
+                </p>
+                <p className="mt-1 text-xs uppercase tracking-[0.24em] text-slate">Pending request</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     onClick={async () => {
@@ -244,6 +264,8 @@ export default function MessagesPage() {
                   >
                     Decline
                   </button>
+                  <a href={`/user/${request.requester_id}`} className="inline-flex items-center justify-center rounded-2xl border border-hairline bg-panel px-4 py-2 text-sm text-ivory">View profile</a>
+                  <a href={`/messages?recipient_id=${request.requester_id}`} className="inline-flex items-center justify-center rounded-2xl bg-gold px-4 py-2 text-sm font-semibold text-slate-950">Message</a>
                 </div>
               </div>
             )) : (

@@ -68,10 +68,31 @@ export default function ThreadPage() {
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          {/* call icon - starts a call flow elsewhere */}
-          <button className="rounded-md p-2 text-ivory bg-panel/60" title="Start call">
+          <button
+            onClick={async () => {
+              if (!conversation?.otherUser?.user_id) return;
+              try {
+                const resp = await authedFetch('/api/calls', {
+                  method: 'POST',
+                  body: JSON.stringify({ participant_id: conversation.otherUser.user_id })
+                });
+                const payload = await resp.json();
+                if (resp.ok && payload.room_id) {
+                  // navigate to calls page which can join the room
+                  window.location.href = `/calls?room_id=${encodeURIComponent(payload.room_id)}`;
+                } else {
+                  setNotice(payload.error || 'Unable to start call.');
+                }
+              } catch (err) {
+                setNotice('Unable to start call.');
+              }
+            }}
+            className="rounded-md p-2 text-ivory bg-panel/60"
+            title="Start call"
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M22 16.92V21a1 1 0 0 1-1.11 1 19.86 19.86 0 0 1-8.63-3.07A19.38 19.38 0 0 1 3.07 9.74 19.86 19.86 0 0 1 0 1.11 1 1 0 0 1 1 0h4.09a1 1 0 0 1 1 .76c.12.83.33 1.64.63 2.42a1 1 0 0 1-.24 1.03L5.2 6.79a16 16 0 0 0 10.45 10.45l1.58-1.58a1 1 0 0 1 1.03-.24c.78.3 1.59.51 2.42.63a1 1 0 0 1 .76 1V22z" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
+          <a href={`/user/${conversation?.otherUser?.user_id}`} className="text-sm text-slate hover:underline">View profile</a>
         </div>
       </div>
 
