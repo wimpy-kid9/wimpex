@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
 
 export default function CreatePostPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [draft, setDraft] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'connections' | 'private'>('public');
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -19,9 +18,10 @@ export default function CreatePostPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const editId = searchParams?.get('edit');
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('edit');
     if (editId) setEditingId(editId);
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then((result: { data: { session: any } | null }) => {
@@ -101,7 +101,7 @@ export default function CreatePostPage() {
     formData.append('caption', draft.trim());
     formData.append('visibility', visibility);
 
-    const response = await fetch('/api/posts', {
+    const response = await authedFetch('/api/posts', {
       method: 'POST',
       headers,
       body: formData

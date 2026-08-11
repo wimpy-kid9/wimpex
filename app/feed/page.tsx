@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-  import { useSearchParams } from 'next/navigation';
 import { type FeedPost } from '@/lib/models';
 // import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
@@ -14,9 +13,8 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   // const [actionMessage, setActionMessage] = useState('');
-    const [showCreatedToast, setShowCreatedToast] = useState(false);
-    const [activeTab, setActiveTab] = useState<'books' | 'feed' | 'friends'>('feed');
-    const search = useSearchParams();
+  const [showCreatedToast, setShowCreatedToast] = useState(false);
+  const [activeTab, setActiveTab] = useState<'books' | 'feed' | 'friends'>('feed');
   const [followingIds, setFollowingIds] = useState<string[] | null>(null);
 
   useEffect(() => {
@@ -61,13 +59,15 @@ export default function FeedPage() {
     void loadFollowing();
   }, []);
 
-    useEffect(() => {
-      if (search?.get('created') === '1') {
-        setShowCreatedToast(true);
-        const t = setTimeout(() => setShowCreatedToast(false), 3500);
-        return () => clearTimeout(t);
-      }
-    }, [search]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('created') === '1') {
+      setShowCreatedToast(true);
+      const t = window.setTimeout(() => setShowCreatedToast(false), 3500);
+      return () => window.clearTimeout(t);
+    }
+    return undefined;
+  }, []);
 
   return (
     <main className="space-y-6">
@@ -106,7 +106,7 @@ export default function FeedPage() {
           <div className="feed-snap-stack flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-4 mt-4">
             {posts.filter((post) => {
               if (activeTab === 'friends') {
-                if (!followingIds) return false;
+                if (!followingIds || !post.author_id) return false;
                 return followingIds.includes(post.author_id);
               }
               return true;

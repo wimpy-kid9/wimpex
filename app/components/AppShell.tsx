@@ -81,7 +81,9 @@ export default function AppShell({ children }: AppShellProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                ref={(el) => (itemRefs.current[idx] = el)}
+                ref={(el) => {
+                  itemRefs.current[idx] = el;
+                }}
                 onClick={() => {
                   // compute indicator position on click
                   const el = itemRefs.current[idx];

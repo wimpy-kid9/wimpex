@@ -4,20 +4,15 @@ import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-serve
 
 const VIDEO_BUCKET = 'wpx-videos';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   if (!isSupabaseServerConfigured) {
     return NextResponse.json({ posts: [] });
   }
 
-  try {
-    await requireAuth(request);
-  } catch (error) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   const { data, error } = await supabaseServer
     .from('wpx_posts')
-    .select('id, author_id, caption, visibility, created_at')
+    .select('id, author_id, caption, visibility, created_at, video_url, thumbnail_url')
+    .eq('visibility', 'public')
     .order('created_at', { ascending: false })
     .limit(20);
 

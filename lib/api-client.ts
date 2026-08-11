@@ -21,5 +21,9 @@ export async function authedFetch(path: string, init: any = {}) {
     headers
   });
 
+  if (response.status === 401 && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('wimpex-auth-required'));
+  }
+
   return response;
 }

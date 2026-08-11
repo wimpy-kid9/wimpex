@@ -22,6 +22,7 @@ export interface FeedPost {
   accent: string;
   videoUrl?: string;
   thumbnailUrl?: string;
+  author_id?: string;
 }
 
 const FEED_STORAGE_KEY = 'wimpex-demo-posts';

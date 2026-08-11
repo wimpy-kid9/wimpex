@@ -10,7 +10,7 @@ export async function getMutualFollows(userId: string) {
 
   const mutual: string[] = [];
   followerIds.forEach((id) => {
-    if (followingIds.has(id)) mutual.push(id);
+    if (typeof id === 'string' && followingIds.has(id)) mutual.push(id);
   });
 
   return mutual;
