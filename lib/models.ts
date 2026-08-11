@@ -35,7 +35,7 @@ const demoPosts: FeedPost[] = [
     caption: 'A short clip from tonight’s studio session and the first draft of the Adire-inspired feed.',
     visibility: 'public',
     createdAt: '2026-08-09T10:00:00.000Z',
-    accent: 'from-fuchsia-500 to-cyan-500'
+    accent: 'from-gold to-gold-deep'
   },
   {
     id: 'demo-2',
@@ -44,7 +44,7 @@ const demoPosts: FeedPost[] = [
     caption: 'Private rehearsal clip for trusted connections only.',
     visibility: 'connections',
     createdAt: '2026-08-09T08:30:00.000Z',
-    accent: 'from-amber-500 to-rose-500'
+    accent: 'from-gold to-gold-deep'
   }
 ];
 

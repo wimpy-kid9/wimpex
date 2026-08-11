@@ -52,7 +52,7 @@ export default function SearchPage() {
   if (session === undefined) {
     return (
       <main className="space-y-6">
-        <p className="text-sm text-slate-400">Loading search…</p>
+        <p className="text-sm text-slate">Loading search…</p>
       </main>
     );
   }
@@ -68,26 +68,26 @@ export default function SearchPage() {
 
   return (
     <main className="space-y-6">
-      <section className="surface-veil rounded-[2rem] bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
+      <section className="surface-veil rounded-md bg-panel-2/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-amber-300">Search</p>
-            <h1 className="text-display mt-3 text-3xl text-white">Discover people</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-400">Search for profiles by display name or username and open conversations with your accepted connections.</p>
+            <p className="text-sm uppercase tracking-[0.3em] text-gold">Search</p>
+            <h1 className="text-display mt-3 text-3xl text-ivory">Discover people</h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate">Search for profiles by display name or username and open conversations with your accepted connections.</p>
           </div>
-          <Link href="/messages" className="inline-flex rounded-[1.1rem] bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15">
+          <Link href="/messages" className="inline-flex rounded-md bg-ivory/10 px-4 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/15">
             Go to messages
           </Link>
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6">
-        <label className="text-sm text-slate-400">Search by name or handle</label>
+      <section className="rounded-md border border-hairline bg-panel/70 p-6">
+        <label className="text-sm text-slate">Search by name or handle</label>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search for creators, friends, or connections"
-          className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white shadow-inner shadow-black/20 focus:border-amber-400 focus:outline-none"
+          className="mt-3 w-full rounded-2xl border border-hairline bg-panel-2/80 px-4 py-3 text-sm text-ivory shadow-inner shadow-black/20 focus:border-hairline-strong focus:outline-none"
         />
       </section>
 
@@ -96,19 +96,19 @@ export default function SearchPage() {
       <section className="space-y-3">
         {results.length > 0 ? (
           results.map((person) => (
-            <Link key={person.user_id} href={`/user/${person.user_id}`} className="block rounded-[1.5rem] border border-white/10 bg-slate-900/80 p-5 transition hover:border-amber-400/30 hover:bg-slate-950/90">
+            <Link key={person.user_id} href={`/user/${person.user_id}`} className="block rounded-md border border-hairline bg-panel-2/80 p-5 transition hover:border-amber-400/30 hover:bg-panel/90">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-lg font-semibold text-white">{person.display_name || person.username}</p>
-                  <p className="text-sm text-slate-400">@{person.username}</p>
-                  {person.bio ? <p className="mt-2 text-sm text-slate-500">{person.bio}</p> : null}
+                  <p className="text-lg font-semibold text-ivory">{person.display_name || person.username}</p>
+                  <p className="text-sm text-slate">@{person.username}</p>
+                  {person.bio ? <p className="mt-2 text-sm text-slate">{person.bio}</p> : null}
                 </div>
-                <span className="rounded-full bg-amber-400/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-amber-200">View profile</span>
+                <span className="rounded-full bg-gold/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-gold">View profile</span>
               </div>
             </Link>
           ))
         ) : (
-          <div className="rounded-[1.5rem] border border-dashed border-white/10 bg-slate-950/70 p-8 text-center text-sm text-slate-500">
+          <div className="rounded-md border border-dashed border-hairline bg-panel/70 p-8 text-center text-sm text-slate">
             {query.trim() ? 'No matching users found.' : 'Enter a search term to find profiles.'}
           </div>
         )}

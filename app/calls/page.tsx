@@ -27,9 +27,9 @@ type ConnectionRecord = {
 };
 
 const statusStyles: Record<string, string> = {
-  ringing: 'bg-amber-500/15 text-amber-300',
-  in_progress: 'bg-emerald-500/15 text-emerald-300',
-  completed: 'bg-slate-500/15 text-slate-300',
+  ringing: 'bg-gold/15 text-gold',
+  in_progress: 'bg-gold/15 text-emerald-300',
+  completed: 'bg-panel-2/15 text-slate',
   missed: 'bg-rose-500/15 text-rose-300'
 };
 
@@ -231,7 +231,7 @@ export default function CallsPage() {
   if (session === undefined) {
     return (
       <main className="min-h-[70vh] px-4 py-8 sm:px-6 lg:px-8">
-        <p className="text-sm text-slate-400">Loading call settings…</p>
+        <p className="text-sm text-slate">Loading call settings…</p>
       </main>
     );
   }
@@ -247,41 +247,41 @@ export default function CallsPage() {
 
   return (
     <main className="space-y-6 p-4 sm:p-8">
-      <section className={`rounded-[2rem] border border-white/10 bg-slate-900/80 p-6 text-slate-100 shadow-2xl ${accent.glow}`}>
-        <div className={`rounded-[1.5rem] bg-gradient-to-r ${accent.gradient} p-[1px]`}>
-          <div className="rounded-[calc(1.5rem-1px)] bg-slate-950/90 p-5 sm:p-6">
+      <section className={`rounded-md border border-hairline bg-panel-2/80 p-6 text-ivory shadow-2xl ${accent.glow}`}>
+        <div className={`rounded-md bg-gradient-to-r ${accent.gradient} p-[1px]`}>
+          <div className="rounded-md bg-panel/90 p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Live calling</p>
-                <h1 className="text-display text-3xl text-white">Calls</h1>
+                <p className="text-xs uppercase tracking-[0.32em] text-slate">Live calling</p>
+                <h1 className="text-display text-3xl text-ivory">Calls</h1>
               </div>
-              <div className={`rounded-full border border-white/10 bg-gradient-to-r ${accent.gradient} px-3 py-1 text-sm font-medium text-slate-950`}>
+              <div className={`rounded-full border border-hairline bg-gradient-to-r ${accent.gradient} px-3 py-1 text-sm font-medium text-slate-950`}>
                 {permissionState === 'ready' ? 'Mic + camera ready' : permissionState === 'requesting' ? 'Asking for access…' : 'Ready to connect'}
               </div>
             </div>
-            <p className="mt-3 max-w-2xl text-sm text-slate-400">Start a real Daily room with an accepted connection and join it from the same screen with a more polished, full-screen feel.</p>
+            <p className="mt-3 max-w-2xl text-sm text-slate">Start a real Daily room with an accepted connection and join it from the same screen with a more polished, full-screen feel.</p>
           </div>
         </div>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 text-slate-100">
+        <div className="rounded-md border border-hairline bg-panel/70 p-6 text-ivory">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-white">Available connections</h2>
-            <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">Accepted only</span>
+            <h2 className="text-xl font-semibold text-ivory">Available connections</h2>
+            <span className="rounded-full border border-hairline px-3 py-1 text-xs text-slate">Accepted only</span>
           </div>
 
           {connections.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-400">You need an accepted connection before placing a call.</p>
+            <p className="mt-4 text-sm text-slate">You need an accepted connection before placing a call.</p>
           ) : (
             <ul className="mt-4 space-y-3">
               {connections.map((connection) => {
                 const recipientId = connection.requester_id === session?.user?.id ? connection.recipient_id : connection.requester_id;
                 return (
-                  <li key={connection.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3">
+                  <li key={connection.id} className="flex items-center justify-between rounded-2xl border border-hairline bg-panel-2/70 px-4 py-3">
                     <div>
-                      <p className="font-medium text-white">{recipientId.slice(0, 8)}…</p>
-                      <p className="text-xs text-slate-400">Connected via WIMPEX</p>
+                      <p className="font-medium text-ivory">{recipientId.slice(0, 8)}…</p>
+                      <p className="text-xs text-slate">Connected via WIMPEX</p>
                     </div>
                     <button
                       type="button"
@@ -298,53 +298,53 @@ export default function CallsPage() {
           )}
         </div>
 
-        <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 text-slate-100">
-          <h2 className="text-xl font-semibold text-white">Live room</h2>
-          <p className="mt-2 text-sm text-slate-400">Mic and camera are requested as soon as you enter the room.</p>
+        <div className="rounded-md border border-hairline bg-panel/70 p-6 text-ivory">
+          <h2 className="text-xl font-semibold text-ivory">Live room</h2>
+          <p className="mt-2 text-sm text-slate">Mic and camera are requested as soon as you enter the room.</p>
 
-          <div className="mt-4 h-[340px] overflow-hidden rounded-[1.5rem] border border-slate-800 bg-slate-900/70 p-2">
+          <div className="mt-4 h-[340px] overflow-hidden rounded-md border border-hairline bg-panel-2/70 p-2">
             {activeRoomUrl ? (
               <div className="flex h-full flex-col gap-2">
-                <div ref={frameContainerRef} className="h-full w-full rounded-[1.25rem]" />
+                <div ref={frameContainerRef} className="h-full w-full rounded-md" />
                 <button
                   type="button"
                   onClick={() => void leaveCall()}
-                  className={`rounded-2xl border border-white/10 bg-gradient-to-r ${accent.gradient} px-3 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110`}
+                  className={`rounded-2xl border border-hairline bg-gradient-to-r ${accent.gradient} px-3 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110`}
                 >
                   Leave call
                 </button>
               </div>
             ) : (
-              <div className="flex h-full items-center justify-center rounded-[1.25rem] border border-dashed border-slate-700 text-sm text-slate-400">
+              <div className="flex h-full items-center justify-center rounded-md border border-dashed border-hairline text-sm text-slate">
                 Start or join a call to open the Daily frame.
               </div>
             )}
           </div>
 
-          {statusMessage ? <p className="mt-3 text-sm text-amber-200">{statusMessage}</p> : null}
+          {statusMessage ? <p className="mt-3 text-sm text-gold">{statusMessage}</p> : null}
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 text-slate-100">
-        <h2 className="text-xl font-semibold text-white">Recent calls</h2>
+      <section className="rounded-md border border-hairline bg-panel/70 p-6 text-ivory">
+        <h2 className="text-xl font-semibold text-ivory">Recent calls</h2>
         {calls.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-400">No calls recorded yet.</p>
+          <p className="mt-3 text-sm text-slate">No calls recorded yet.</p>
         ) : (
           <ul className="mt-4 space-y-3">
             {calls.map((call) => (
-              <li key={call.id} className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <li key={call.id} className="flex flex-col gap-3 rounded-2xl border border-hairline bg-panel-2/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="font-medium text-white">{call.call_type} call • {call.status}</p>
-                  <p className="mt-1 text-sm text-slate-400">Room: {call.room_id || 'pending'}</p>
+                  <p className="font-medium text-ivory">{call.call_type} call • {call.status}</p>
+                  <p className="mt-1 text-sm text-slate">Room: {call.room_id || 'pending'}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[call.status] || 'bg-slate-500/15 text-slate-300'}`}>
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[call.status] || 'bg-slate-500/15 text-slate'}`}>
                     {call.status}
                   </span>
                   <button
                     type="button"
                     onClick={() => void joinCall(call)}
-                    className={`rounded-2xl border border-white/10 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800 ${accent.line}`}
+                    className={`rounded-2xl border border-hairline px-3 py-2 text-sm font-medium text-ivory transition hover:bg-panel-2 ${accent.line}`}
                   >
                     Join
                   </button>

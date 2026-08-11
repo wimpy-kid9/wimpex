@@ -29,12 +29,12 @@ export default function StoriesPage() {
 
   return (
     <main className="space-y-6">
-      <section className="surface-veil rounded-[2rem] bg-slate-900/75 p-6">
-        <h1 className="text-display text-3xl text-white">Stories</h1>
-        <p className="mt-2 text-sm text-slate-400">Short, ephemeral-style posts from mutual followers.</p>
+      <section className="surface-veil rounded-md bg-panel-2/75 p-6">
+        <h1 className="text-display text-3xl text-ivory">Stories</h1>
+        <p className="mt-2 text-sm text-slate">Short, ephemeral-style posts from mutual followers.</p>
       </section>
 
-      {loading ? <p className="text-sm text-slate-400">Loading stories…</p> : null}
+      {loading ? <p className="text-sm text-slate">Loading stories…</p> : null}
       {error ? <p className="text-sm text-rose-300">{error}</p> : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -42,9 +42,9 @@ export default function StoriesPage() {
           const accent = getUserAccent(post.author || 'story');
           const accentClass = post.accent || accent.gradient;
           return (
-            <div key={post.id} className={`rounded-[1.5rem] bg-gradient-to-r ${accentClass} p-[1px]`}>
-              <div className="rounded-[1.4rem] bg-slate-950/90 p-4">
-                <p className="font-semibold text-white">{post.author}</p>
+            <div key={post.id} className={`rounded-md bg-gradient-to-r ${accentClass} p-[1px]`}>
+              <div className="rounded-md bg-panel/90 p-4">
+                <p className="font-semibold text-ivory">{post.author}</p>
                 {post.mediaType === 'image' && post.imageUrl ? (
                   <img src={post.imageUrl} alt={post.caption || 'Story image'} className="mt-2 h-44 w-full object-cover rounded-md" />
                 ) : post.mediaType === 'video' && post.videoUrl ? (

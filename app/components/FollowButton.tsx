@@ -66,9 +66,9 @@ export default function FollowButton({ userId }: { userId: string }) {
 
   return (
     <div className="flex items-center gap-3">
-      {followerCount !== null ? <div className="text-sm text-slate-400">{followerCount} followers</div> : null}
+      {followerCount !== null ? <div className="text-sm text-slate">{followerCount} followers</div> : null}
       {currentUserId && currentUserId !== userId ? (
-        <button onClick={toggleFollow} disabled={loading} className={`rounded-2xl px-4 py-2 text-sm font-semibold ${following ? 'bg-white/5 text-white' : 'bg-amber-400/20 text-amber-200'}`}>
+        <button onClick={toggleFollow} disabled={loading} className={`rounded-2xl px-4 py-2 text-sm font-semibold ${following ? 'bg-ivory/5 text-ivory' : 'bg-gold/20 text-gold'}`}>
           {following ? 'Following' : 'Follow'}
         </button>
       ) : null}

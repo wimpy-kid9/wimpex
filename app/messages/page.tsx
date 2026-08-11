@@ -146,7 +146,7 @@ export default function MessagesPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
-      const chunks: BlobPart[] = [];
+      const chunks: Blob[] = [];
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -239,29 +239,29 @@ export default function MessagesPage() {
 
   return (
     <main className="grid gap-6 xl:grid-cols-[1.1fr_1.9fr]">
-      <section className="space-y-4 rounded-[2rem] border border-white/10 bg-slate-950/80 p-6">
+      <section className="space-y-4 rounded-md border border-hairline bg-panel/80 p-6">
         <div>
-          <h1 className="text-display text-3xl text-white">Messages</h1>
-          <p className="mt-2 text-sm text-slate-400">Conversations and direct threads with your accepted connections.</p>
+          <h1 className="text-display text-3xl text-ivory">Messages</h1>
+          <p className="mt-2 text-sm text-slate">Conversations and direct threads with your accepted connections.</p>
         </div>
 
         <div className="flex gap-3">
-          <button onClick={() => setActiveTab('chats')} className={`rounded-2xl px-3 py-2 text-sm font-semibold ${activeTab === 'chats' ? 'bg-amber-400/20 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}>Chats</button>
-          <button onClick={() => setActiveTab('requests')} className={`rounded-2xl px-3 py-2 text-sm font-semibold ${activeTab === 'requests' ? 'bg-amber-400/20 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}>Requests</button>
+          <button onClick={() => setActiveTab('chats')} className={`rounded-2xl px-3 py-2 text-sm font-semibold ${activeTab === 'chats' ? 'bg-gold/20 text-ivory' : 'bg-ivory/5 text-slate hover:bg-ivory/10'}`}>Chats</button>
+          <button onClick={() => setActiveTab('requests')} className={`rounded-2xl px-3 py-2 text-sm font-semibold ${activeTab === 'requests' ? 'bg-gold/20 text-ivory' : 'bg-ivory/5 text-slate hover:bg-ivory/10'}`}>Requests</button>
         </div>
 
         {activeTab === 'requests' ? (
-          <div className="space-y-3 rounded-3xl border border-white/10 bg-slate-900/70 p-4">
+          <div className="space-y-3 rounded-3xl border border-hairline bg-panel-2/70 p-4">
             {requests.length > 0 ? requests.map((request) => (
-              <div key={request.id} className="rounded-3xl border border-white/10 bg-slate-950/80 p-4">
-                <p className="font-semibold text-white">Connection request from {request.requester_id}</p>
+              <div key={request.id} className="rounded-3xl border border-hairline bg-panel/80 p-4">
+                <p className="font-semibold text-ivory">Connection request from {request.requester_id}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     onClick={async () => {
                       await authedFetch('/api/connections', { method: 'POST', body: JSON.stringify({ action: 'accept', connection_id: request.id }) });
                       setRequests((cur) => cur.filter((item) => item.id !== request.id));
                     }}
-                    className="rounded-2xl bg-gradient-to-r from-amber-400 to-sky-500 px-4 py-2 text-sm font-semibold text-slate-950"
+                    className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-2 text-sm font-semibold text-slate-950"
                   >
                     Accept
                   </button>
@@ -277,13 +277,13 @@ export default function MessagesPage() {
                 </div>
               </div>
             )) : (
-              <p className="rounded-3xl border border-dashed border-white/10 bg-slate-900/70 p-6 text-sm text-slate-400">No connection requests at the moment.</p>
+              <p className="rounded-3xl border border-dashed border-hairline bg-panel-2/70 p-6 text-sm text-slate">No connection requests at the moment.</p>
             )}
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-4">
-              <label className="text-sm text-slate-400">Search connections</label>
+            <div className="rounded-3xl border border-hairline bg-panel-2/70 p-4">
+              <label className="text-sm text-slate">Search connections</label>
               <input
                 value={searchTerm}
                 onChange={(event) => {
@@ -291,7 +291,7 @@ export default function MessagesPage() {
                   setSelectedRecipient(null);
                 }}
                 placeholder="Search by username or display name"
-                className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none focus:border-amber-400"
+                className="mt-3 w-full rounded-2xl border border-hairline bg-panel/80 px-4 py-3 text-sm text-ivory outline-none focus:border-hairline-strong"
               />
               {searchResults.length > 0 ? (
                 <div className="mt-3 space-y-2">
@@ -306,15 +306,15 @@ export default function MessagesPage() {
                           selectRecipient(person);
                         }
                       }}
-                      className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-left text-sm text-white transition hover:border-amber-400/40 hover:bg-slate-900"
+                      className="w-full rounded-2xl border border-hairline bg-panel/80 px-4 py-3 text-left text-sm text-ivory transition hover:border-hairline-strong hover:bg-panel-2"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div>
                           <p className="font-semibold">{person.display_name || person.username}</p>
-                          <p className="text-xs text-slate-400">@{person.username}</p>
-                          {person.bio ? <p className="mt-1 text-xs text-slate-500">{person.bio}</p> : null}
+                          <p className="text-xs text-slate">@{person.username}</p>
+                          {person.bio ? <p className="mt-1 text-xs text-slate">{person.bio}</p> : null}
                         </div>
-                        <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[11px] uppercase tracking-[0.2em] text-amber-200">
+                        <span className="rounded-full bg-gold/10 px-2 py-1 text-[11px] uppercase tracking-[0.2em] text-gold">
                           {groupRecipients.length > 0 ? 'Add' : 'Select'}
                         </span>
                       </div>
@@ -324,11 +324,11 @@ export default function MessagesPage() {
               ) : null}
 
               {groupRecipients.length > 0 ? (
-                <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/80 p-3 text-sm text-slate-200">
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Group recipients</p>
+                <div className="mt-4 rounded-2xl border border-hairline bg-panel/80 p-3 text-sm text-ivory">
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate">Group recipients</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {groupRecipients.map((recipient) => (
-                      <span key={recipient.user_id} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-200">
+                      <span key={recipient.user_id} className="inline-flex items-center gap-2 rounded-full border border-hairline bg-panel-2 px-3 py-2 text-sm text-ivory">
                         {recipient.display_name || recipient.username}
                         <button type="button" onClick={() => removeGroupRecipient(recipient.user_id)} className="rounded-full bg-rose-500/20 px-2 py-1 text-xs text-rose-200">×</button>
                       </span>
@@ -338,26 +338,26 @@ export default function MessagesPage() {
               ) : null}
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-4">
-              <h2 className="text-sm font-semibold text-white">Conversations</h2>
+            <div className="rounded-3xl border border-hairline bg-panel-2/70 p-4">
+              <h2 className="text-sm font-semibold text-ivory">Conversations</h2>
               <div className="mt-4 space-y-3">
                 {sortedConversations.length > 0 ? sortedConversations.map((conversation) => (
                   <button
                     key={conversation.id}
                     onClick={() => openConversation(conversation)}
-                    className={`w-full rounded-2xl border px-4 py-3 text-left transition ${activeConversation?.id === conversation.id ? 'border-amber-400/40 bg-amber-400/5' : 'border-white/10 bg-slate-950/80 hover:border-white/20 hover:bg-slate-900'}`}
+                    className={`w-full rounded-2xl border px-4 py-3 text-left transition ${activeConversation?.id === conversation.id ? 'border-hairline-strong bg-gold/5' : 'border-hairline bg-panel/80 hover:border-white/20 hover:bg-panel-2'}`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-white">{conversation.otherUser?.display_name || conversation.otherUser?.username || 'Unknown user'}</p>
-                        <p className="text-xs text-slate-400">@{conversation.otherUser?.username || 'unknown'}</p>
+                        <p className="font-semibold text-ivory">{conversation.otherUser?.display_name || conversation.otherUser?.username || 'Unknown user'}</p>
+                        <p className="text-xs text-slate">@{conversation.otherUser?.username || 'unknown'}</p>
                       </div>
-                      <span className="text-[11px] uppercase tracking-[0.25em] text-slate-500">{new Date(conversation.previewAt).toLocaleDateString()}</span>
+                      <span className="text-[11px] uppercase tracking-[0.25em] text-slate">{new Date(conversation.previewAt).toLocaleDateString()}</span>
                     </div>
-                    <p className="mt-2 text-sm text-slate-400">{conversation.previewSentByMe ? 'You: ' : ''}{conversation.preview}</p>
+                    <p className="mt-2 text-sm text-slate">{conversation.previewSentByMe ? 'You: ' : ''}{conversation.preview}</p>
                   </button>
                 )) : (
-                  <p className="text-sm text-slate-400">No conversations yet. Search for a connection to start one.</p>
+                  <p className="text-sm text-slate">No conversations yet. Search for a connection to start one.</p>
                 )}
               </div>
             </div>
@@ -365,11 +365,11 @@ export default function MessagesPage() {
         )}
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-slate-950/80 p-6">
+      <section className="rounded-md border border-hairline bg-panel/80 p-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-amber-300">Thread</p>
-            <h2 className="text-2xl font-semibold text-white">
+            <p className="text-sm uppercase tracking-[0.3em] text-gold">Thread</p>
+            <h2 className="text-2xl font-semibold text-ivory">
               {activeConversation
                 ? `Chat with ${activeConversation.otherUser?.display_name || activeConversation.otherUser?.username || 'Unknown user'}`
                 : 'Select a conversation'}
@@ -381,11 +381,11 @@ export default function MessagesPage() {
 
         <div className="mt-6 space-y-3">
           {messages.length > 0 ? messages.map((messageItem) => (
-            <div key={messageItem.id} className={`rounded-3xl p-4 ${messageItem.sender_id === activeConversation?.otherUser?.user_id ? 'bg-slate-900/80 text-slate-100' : 'bg-amber-400/10 text-slate-100'}`}>
+            <div key={messageItem.id} className={`rounded-3xl p-4 ${messageItem.sender_id === activeConversation?.otherUser?.user_id ? 'bg-panel-2/80 text-ivory' : 'bg-gold/10 text-ivory'}`}>
               <div className="space-y-3">
                 {messageItem.body ? <p className="text-sm leading-7">{messageItem.body}</p> : null}
                 {messageItem.media_url ? (
-                  <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-3">
+                  <div className="rounded-3xl border border-hairline bg-panel/80 p-3">
                     {messageItem.media_type?.startsWith('image') ? (
                       <img src={messageItem.media_url} alt="Attachment" className="w-full rounded-2xl object-cover" />
                     ) : messageItem.media_type?.startsWith('video') ? (
@@ -396,29 +396,29 @@ export default function MessagesPage() {
                   </div>
                 ) : null}
               </div>
-              <p className="mt-2 text-xs text-slate-500">{new Date(messageItem.created_at).toLocaleString()}</p>
+              <p className="mt-2 text-xs text-slate">{new Date(messageItem.created_at).toLocaleString()}</p>
             </div>
           )) : (
-            <div className="rounded-3xl border border-dashed border-white/10 bg-slate-900/70 p-6 text-sm text-slate-400">Select a conversation or search a connection to begin messaging.</div>
+            <div className="rounded-3xl border border-dashed border-hairline bg-panel-2/70 p-6 text-sm text-slate">Select a conversation or search a connection to begin messaging.</div>
           )}
         </div>
 
         <div className="mt-6 space-y-3">
           <div>
-            <label className="text-sm text-slate-400">New message</label>
+            <label className="text-sm text-slate">New message</label>
             <textarea
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               placeholder="Write your message"
-              className="mt-3 min-h-[140px] w-full rounded-3xl border border-white/10 bg-slate-950/80 px-4 py-4 text-sm text-white outline-none focus:border-amber-400"
+              className="mt-3 min-h-[140px] w-full rounded-3xl border border-hairline bg-panel/80 px-4 py-4 text-sm text-ivory outline-none focus:border-hairline-strong"
             />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-            <div className="space-y-3 rounded-3xl border border-white/10 bg-slate-900/70 p-4">
-              <p className="text-sm text-slate-400">Attachments</p>
+            <div className="space-y-3 rounded-3xl border border-hairline bg-panel-2/70 p-4">
+              <p className="text-sm text-slate">Attachments</p>
               <div className="flex flex-wrap gap-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white transition hover:bg-white/5">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-hairline bg-panel px-4 py-3 text-sm text-ivory transition hover:bg-ivory/5">
                   <span>Choose file</span>
                   <input
                     type="file"
@@ -430,20 +430,20 @@ export default function MessagesPage() {
                 <button
                   type="button"
                   onClick={recording ? stopRecording : startRecording}
-                  className="rounded-2xl bg-gradient-to-r from-amber-400 to-sky-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+                  className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110"
                 >
                   {recording ? 'Stop recording' : 'Record voice note'}
                 </button>
               </div>
               {attachment ? (
-                <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/80 p-3 text-sm text-slate-200">
+                <div className="mt-3 rounded-2xl border border-hairline bg-panel/80 p-3 text-sm text-ivory">
                   <p>Attached: {attachment.name}</p>
-                  <button type="button" onClick={() => setAttachmentFile(null)} className="mt-2 inline-flex rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300 hover:bg-white/10">Remove</button>
+                  <button type="button" onClick={() => setAttachmentFile(null)} className="mt-2 inline-flex rounded-full bg-ivory/5 px-3 py-1 text-xs text-slate hover:bg-ivory/10">Remove</button>
                 </div>
               ) : null}
             </div>
             <div className="flex flex-col justify-between gap-3">
-              <div className="text-sm text-slate-400">
+              <div className="text-sm text-slate">
                 {groupRecipients.length > 0
                   ? `Group message to ${groupRecipients.length + 1}`
                   : selectedRecipient
@@ -452,7 +452,7 @@ export default function MessagesPage() {
                   ? `Active thread with ${activeConversation.otherUser?.display_name || activeConversation.otherUser?.username}`
                   : 'Pick a recipient to start.'}
               </div>
-              <button onClick={sendMessage} className="rounded-2xl bg-gradient-to-r from-amber-400 to-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">Send</button>
+              <button onClick={sendMessage} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">Send</button>
             </div>
           </div>
         </div>

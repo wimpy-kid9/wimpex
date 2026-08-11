@@ -131,87 +131,87 @@ export default function PostCard({ post }: { post: any }) {
   };
 
   return (
-    <article className="feed-snap-item thread-card surface-veil rounded-[2rem] bg-slate-900/80 p-5 shadow-lg shadow-black/20 backdrop-blur-xl min-h-[78vh] md:min-h-0">
-      <div className={`rounded-[1.5rem] bg-gradient-to-r ${accent.gradient} p-[1px]`}>
-        <div className="rounded-[1.4rem] bg-slate-950/90 p-4">
+    <article className="feed-snap-item thread-card surface-veil rounded-md bg-panel-2/80 p-5 shadow-lg shadow-black/20 backdrop-blur-xl min-h-[78vh] md:min-h-0">
+      <div className={`rounded-md bg-gradient-to-r ${accent.gradient} p-[1px]`}>
+        <div className="rounded-md bg-panel/90 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-lg font-semibold text-white">{post.author}</p>
-              <p className="text-sm text-slate-400">{post.handle}</p>
+              <p className="text-lg font-semibold text-ivory">{post.author}</p>
+              <p className="text-sm text-slate">{post.handle}</p>
             </div>
             <div className="flex items-center gap-3">
-              {followerCount !== null ? <div className="text-sm text-slate-400">{followerCount} followers</div> : null}
+              {followerCount !== null ? <div className="text-sm text-slate">{followerCount} followers</div> : null}
               {currentUserId && post.author_id !== currentUserId ? (
-                <button onClick={toggleFollow} className={`rounded-full px-3 py-1 text-xs font-semibold ${following ? 'bg-white/5 text-white' : 'bg-amber-400/20 text-amber-200'}`}>
+                <button onClick={toggleFollow} className={`rounded-full px-3 py-1 text-xs font-semibold ${following ? 'bg-ivory/5 text-ivory' : 'bg-gold/20 text-gold'}`}>
                   {following ? 'Following' : 'Follow'}
                 </button>
               ) : null}
-              <span className="thread-pill rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-300">{post.visibility}</span>
+              <span className="thread-pill rounded-full border border-hairline px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate">{post.visibility}</span>
             </div>
           </div>
-          <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-900/70">
+          <div className="mt-4 overflow-hidden rounded-md border border-hairline bg-panel-2/70">
             {post.mediaType === 'image' && post.imageUrl ? (
               <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`h-[56vh] w-full object-cover md:h-56 ${FILTER_CLASSES[post.filterPreset || 'none'] || ''}`} />
             ) : post.mediaType === 'video' && post.videoUrl ? (
               <video controls src={post.videoUrl} className={`h-[56vh] w-full object-cover md:h-56 ${FILTER_CLASSES[post.filterPreset || 'none'] || ''}`} />
             ) : (
-              <div className="flex h-[56vh] items-center justify-center bg-slate-950/70 text-slate-400 md:h-56">No media attached.</div>
+              <div className="flex h-[56vh] items-center justify-center bg-panel/70 text-slate md:h-56">No media attached.</div>
             )}
           </div>
-          <p className="mt-4 text-sm leading-7 text-slate-300">{post.caption}</p>
+          <p className="mt-4 text-sm leading-7 text-slate">{post.caption}</p>
           {post.filterPreset && post.filterPreset !== 'none' ? (
-            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-300">
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-hairline bg-ivory/5 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate">
               Filter: {post.filterPreset}
             </div>
           ) : null}
           {post.audioTrackName ? (
-            <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-slate-950/80 p-4 text-sm text-slate-200">
+            <div className="mt-4 rounded-md border border-hairline bg-panel/80 p-4 text-sm text-ivory">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
                   {post.audioCoverArtUrl ? (
                     <img src={post.audioCoverArtUrl} alt={post.audioTrackName} className="h-16 w-16 rounded-3xl object-cover" />
                   ) : (
-                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-900 text-xs uppercase tracking-[0.3em] text-slate-500">Audio</div>
+                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-panel-2 text-xs uppercase tracking-[0.3em] text-slate">Audio</div>
                   )}
                   <div>
-                    <p className="font-semibold text-white">{post.audioTrackName}</p>
-                    <p className="text-sm text-slate-400">{post.audioArtistName}</p>
+                    <p className="font-semibold text-ivory">{post.audioTrackName}</p>
+                    <p className="text-sm text-slate">{post.audioArtistName}</p>
                   </div>
                 </div>
                 {post.audioPreviewUrl ? (
                   <audio controls src={post.audioPreviewUrl} className="w-full md:w-auto" />
                 ) : (
-                  <p className="text-xs text-slate-500">Preview not available</p>
+                  <p className="text-xs text-slate">Preview not available</p>
                 )}
               </div>
             </div>
           ) : null}
 
           <div className="mt-4 flex items-center gap-3">
-            <button onClick={toggleLike} className={`rounded-xl px-3 py-2 ${liked ? 'bg-amber-400/20 text-amber-200' : 'bg-white/5 text-slate-200'}`}>{liked ? 'Liked' : 'Like'}{likeCount !== null ? ` (${likeCount})` : ''}</button>
-            <button onClick={toggleFavorite} className={`rounded-xl px-3 py-2 ${favorited ? 'bg-amber-400/20 text-amber-200' : 'bg-white/5 text-slate-200'}`}>{favorited ? 'Saved' : 'Save'}{favoriteCount !== null ? ` (${favoriteCount})` : ''}</button>
-            <button onClick={() => { setShowComments((s) => !s); if (!comments) void loadComments(); }} className="rounded-xl px-3 py-2 bg-white/5 text-slate-200">Comments{comments ? ` (${comments.length})` : ''}</button>
-            <button onClick={async () => { await authedFetch(`/api/posts/${post.id}/share`, { method: 'POST' }); }} className="rounded-xl px-3 py-2 bg-white/5 text-slate-200">Share</button>
+            <button onClick={toggleLike} className={`rounded-xl px-3 py-2 ${liked ? 'bg-gold/20 text-gold' : 'bg-ivory/5 text-ivory'}`}>{liked ? 'Liked' : 'Like'}{likeCount !== null ? ` (${likeCount})` : ''}</button>
+            <button onClick={toggleFavorite} className={`rounded-xl px-3 py-2 ${favorited ? 'bg-gold/20 text-gold' : 'bg-ivory/5 text-ivory'}`}>{favorited ? 'Saved' : 'Save'}{favoriteCount !== null ? ` (${favoriteCount})` : ''}</button>
+            <button onClick={() => { setShowComments((s) => !s); if (!comments) void loadComments(); }} className="rounded-xl px-3 py-2 bg-ivory/5 text-ivory">Comments{comments ? ` (${comments.length})` : ''}</button>
+            <button onClick={async () => { await authedFetch(`/api/posts/${post.id}/share`, { method: 'POST' }); }} className="rounded-xl px-3 py-2 bg-ivory/5 text-ivory">Share</button>
             {currentUserId && post.author_id === currentUserId ? (
-              <button onClick={() => router.push(`/post?edit=${post.id}`)} className="rounded-xl px-3 py-2 bg-white/5 text-slate-200">Edit</button>
+              <button onClick={() => router.push(`/post?edit=${post.id}`)} className="rounded-xl px-3 py-2 bg-ivory/5 text-ivory">Edit</button>
             ) : null}
           </div>
 
           {showComments ? (
             <div className="mt-4">
               <div className="space-y-2">
-                <textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} className="w-full rounded-2xl bg-slate-950 px-3 py-2 text-sm text-slate-100" placeholder="Write a comment" />
+                <textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} className="w-full rounded-2xl bg-panel px-3 py-2 text-sm text-ivory" placeholder="Write a comment" />
                 <div className="flex gap-2">
-                  <button onClick={postComment} className="rounded-2xl bg-gradient-to-r from-amber-400 to-sky-500 px-3 py-2 text-sm font-semibold text-slate-950">Post</button>
-                  <button onClick={() => setShowComments(false)} className="rounded-2xl border border-white/10 px-3 py-2 text-sm text-slate-200">Close</button>
+                  <button onClick={postComment} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-3 py-2 text-sm font-semibold text-slate-950">Post</button>
+                  <button onClick={() => setShowComments(false)} className="rounded-2xl border border-hairline px-3 py-2 text-sm text-ivory">Close</button>
                 </div>
               </div>
               {comments && comments.length > 0 ? (
                 <div className="mt-4 space-y-3">
                   {comments.map((c) => (
-                    <div key={c.id} className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-sm text-slate-200">
-                      <p className="font-medium text-white">{c.author_id}</p>
-                      <p className="mt-1 text-slate-400">{c.body}</p>
+                    <div key={c.id} className="rounded-xl border border-hairline bg-panel/70 p-3 text-sm text-ivory">
+                      <p className="font-medium text-ivory">{c.author_id}</p>
+                      <p className="mt-1 text-slate">{c.body}</p>
                     </div>
                   ))}
                 </div>

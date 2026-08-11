@@ -72,36 +72,36 @@ export default function SettingsPage() {
 
   return (
     <main className="p-8">
-      <div className="surface-veil rounded-[2rem] bg-slate-900/80 p-8 shadow-xl shadow-slate-950/20">
-        <h1 className="text-display text-3xl text-slate-100">Account Settings</h1>
-        <p className="mt-2 text-slate-400">Edit the profile data you submitted during onboarding.</p>
+      <div className="surface-veil rounded-md bg-panel-2/80 p-8 shadow-xl shadow-slate-950/20">
+        <h1 className="text-display text-3xl text-ivory">Account Settings</h1>
+        <p className="mt-2 text-slate">Edit the profile data you submitted during onboarding.</p>
 
         <div className="mt-8 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-300">Display name</label>
+            <label className="block text-sm font-medium text-slate">Display name</label>
             <input
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none"
+              className="mt-2 w-full rounded-2xl border border-hairline bg-panel-2 px-4 py-3 text-ivory outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300">Bio</label>
+            <label className="block text-sm font-medium text-slate">Bio</label>
             <textarea
               value={bio}
               onChange={(event) => setBio(event.target.value)}
-              className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none"
+              className="mt-2 w-full rounded-3xl border border-hairline bg-panel-2 px-4 py-3 text-ivory outline-none"
               rows={5}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300">Gender</label>
+            <label className="block text-sm font-medium text-slate">Gender</label>
             <select
               value={gender}
               onChange={(event) => setGender(event.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none"
+              className="mt-2 w-full rounded-2xl border border-hairline bg-panel-2 px-4 py-3 text-ivory outline-none"
             >
               <option value="">Prefer not to say</option>
               <option value="female">Female</option>
@@ -114,12 +114,12 @@ export default function SettingsPage() {
           <button
             onClick={saveSettings}
             disabled={saving}
-            className="rounded-2xl bg-sky-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:opacity-50"
+            className="rounded-2xl bg-gold px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-gold-deep disabled:opacity-50"
           >
             {saving ? 'Saving…' : 'Save changes'}
           </button>
 
-          {message ? <p className="text-sm text-slate-300">{message}</p> : null}
+          {message ? <p className="text-sm text-slate">{message}</p> : null}
         </div>
       </div>
     </main>

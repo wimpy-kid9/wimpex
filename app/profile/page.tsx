@@ -3,15 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
 import ProfileHeader from '@/app/components/ProfileHeader';
 import ProfileTabs from '@/app/components/ProfileTabs';
 import AuthActionPrompt from '@/app/components/AuthActionPrompt';
 
 export default function ProfilePage() {
-  const accent = getUserAccent('profile-shell');
-  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [session, setSession] = useState<any>(undefined);
@@ -67,15 +64,15 @@ export default function ProfilePage() {
       <ProfileHeader profile={profile} />
       <ProfileTabs profile={profile} isOwn={true} />
 
-      <section className="rounded-[1.5rem] border border-white/10 bg-slate-900/80 p-6 text-sm text-slate-400">
+      <section className="rounded-md border border-hairline bg-panel-2/80 p-6 text-sm text-slate">
         <p>
-          Learn more about how WIMPEX works in the <Link href="/privacy-policy" className="text-amber-300 hover:text-amber-200">Privacy Policy</Link> or read the <Link href="/terms-of-service" className="text-amber-300 hover:text-amber-200">Terms of Service</Link>.
+          Learn more about how WIMPEX works in the <Link href="/privacy-policy" className="text-gold hover:text-gold">Privacy Policy</Link> or read the <Link href="/terms-of-service" className="text-gold hover:text-gold">Terms of Service</Link>.
         </p>
       </section>
 
-      <section className="rounded-[1.5rem] border border-white/10 bg-slate-900/80 p-6 text-sm text-slate-400">
+      <section className="rounded-md border border-hairline bg-panel-2/80 p-6 text-sm text-slate">
         <p>
-          Learn more about how WIMPEX works in the <Link href="/privacy-policy" className="text-amber-300 hover:text-amber-200">Privacy Policy</Link> or read the <Link href="/terms-of-service" className="text-amber-300 hover:text-amber-200">Terms of Service</Link>.
+          Learn more about how WIMPEX works in the <Link href="/privacy-policy" className="text-gold hover:text-gold">Privacy Policy</Link> or read the <Link href="/terms-of-service" className="text-gold hover:text-gold">Terms of Service</Link>.
         </p>
       </section>
     </main>

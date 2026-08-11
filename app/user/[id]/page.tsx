@@ -20,7 +20,7 @@ export default async function UserPage({ params }: Props) {
     return (
       <main className="p-8">
         <h1 className="text-3xl font-semibold">User</h1>
-        <p className="mt-2 text-slate-600">Unable to load user profile.</p>
+        <p className="mt-2 text-slate">Unable to load user profile.</p>
       </main>
     );
   }

@@ -19,7 +19,7 @@ export default function PostDetailClient({ post }: { post: any }) {
   return (
     <div className="space-y-6">
       {showToast ? (
-        <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-emerald-500/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg">
+        <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-gold/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg">
           Post updated
         </div>
       ) : null}

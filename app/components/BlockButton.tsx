@@ -35,11 +35,11 @@ export default function BlockButton({ userId }: { userId: string }) {
       <button
         onClick={blockUser}
         disabled={blocked || loading}
-        className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${blocked ? 'bg-rose-500/20 text-rose-200' : 'bg-white/5 text-white hover:bg-white/10'}`}
+        className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${blocked ? 'bg-rose-500/20 text-rose-200' : 'bg-ivory/5 text-ivory hover:bg-ivory/10'}`}
       >
         {blocked ? 'Blocked' : 'Block user'}
       </button>
-      {status ? <p className="text-xs text-slate-400">{status}</p> : null}
+      {status ? <p className="text-xs text-slate">{status}</p> : null}
     </div>
   );
 }

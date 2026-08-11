@@ -44,27 +44,27 @@ export default function AppShell({ children }: AppShellProps) {
   }, []);
 
   return (
-    <div className="min-h-screen text-slate-100">
-      <div className="hidden md:fixed md:inset-y-0 md:w-64 md:border-r md:border-white/10 md:bg-slate-950/70 md:px-4 md:py-8 md:backdrop-blur-xl">
+    <div className="min-h-screen text-ivory">
+      <div className="hidden md:fixed md:inset-y-0 md:w-64 md:border-r md:border-hairline md:bg-panel/70 md:px-4 md:py-8 md:backdrop-blur-xl">
         <div className="relative space-y-8">
           <div className="thread-line">
             <div className={`mb-3 inline-flex rounded-full bg-gradient-to-r ${accent.gradient} p-[1px]`}>
-              <div className="thread-pill rounded-full bg-slate-950/90 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-slate-100">
+              <div className="thread-pill rounded-full bg-panel/90 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-ivory">
                 Living accent
               </div>
             </div>
-            <h1 className="text-display text-2xl tracking-[0.24em] text-slate-100">WIMPEX</h1>
-            <p className="mt-2 text-sm text-slate-400">Social video, connections, and calling.</p>
+            <h1 className="text-display text-2xl tracking-[0.24em] text-ivory">WIMPEX</h1>
+            <p className="mt-2 text-sm text-slate">Social video, connections, and calling.</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-slate-400">Live signals</p>
+          <div className="rounded-2xl border border-hairline bg-panel-2/70 p-3">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-slate">Live signals</p>
             <div className="mt-2 space-y-2">
               {notifications.length > 0 ? notifications.slice(0, 3).map((item) => (
-                <div key={item.id} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">
-                  <p className="font-medium text-white">{item.type.replace(/_/g, ' ')}</p>
-                  <p className="mt-1 text-xs text-slate-400">{item.metadata?.conversation_id ? 'Message activity' : 'Connection activity'}</p>
+                <div key={item.id} className="rounded-xl border border-hairline bg-ivory/5 px-3 py-2 text-sm text-slate">
+                  <p className="font-medium text-ivory">{item.type.replace(/_/g, ' ')}</p>
+                  <p className="mt-1 text-xs text-slate">{item.metadata?.conversation_id ? 'Message activity' : 'Connection activity'}</p>
                 </div>
-              )) : <p className="text-sm text-slate-400">No notifications yet.</p>}
+              )) : <p className="text-sm text-slate">No notifications yet.</p>}
             </div>
           </div>
 
@@ -72,7 +72,7 @@ export default function AppShell({ children }: AppShellProps) {
             {/* animated liquid indicator */}
             <div className="pointer-events-none absolute left-2 top-0 z-0 w-[calc(100%-1rem)] overflow-visible">
               <div
-                className="absolute left-0 z-0 w-full rounded-2xl bg-amber-400/10 backdrop-blur-md transition-all duration-300"
+                className="absolute left-0 z-0 w-full rounded-2xl bg-gold/10 backdrop-blur-md transition-all duration-300"
                 style={{ top: indicatorStyle.top ?? 0, height: indicatorStyle.height ?? 0 }}
               />
             </div>
@@ -94,7 +94,7 @@ export default function AppShell({ children }: AppShellProps) {
                     setIndicatorStyle({ top: top - 6, height: rect.height + 12 });
                   }
                 }}
-                className={`relative z-10 thread-card group flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition duration-300 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white ${isActive(item.href) ? 'border-amber-400/40 bg-transparent text-white' : 'border-white/10 bg-white/[0.03] text-slate-200'}`}
+                className={`relative z-10 thread-card group flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition duration-300 hover:-translate-y-0.5 hover:bg-ivory/10 hover:text-ivory ${isActive(item.href) ? 'border-hairline-strong bg-transparent text-ivory' : 'border-hairline bg-white/[0.03] text-ivory'}`}
               >
                 <span className="opacity-90">
                   {item.href === '/feed' && (

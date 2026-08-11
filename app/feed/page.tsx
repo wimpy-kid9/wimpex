@@ -2,8 +2,6 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { type FeedPost } from '@/lib/models';
-// import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
 import { supabase } from '@/lib/supabase';
 import PostCard from '@/app/components/PostCard';
@@ -58,20 +56,20 @@ export default function FeedPage() {
 
   return (
     <main className="space-y-6">
-      <section className="surface-veil rounded-[2rem] bg-slate-900/75 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
+      <section className="surface-veil rounded-md bg-panel-2/75 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-amber-300">Feed</p>
-            <h1 className="text-display mt-3 text-3xl text-white">The latest from your circle</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-400">
+            <p className="text-sm uppercase tracking-[0.3em] text-gold">Feed</p>
+            <h1 className="text-display mt-3 text-3xl text-ivory">The latest from your circle</h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate">
               The feed is now a review surface, while the create experience lives on its own page for a calmer, more intentional post flow.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href="/search" className="inline-flex rounded-[1.1rem] border border-white/10 bg-slate-950/80 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+            <Link href="/search" className="inline-flex rounded-md border border-hairline bg-panel/80 px-4 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/10">
               Search people
             </Link>
-            <Link href="/post" className="inline-flex rounded-[1.1rem] bg-gradient-to-r from-amber-400 to-sky-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">
+            <Link href="/post" className="inline-flex rounded-md bg-gradient-to-r from-gold to-gold-deep px-4 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110">
               Create a post
             </Link>
           </div>
@@ -79,20 +77,20 @@ export default function FeedPage() {
       </section>
 
       {error ? <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
-      {loading ? <p className="text-sm text-slate-400">Loading feed…</p> : null}
+      {loading ? <p className="text-sm text-slate">Loading feed…</p> : null}
 
       <div className="mt-4">
         <div className="flex gap-3">
-          <button onClick={() => setActiveTab('books')} className={`px-3 py-2 rounded-2xl ${activeTab === 'books' ? 'bg-amber-400/10 text-white' : 'text-slate-300 hover:bg-white/5'}`}>Books</button>
-          <button onClick={() => setActiveTab('feed')} className={`px-3 py-2 rounded-2xl ${activeTab === 'feed' ? 'bg-amber-400/10 text-white' : 'text-slate-300 hover:bg-white/5'}`}>Feed</button>
-          <button onClick={() => setActiveTab('friends')} className={`px-3 py-2 rounded-2xl ${activeTab === 'friends' ? 'bg-amber-400/10 text-white' : 'text-slate-300 hover:bg-white/5'}`}>Friends</button>
+          <button onClick={() => setActiveTab('books')} className={`px-3 py-2 rounded-2xl ${activeTab === 'books' ? 'bg-gold/10 text-ivory' : 'text-slate hover:bg-ivory/5'}`}>Books</button>
+          <button onClick={() => setActiveTab('feed')} className={`px-3 py-2 rounded-2xl ${activeTab === 'feed' ? 'bg-gold/10 text-ivory' : 'text-slate hover:bg-ivory/5'}`}>Feed</button>
+          <button onClick={() => setActiveTab('friends')} className={`px-3 py-2 rounded-2xl ${activeTab === 'friends' ? 'bg-gold/10 text-ivory' : 'text-slate hover:bg-ivory/5'}`}>Friends</button>
         </div>
 
         {activeTab === 'books' ? (
-          <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-6 text-slate-300">
+          <div className="mt-4 rounded-2xl border border-hairline bg-panel-2/70 p-6 text-slate">
             <p className="text-sm">WimpyBooks</p>
             <p className="mt-2 text-sm">Open the WimpyBooks reader.</p>
-            <a href="https://wimpybooks.netlify.app" target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-2xl bg-gradient-to-r from-amber-400 to-sky-500 px-4 py-2 text-sm font-semibold text-slate-950">Open WimpyBooks</a>
+            <a href="https://wimpybooks.netlify.app" target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-2 text-sm font-semibold text-slate-950">Open WimpyBooks</a>
           </div>
         ) : (
           <div className="feed-snap-stack flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-4 mt-4">
@@ -109,7 +107,7 @@ export default function FeedPage() {
         )}
       </div>
         {showCreatedToast ? (
-          <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-emerald-500/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg">Post published</div>
+          <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-gold/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg">Post published</div>
         ) : null}
     </main>
   );

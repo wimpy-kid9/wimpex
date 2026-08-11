@@ -25,16 +25,16 @@ export default function ProfileHeader({ profile }: { profile: any }) {
   const isOwn = profile?.user_id && currentUserId && profile.user_id === currentUserId;
 
   return (
-    <section className="surface-veil rounded-[2rem] bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
+    <section className="surface-veil rounded-md bg-panel-2/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-amber-300">Profile</p>
-          <h1 className="text-display mt-3 text-3xl text-white">{profile?.display_name ?? 'Profile'}</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-400">{profile?.bio ?? 'This user has not added a bio.'}</p>
+          <p className="text-sm uppercase tracking-[0.3em] text-gold">Profile</p>
+          <h1 className="text-display mt-3 text-3xl text-ivory">{profile?.display_name ?? 'Profile'}</h1>
+          <p className="mt-2 max-w-2xl text-sm text-slate">{profile?.bio ?? 'This user has not added a bio.'}</p>
         </div>
         <div>
           {isOwn ? (
-            <a href="/settings" className="rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Edit profile</a>
+            <a href="/settings" className="rounded-2xl border border-hairline px-4 py-2 text-sm font-semibold text-ivory transition hover:bg-ivory/10">Edit profile</a>
           ) : (
             profile?.user_id ? (
               <div className="flex flex-wrap gap-2">

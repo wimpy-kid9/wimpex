@@ -228,36 +228,36 @@ export default function OnboardingPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-6 text-slate-100">
+      <main className="min-h-screen flex items-center justify-center p-6 text-ivory">
         <p>Loading onboarding…</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
-      <div className="surface-veil mx-auto w-full max-w-3xl rounded-[2rem] bg-slate-900/85 p-8 shadow-2xl shadow-slate-950/40">
-        <h1 className="text-display text-3xl text-white">Complete your WIMPEX profile</h1>
-        <p className="mt-3 text-slate-400">Finish onboarding now so your profile is ready for friends and content.</p>
+    <main className="min-h-screen bg-panel px-4 py-10 text-ivory sm:px-6 lg:px-8">
+      <div className="surface-veil mx-auto w-full max-w-3xl rounded-md bg-panel-2/85 p-8 shadow-2xl shadow-black/40">
+        <h1 className="text-display text-3xl text-ivory">Complete your WIMPEX profile</h1>
+        <p className="mt-3 text-slate">Finish onboarding now so your profile is ready for friends and content.</p>
 
         {step === 1 ? (
           <section className="mt-10 space-y-6">
             <div>
-              <label className="block text-sm font-medium text-slate-300">Choose a username</label>
-              <div className="mt-2 flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3">
-                <span className="text-slate-500">@</span>
+              <label className="block text-sm font-medium text-slate">Choose a username</label>
+              <div className="mt-2 flex items-center gap-2 rounded-2xl border border-hairline bg-panel px-4 py-3">
+                <span className="text-slate">@</span>
                 <input
-                  className="w-full bg-transparent text-white outline-none placeholder:text-slate-500"
+                  className="w-full bg-transparent text-ivory outline-none placeholder:text-slate"
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
                   placeholder="your_username"
                 />
               </div>
-              <p className="mt-2 text-sm text-slate-400">3–20 characters; letters, numbers, and underscores only.</p>
+              <p className="mt-2 text-sm text-slate">3–20 characters; letters, numbers, and underscores only.</p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-sm text-slate-300">Availability</p>
-              <p className="mt-2 text-base font-medium text-slate-100">
+            <div className="rounded-2xl border border-hairline bg-panel p-4">
+              <p className="text-sm text-slate">Availability</p>
+              <p className="mt-2 text-base font-medium text-ivory">
                 {checkingUsername
                   ? 'Checking username…'
                   : username
@@ -270,10 +270,10 @@ export default function OnboardingPage() {
               </p>
             </div>
             {error ? <p className="text-sm text-rose-400">{error}</p> : null}
-            {statusMessage ? <p className="text-sm text-amber-200">{statusMessage}</p> : null}
+            {statusMessage ? <p className="text-sm text-gold">{statusMessage}</p> : null}
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-2xl bg-sky-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-2xl bg-gold px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-gold-deep disabled:cursor-not-allowed disabled:opacity-50"
               onClick={saveUsername}
               disabled={!canProceedStep1 || saving}
             >
@@ -284,18 +284,18 @@ export default function OnboardingPage() {
           <section className="mt-10 space-y-6">
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-slate-300">Display name</label>
+                <label className="block text-sm font-medium text-slate">Display name</label>
                 <input
-                  className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-white outline-none"
+                  className="w-full rounded-2xl border border-hairline bg-panel px-4 py-3 text-ivory outline-none"
                   value={displayName}
                   onChange={(event) => setDisplayName(event.target.value)}
                   placeholder="Your display name"
                 />
               </div>
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-slate-300">Date of birth</label>
+                <label className="block text-sm font-medium text-slate">Date of birth</label>
                 <input
-                  className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-white outline-none"
+                  className="w-full rounded-2xl border border-hairline bg-panel px-4 py-3 text-ivory outline-none"
                   type="date"
                   value={dateOfBirth}
                   onChange={(event) => setDateOfBirth(event.target.value)}
@@ -303,18 +303,18 @@ export default function OnboardingPage() {
               </div>
             </div>
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-slate-300">Bio</label>
+              <label className="block text-sm font-medium text-slate">Bio</label>
               <textarea
-                className="min-h-[120px] w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-white outline-none"
+                className="min-h-[120px] w-full rounded-3xl border border-hairline bg-panel px-4 py-3 text-ivory outline-none"
                 value={bio}
                 onChange={(event) => setBio(event.target.value)}
                 placeholder="Tell people a little about yourself"
               />
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
-              <label className="block text-sm font-medium text-slate-300">Profile photo</label>
+            <div className="rounded-2xl border border-hairline bg-panel p-4">
+              <label className="block text-sm font-medium text-slate">Profile photo</label>
               <div className="mt-3 flex flex-wrap items-center gap-3">
-                <label className="cursor-pointer rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800">
+                <label className="cursor-pointer rounded-2xl border border-hairline bg-panel-2 px-4 py-2 text-sm text-ivory transition hover:bg-panel-2">
                   <input
                     type="file"
                     accept="image/*"
@@ -329,17 +329,17 @@ export default function OnboardingPage() {
                   />
                   {avatarFile ? `Selected: ${avatarFile.name}` : 'Upload photo'}
                 </label>
-                <button type="button" className="rounded-2xl border border-slate-700 px-4 py-2 text-sm text-slate-200" onClick={() => setAvatarFile(null)}>
+                <button type="button" className="rounded-2xl border border-hairline px-4 py-2 text-sm text-ivory" onClick={() => setAvatarFile(null)}>
                   Skip for now
                 </button>
               </div>
-              {avatarPreview ? <div className="mt-4 flex items-center gap-3"><Image src={avatarPreview} alt="Avatar preview" width={56} height={56} className="h-14 w-14 rounded-full object-cover" /><p className="text-sm text-slate-400">A generated initials fallback is used if you skip this step.</p></div> : null}
-              <p className="mt-2 text-sm text-slate-400">Your avatar is optional; if you skip it, WIMPEX will fall back to initials.</p>
+              {avatarPreview ? <div className="mt-4 flex items-center gap-3"><Image src={avatarPreview} alt="Avatar preview" width={56} height={56} className="h-14 w-14 rounded-full object-cover" /><p className="text-sm text-slate">A generated initials fallback is used if you skip this step.</p></div> : null}
+              <p className="mt-2 text-sm text-slate">Your avatar is optional; if you skip it, WIMPEX will fall back to initials.</p>
             </div>
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-slate-300">Gender (optional)</label>
+              <label className="block text-sm font-medium text-slate">Gender (optional)</label>
               <select
-                className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-white outline-none"
+                className="w-full rounded-2xl border border-hairline bg-panel px-4 py-3 text-ivory outline-none"
                 value={gender}
                 onChange={(event) => setGender(event.target.value)}
               >
@@ -350,11 +350,11 @@ export default function OnboardingPage() {
                 <option value="other">Other</option>
               </select>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-4">
+            <div className="rounded-2xl border border-hairline bg-panel p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300">Who can message you?</label>
+                <label className="block text-sm font-medium text-slate">Who can message you?</label>
                 <select
-                  className="mt-3 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-white outline-none"
+                  className="mt-3 w-full rounded-2xl border border-hairline bg-panel px-4 py-3 text-ivory outline-none"
                   value={messagePrivacy}
                   onChange={(event) => setMessagePrivacy(event.target.value)}
                 >
@@ -364,9 +364,9 @@ export default function OnboardingPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300">Who can call you?</label>
+                <label className="block text-sm font-medium text-slate">Who can call you?</label>
                 <select
-                  className="mt-3 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-white outline-none"
+                  className="mt-3 w-full rounded-2xl border border-hairline bg-panel px-4 py-3 text-ivory outline-none"
                   value={callPrivacy}
                   onChange={(event) => setCallPrivacy(event.target.value)}
                 >
@@ -375,13 +375,13 @@ export default function OnboardingPage() {
                   <option value="no_one">No one</option>
                 </select>
               </div>
-              <p className="text-sm text-slate-400">These privacy rules now gate both messaging and calls from the server side.</p>
+              <p className="text-sm text-slate">These privacy rules now gate both messaging and calls from the server side.</p>
             </div>
             {error ? <p className="text-sm text-rose-400">{error}</p> : null}
-            {statusMessage ? <p className="text-sm text-amber-200">{statusMessage}</p> : null}
+            {statusMessage ? <p className="text-sm text-gold">{statusMessage}</p> : null}
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-2xl bg-sky-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-2xl bg-gold px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-gold-deep disabled:cursor-not-allowed disabled:opacity-50"
               onClick={completeOnboarding}
               disabled={saving || uploadingAvatar}
             >

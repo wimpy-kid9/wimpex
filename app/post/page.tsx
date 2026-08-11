@@ -212,7 +212,7 @@ export default function CreatePostPage() {
   if (session === undefined) {
     return (
       <main className="min-h-[70vh] px-2 py-4 sm:px-6 lg:px-8">
-        <p className="text-sm text-slate-400">Loading...</p>
+        <p className="text-sm text-slate">Loading...</p>
       </main>
     );
   }
@@ -228,39 +228,39 @@ export default function CreatePostPage() {
 
   return (
     <main className="min-h-[70vh] px-2 py-4 sm:px-6 lg:px-8">
-      <section className={`surface-veil rounded-[2rem] border border-white/10 bg-slate-900/80 p-6 shadow-2xl ${accent.glow} sm:p-8`}>
+      <section className={`surface-veil rounded-md border border-hairline bg-panel-2/80 p-6 shadow-2xl ${accent.glow} sm:p-8`}>
         <div className={`rounded-[1.6rem] bg-gradient-to-r ${accent.gradient} p-[1px]`}>
-          <div className="rounded-[calc(1.6rem-1px)] bg-slate-950/90 p-6 sm:p-8">
+          <div className="rounded-[calc(1.6rem-1px)] bg-panel/90 p-6 sm:p-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Create</p>
-                <h1 className="text-display mt-2 text-3xl text-white">Share a new post</h1>
+                <p className="text-xs uppercase tracking-[0.32em] text-slate">Create</p>
+                <h1 className="text-display mt-2 text-3xl text-ivory">Share a new post</h1>
               </div>
-              <div className={`rounded-full border border-white/10 bg-gradient-to-r ${accent.gradient} px-3 py-1 text-sm font-semibold text-slate-950`}>
+              <div className={`rounded-full border border-hairline bg-gradient-to-r ${accent.gradient} px-3 py-1 text-sm font-semibold text-slate-950`}>
                 {visibility === 'public' ? 'Public' : visibility === 'connections' ? 'Connections only' : 'Private'}
               </div>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-300">Caption</label>
+                <label className="mb-2 block text-sm font-medium text-slate">Caption</label>
                 <textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   maxLength={280}
                   placeholder="What are you sharing today?"
-                  className="min-h-[120px] w-full rounded-[1.4rem] border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none"
+                  className="min-h-[120px] w-full rounded-md border border-hairline bg-panel-2 px-4 py-3 text-sm text-ivory outline-none"
                 />
-                <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                <div className="mt-2 flex items-center justify-between text-xs text-slate">
                   <span>Keep it concise and intimate.</span>
                   <span>{characterCount}/280</span>
                 </div>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-[1.4rem] border border-white/10 bg-slate-900/70 p-4">
-                  <label className="block text-sm font-medium text-slate-300">Add media</label>
-                  <label className="mt-3 flex cursor-pointer items-center justify-center rounded-[1.2rem] border border-dashed border-white/10 bg-slate-950/70 px-4 py-6 text-sm text-slate-300 transition hover:bg-slate-800">
+                <div className="rounded-md border border-hairline bg-panel-2/70 p-4">
+                  <label className="block text-sm font-medium text-slate">Add media</label>
+                  <label className="mt-3 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-hairline bg-panel/70 px-4 py-6 text-sm text-slate transition hover:bg-panel-2">
                     <input
                       type="file"
                       accept="image/*,video/*"
@@ -276,16 +276,16 @@ export default function CreatePostPage() {
                         key={preset.key}
                         type="button"
                         onClick={() => setFilterPreset(preset.key)}
-                        className={`rounded-2xl border px-3 py-2 text-left text-sm ${filterPreset === preset.key ? 'border-amber-400 bg-amber-400/10 text-white' : 'border-white/10 text-slate-300 hover:border-white/20 hover:bg-white/5'}`}
+                        className={`rounded-2xl border px-3 py-2 text-left text-sm ${filterPreset === preset.key ? 'border-amber-400 bg-gold/10 text-ivory' : 'border-hairline text-slate hover:border-white/20 hover:bg-ivory/5'}`}
                       >
                         <p className="font-semibold">{preset.label}</p>
-                        <p className="text-xs text-slate-500">{preset.description}</p>
+                        <p className="text-xs text-slate">{preset.description}</p>
                       </button>
                     ))}
                   </div>
 
                   {previewUrl ? (
-                    <div className={`mt-4 overflow-hidden rounded-[1.2rem] border border-white/10 bg-slate-900/70 ${filterClasses[filterPreset]}`}>
+                    <div className={`mt-4 overflow-hidden rounded-md border border-hairline bg-panel-2/70 ${filterClasses[filterPreset]}`}>
                       {mediaType === 'image' ? (
                         <img src={previewUrl} alt={draft || 'Post preview'} className="h-[28vh] w-full object-cover md:h-56" />
                       ) : (
@@ -293,14 +293,14 @@ export default function CreatePostPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="mt-4 flex h-56 items-center justify-center rounded-[1.2rem] border border-white/10 bg-slate-950/60 text-sm text-slate-400">
+                    <div className="mt-4 flex h-56 items-center justify-center rounded-md border border-hairline bg-panel/60 text-sm text-slate">
                       Your image or video preview will appear here.
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-[1.4rem] border border-white/10 bg-slate-900/70 p-4">
-                  <label className="block text-sm font-medium text-slate-300">Spotify audio</label>
+                <div className="rounded-md border border-hairline bg-panel-2/70 p-4">
+                  <label className="block text-sm font-medium text-slate">Spotify audio</label>
                   <input
                     value={spotifyQuery}
                     onChange={(event) => {
@@ -308,7 +308,7 @@ export default function CreatePostPage() {
                       setSelectedTrack(null);
                     }}
                     placeholder="Search for a track to attach"
-                    className="mt-3 w-full rounded-[1.1rem] border border-white/10 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none"
+                    className="mt-3 w-full rounded-md border border-hairline bg-panel px-4 py-3 text-sm text-ivory outline-none"
                   />
                   {trackResults.length > 0 ? (
                     <div className="mt-3 space-y-2 max-h-72 overflow-y-auto">
@@ -317,52 +317,52 @@ export default function CreatePostPage() {
                           key={track.id}
                           type="button"
                           onClick={() => selectTrack(track)}
-                          className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-left text-sm text-white transition hover:border-amber-400/40 hover:bg-slate-900"
+                          className="w-full rounded-2xl border border-hairline bg-panel/80 px-4 py-3 text-left text-sm text-ivory transition hover:border-hairline-strong hover:bg-panel-2"
                         >
                           <p className="font-semibold">{track.title}</p>
-                          <p className="text-xs text-slate-400">{track.artist}</p>
+                          <p className="text-xs text-slate">{track.artist}</p>
                         </button>
                       ))}
                     </div>
                   ) : null}
 
                   {selectedTrack ? (
-                    <div className="mt-4 rounded-[1.2rem] border border-amber-400/20 bg-slate-950/90 p-4 text-sm text-slate-200">
+                    <div className="mt-4 rounded-md border border-amber-400/20 bg-panel/90 p-4 text-sm text-ivory">
                       <div className="flex items-center gap-3">
                         {selectedTrack.cover_art_url ? (
                           <img src={selectedTrack.cover_art_url} alt={`${selectedTrack.title} cover`} className="h-14 w-14 rounded-2xl object-cover" />
                         ) : (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-xs uppercase tracking-[0.25em] text-slate-400">Audio</div>
+                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-panel-2 text-xs uppercase tracking-[0.25em] text-slate">Audio</div>
                         )}
                         <div>
-                          <p className="font-semibold text-white">{selectedTrack.title}</p>
-                          <p className="text-xs text-slate-400">{selectedTrack.artist}</p>
+                          <p className="font-semibold text-ivory">{selectedTrack.title}</p>
+                          <p className="text-xs text-slate">{selectedTrack.artist}</p>
                         </div>
                       </div>
                       {selectedTrack.preview_url ? (
                         <audio controls src={selectedTrack.preview_url} className="mt-4 w-full" />
                       ) : (
-                        <p className="mt-4 text-xs text-slate-500">No preview available for this track.</p>
+                        <p className="mt-4 text-xs text-slate">No preview available for this track.</p>
                       )}
                     </div>
                   ) : null}
 
-                  <div className="mt-6 rounded-[1.2rem] border border-white/10 bg-gradient-to-r from-slate-900 to-slate-950 p-[1px]">
-                    <div className="rounded-[calc(1.2rem-1px)] bg-slate-950/90 p-4 text-sm text-slate-300">
-                      <p className="font-semibold text-white">Visibility</p>
-                      <p className="mt-2 text-slate-400">Choose who can see this post once it goes live.</p>
+                  <div className="mt-6 rounded-md border border-hairline bg-gradient-to-r from-slate-900 to-slate-950 p-[1px]">
+                    <div className="rounded-[calc(1.2rem-1px)] bg-panel/90 p-4 text-sm text-slate">
+                      <p className="font-semibold text-ivory">Visibility</p>
+                      <p className="mt-2 text-slate">Choose who can see this post once it goes live.</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {error ? <p className="rounded-[1.1rem] border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
+              {error ? <p className="rounded-md border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
 
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-slate-400">Posting uses the same upload logic as the feed composer.</p>
+                <p className="text-sm text-slate">Posting uses the same upload logic as the feed composer.</p>
                 <button
                   type="submit"
-                  className={`rounded-[1.1rem] bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
+                  className={`rounded-md bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
                   disabled={busy}
                 >
                   {busy ? 'Publishing…' : editingId ? 'Update post' : 'Publish post'}
