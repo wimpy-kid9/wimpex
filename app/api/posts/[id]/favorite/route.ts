@@ -21,6 +21,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   } else {
     const { error: insError } = await supabaseServer.from('wpx_post_favorites').insert({ post_id: postId, user_id: userId });
     if (insError) return NextResponse.json({ error: insError.message }, { status: 500 });
+    try {
+      const { data: postData } = await supabaseServer.from('wpx_posts').select('author_id').eq('id', postId).maybeSingle();
+      const authorId = postData?.author_id;
+      if (authorId && authorId !== userId) {
+        await supabaseServer.from('wpx_notifications').insert({ user_id: authorId, type: 'favorite', metadata: { post_id: postId, actor_id: userId } });
+      }
+    } catch {
+      // ignore
+    }
   }
 
   const { data: favorites } = await supabaseServer.from('wpx_post_favorites').select('*').eq('post_id', postId);

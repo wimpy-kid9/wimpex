@@ -24,6 +24,12 @@ export async function POST(request: NextRequest) {
 
   const { error } = await supabaseServer.from('wpx_follows').insert({ follower_id: authContext.user.id, followed_id: followedId });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // create notification for followed user
+  try {
+    await supabaseServer.from('wpx_notifications').insert({ user_id: followedId, type: 'follow', metadata: { follower_id: authContext.user.id } });
+  } catch {
+    // ignore notification errors
+  }
   return NextResponse.json({ following: true });
 }
 
@@ -66,13 +72,21 @@ export async function GET(request: NextRequest) {
   if (type === 'followers') {
     const { data, error } = await supabaseServer.from('wpx_follows').select('follower_id').eq('followed_id', userId).limit(100);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ followers: (data || []).map((r: any) => r.follower_id) });
+    const ids = (data || []).map((r: any) => r.follower_id).filter(Boolean);
+    if (ids.length === 0) return NextResponse.json({ followers: [] });
+    const { data: profiles, error: profErr } = await supabaseServer.from('wpx_profiles').select('user_id,username,display_name,avatar_url').in('user_id', ids);
+    if (profErr) return NextResponse.json({ error: profErr.message }, { status: 500 });
+    return NextResponse.json({ followers: profiles || [] });
   }
 
   if (type === 'following') {
     const { data, error } = await supabaseServer.from('wpx_follows').select('followed_id').eq('follower_id', userId).limit(100);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ following: (data || []).map((r: any) => r.followed_id) });
+    const ids = (data || []).map((r: any) => r.followed_id).filter(Boolean);
+    if (ids.length === 0) return NextResponse.json({ following: [] });
+    const { data: profiles, error: profErr } = await supabaseServer.from('wpx_profiles').select('user_id,username,display_name,avatar_url').in('user_id', ids);
+    if (profErr) return NextResponse.json({ error: profErr.message }, { status: 500 });
+    return NextResponse.json({ following: profiles || [] });
   }
 
   return NextResponse.json({ error: 'Invalid type' }, { status: 400 });

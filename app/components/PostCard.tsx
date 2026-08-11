@@ -46,8 +46,13 @@ export default function PostCard({ post }: { post: any }) {
           if (fResp.ok) {
             const j = await fResp.json();
             const followers = j.followers || [];
-            setFollowerCount(followers.length);
-            setFollowing(meId ? followers.includes(meId) : false);
+            if (followers.length > 0 && typeof followers[0] === 'object') {
+              setFollowerCount(followers.length);
+              setFollowing(meId ? followers.some((f: any) => f.user_id === meId) : false);
+            } else {
+              setFollowerCount(followers.length);
+              setFollowing(meId ? followers.includes(meId) : false);
+            }
           } else {
             setFollowing(false);
           }

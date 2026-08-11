@@ -29,5 +29,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
   const { data: inserted, error } = await supabaseServer.from('wpx_post_comments').insert({ post_id: postId, author_id: authContext.user.id, body: body.body.trim() }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // notify post author
+  try {
+    const { data: postData } = await supabaseServer.from('wpx_posts').select('author_id').eq('id', postId).maybeSingle();
+    const authorId = postData?.author_id;
+    if (authorId && authorId !== authContext.user.id) {
+      await supabaseServer.from('wpx_notifications').insert({ user_id: authorId, type: 'comment', metadata: { post_id: postId, actor_id: authContext.user.id, comment_id: inserted.id } });
+    }
+  } catch {
+    // ignore
+  }
   return NextResponse.json({ comment: inserted });
 }
