@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     posts: (data || []).map((post: any) => ({
       id: post.id,
+      author_id: post.author_id,
       author: 'WIMPEX user',
       handle: '@wimpex',
       caption: post.caption || '',

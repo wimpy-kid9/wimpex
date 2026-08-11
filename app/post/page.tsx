@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
+import { authedFetch } from '@/lib/api-client';
 
 export default function CreatePostPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [draft, setDraft] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'connections' | 'private'>('public');
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -14,12 +16,37 @@ export default function CreatePostPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const editId = searchParams?.get('edit');
+    if (editId) setEditingId(editId);
+  }, [searchParams]);
 
   useEffect(() => {
     supabase.auth.getSession().then((result: { data: { session: any } | null }) => {
       setSession(result?.data?.session ?? null);
     });
   }, []);
+
+  useEffect(() => {
+    if (!editingId) return;
+    const load = async () => {
+      try {
+        const resp = await authedFetch(`/api/posts/${editingId}`);
+        if (!resp.ok) return;
+        const json = await resp.json();
+        const post = json.post;
+        if (post) {
+          setDraft(post.caption || '');
+          setVisibility(post.visibility || 'public');
+        }
+      } catch {
+        // ignore
+      }
+    };
+    void load();
+  }, [editingId]);
 
   useEffect(() => {
     if (!videoFile) {
@@ -45,6 +72,22 @@ export default function CreatePostPage() {
 
     setBusy(true);
     setError('');
+
+    if (editingId) {
+      const response = await authedFetch(`/api/posts/${editingId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ caption: draft.trim(), visibility })
+      });
+      setBusy(false);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        setError(payload.error || 'Unable to update post.');
+        return;
+      }
+      // redirect to the post detail page and show a confirmation toast
+      router.push(`/post/${editingId}?edited=1`);
+      return;
+    }
 
     const headers: Record<string, string> = {};
     if (session?.access_token) {
@@ -72,7 +115,8 @@ export default function CreatePostPage() {
       return;
     }
 
-    router.push('/feed');
+    // redirect to feed and show confirmation toast
+    router.push('/feed?created=1');
   };
 
   return (

@@ -28,7 +28,7 @@ body {
     radial-gradient(circle at 85% 20%, rgba(96, 165, 250, 0.18), transparent 22%),
     linear-gradient(135deg, var(--ink-950) 0%, var(--ink-900) 48%, var(--ink-800) 100%);
   color: var(--text);
-  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-inter, ui-sans-serif), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
@@ -42,21 +42,7 @@ body {
   color: white;
 }
 
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 100 900;
-  src: local('Inter Variable'), local('Inter'), url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap') format('woff2');
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Cormorant Garamond';
-  font-style: normal;
-  font-weight: 500 700;
-  src: local('Cormorant Garamond'), url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap') format('woff2');
-  font-display: swap;
-}
+/* Fonts are handled by next/font in app/layout.tsx; previous @font-face rules removed. */
 
 h1,
 h2,
@@ -74,7 +60,7 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-family: var(--font-cormorant, 'Times New Roman'), 'Times New Roman', serif;
   font-weight: 700;
 }
 
@@ -86,7 +72,7 @@ select {
 }
 
 .text-display {
-  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-family: var(--font-cormorant, 'Times New Roman'), 'Times New Roman', serif;
   font-weight: 700;
 }
 

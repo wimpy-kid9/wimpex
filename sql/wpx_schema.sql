@@ -411,3 +411,43 @@ CREATE POLICY wpx_room_recaps_select ON wpx_room_recaps
       WHERE p.room_id = wpx_room_recaps.room_id AND p.user_id = auth.uid()
     )
   );
+
+-- Part B: engagement tables
+CREATE TABLE IF NOT EXISTS wpx_post_likes (
+  post_id uuid NOT NULL REFERENCES wpx_posts(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  created_at timestamp with time zone DEFAULT now(),
+  PRIMARY KEY (post_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS wpx_post_comments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id uuid NOT NULL REFERENCES wpx_posts(id) ON DELETE CASCADE,
+  author_id uuid NOT NULL REFERENCES auth.users(id),
+  body text NOT NULL,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS wpx_post_favorites (
+  post_id uuid NOT NULL REFERENCES wpx_posts(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  created_at timestamp with time zone DEFAULT now(),
+  PRIMARY KEY (post_id, user_id)
+);
+
+ALTER TABLE wpx_post_likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wpx_post_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wpx_post_favorites ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS wpx_post_likes_own ON wpx_post_likes;
+CREATE POLICY wpx_post_likes_own ON wpx_post_likes
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS wpx_post_comments_insert_own ON wpx_post_comments;
+CREATE POLICY wpx_post_comments_insert_own ON wpx_post_comments
+  FOR INSERT WITH CHECK (author_id = auth.uid());
+
+DROP POLICY IF EXISTS wpx_post_favorites_own ON wpx_post_favorites;
+CREATE POLICY wpx_post_favorites_own ON wpx_post_favorites
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+

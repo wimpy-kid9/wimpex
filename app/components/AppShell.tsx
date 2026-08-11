@@ -1,9 +1,11 @@
-'use client';
+"use client";
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { getUserAccent } from '@/lib/ui-theme';
+import { authedFetch } from '@/lib/api-client';
+import BottomNav from './BottomNav';
 
 interface AppShellProps {
   children: ReactNode;
@@ -13,6 +15,8 @@ export default function AppShell({ children }: AppShellProps) {
   const accent = getUserAccent('wimpex-shell');
   const pathname = usePathname();
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [indicatorStyle, setIndicatorStyle] = useState<{ top?: number; height?: number }>({});
+  const itemRefs = useRef<Array<HTMLAnchorElement | null>>([]);
   const navItems = [
     { label: 'Feed', href: '/feed' },
     { label: 'Calls', href: '/calls' },
@@ -21,14 +25,14 @@ export default function AppShell({ children }: AppShellProps) {
     { label: 'Post', href: '/post' },
     { label: 'Profile', href: '/profile' }
   ];
-  const mobileNavItems = navItems.filter((item) => item.href !== '/messages');
+  // mobileNavItems was removed in redesign; keep navItems for desktop and mobile BottomNav
 
   const isActive = (href: string) => pathname === href || (href !== '/feed' && pathname?.startsWith(href));
 
   useEffect(() => {
     const loadNotifications = async () => {
       try {
-        const response = await fetch('/api/notifications');
+        const response = await authedFetch('/api/notifications');
         const payload = await response.json();
         setNotifications(payload.notifications || []);
       } catch {
@@ -42,7 +46,7 @@ export default function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen text-slate-100">
       <div className="hidden md:fixed md:inset-y-0 md:w-64 md:border-r md:border-white/10 md:bg-slate-950/70 md:px-4 md:py-8 md:backdrop-blur-xl">
-        <div className="space-y-8">
+        <div className="relative space-y-8">
           <div className="thread-line">
             <div className={`mb-3 inline-flex rounded-full bg-gradient-to-r ${accent.gradient} p-[1px]`}>
               <div className="thread-pill rounded-full bg-slate-950/90 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-slate-100">
@@ -64,14 +68,53 @@ export default function AppShell({ children }: AppShellProps) {
             </div>
           </div>
 
-          <nav className="space-y-2">
-            {navItems.map((item) => (
+          <nav className="relative space-y-2">
+            {/* animated liquid indicator */}
+            <div className="pointer-events-none absolute left-2 top-0 z-0 w-[calc(100%-1rem)] overflow-visible">
+              <div
+                className="absolute left-0 z-0 w-full rounded-2xl bg-amber-400/10 backdrop-blur-md transition-all duration-300"
+                style={{ top: indicatorStyle.top ?? 0, height: indicatorStyle.height ?? 0 }}
+              />
+            </div>
+
+            {navItems.map((item, idx) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`thread-card block rounded-2xl border px-4 py-3 text-sm font-medium transition duration-300 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white ${isActive(item.href) ? 'border-amber-400/40 bg-amber-400/10 text-white' : 'border-white/10 bg-white/[0.03] text-slate-200'}`}
+                ref={(el) => (itemRefs.current[idx] = el)}
+                onClick={() => {
+                  // compute indicator position on click
+                  const el = itemRefs.current[idx];
+                  if (el) {
+                    const rect = el.getBoundingClientRect();
+                    const parentRect = el.parentElement?.getBoundingClientRect();
+                    const top = parentRect ? rect.top - parentRect.top : rect.top;
+                    setIndicatorStyle({ top: top - 6, height: rect.height + 12 });
+                  }
+                }}
+                className={`relative z-10 thread-card group flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition duration-300 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white ${isActive(item.href) ? 'border-amber-400/40 bg-transparent text-white' : 'border-white/10 bg-white/[0.03] text-slate-200'}`}
               >
-                {item.label}
+                <span className="opacity-90">
+                  {item.href === '/feed' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  )}
+                  {item.href === '/calls' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M22 16.92V21a1 1 0 0 1-1.11 1 19.86 19.86 0 0 1-8.63-3.07A19.38 19.38 0 0 1 3.07 9.74 19.86 19.86 0 0 1 0 1.11 1 1 0 0 1 1 0h4.09a1 1 0 0 1 1 .76c.12.83.33 1.64.63 2.42a1 1 0 0 1-.24 1.03L5.2 6.79a16 16 0 0 0 10.45 10.45l1.58-1.58a1 1 0 0 1 1.03-.24c.78.3 1.59.51 2.42.63a1 1 0 0 1 .76 1V22z" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  )}
+                  {item.href === '/connections' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M16 11a4 4 0 1 0-8 0v1" strokeWidth="1.5"/><path d="M12 21v-4" strokeWidth="1.5"/></svg>
+                  )}
+                  {item.href === '/messages' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  )}
+                  {item.href === '/post' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M12 5v14M5 12h14" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  )}
+                  {item.href === '/profile' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="7" r="4" strokeWidth="1.5"/></svg>
+                  )}
+                </span>
+                <span>{item.label}</span>
               </Link>
             ))}
           </nav>
@@ -79,16 +122,13 @@ export default function AppShell({ children }: AppShellProps) {
       </div>
 
       <div className="md:pl-72">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">{children}</div>
+        <div className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 lg:px-8 md:pb-8">{children}</div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 flex items-center justify-around border-t border-white/10 bg-slate-950/90 p-3 text-sm text-slate-200 backdrop-blur-xl md:hidden">
-        {mobileNavItems.map((item) => (
-          <Link key={item.href} href={item.href} className={`rounded-2xl px-3 py-2 transition ${isActive(item.href) ? 'bg-amber-400/15 text-white' : 'hover:bg-white/10 hover:text-white'}`}>
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      {/* Bottom nav redesigned */}
+      <div className="md:hidden">
+        <BottomNav />
+      </div>
     </div>
   );
 }

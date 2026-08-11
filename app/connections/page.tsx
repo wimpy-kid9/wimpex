@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { authedFetch } from '@/lib/api-client';
 
 interface ProfileMatch {
   user_id: string;
@@ -19,7 +20,7 @@ export default function ConnectionsPage() {
   const [message, setMessage] = useState('');
 
   const loadState = async () => {
-    const response = await fetch('/api/connections');
+    const response = await authedFetch('/api/connections');
     const payload = await response.json();
     setRequests(payload.requests || []);
     setConnections(payload.connections || []);
@@ -36,7 +37,7 @@ export default function ConnectionsPage() {
         return;
       }
 
-      const response = await fetch(`/api/people?q=${encodeURIComponent(searchTerm)}`);
+      const response = await authedFetch(`/api/people?q=${encodeURIComponent(searchTerm)}`);
       const payload = await response.json();
       setSearchResults(payload.people || []);
     }, 220);
@@ -45,9 +46,8 @@ export default function ConnectionsPage() {
   }, [searchTerm]);
 
   const sendRequest = async () => {
-    const response = await fetch('/api/connections', {
+    const response = await authedFetch('/api/connections', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'send', recipient_id: recipientId })
     });
     const payload = await response.json();
@@ -57,9 +57,8 @@ export default function ConnectionsPage() {
   };
 
   const respond = async (connectionId: string, action: 'accept' | 'decline') => {
-    const response = await fetch('/api/connections', {
+    const response = await authedFetch('/api/connections', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, connection_id: connectionId })
     });
     const payload = await response.json();

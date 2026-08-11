@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { authedFetch } from '@/lib/api-client';
 
 interface ProfileMatch {
   user_id: string;
@@ -15,6 +16,8 @@ export default function MessagesPage() {
   const [searchResults, setSearchResults] = useState<ProfileMatch[]>([]);
   const [body, setBody] = useState('');
   const [message, setMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<'chats' | 'requests'>('chats');
+  const [requests, setRequests] = useState<any[]>([]);
 
   useEffect(() => {
     const timeout = window.setTimeout(async () => {
@@ -23,7 +26,7 @@ export default function MessagesPage() {
         return;
       }
 
-      const response = await fetch(`/api/people?q=${encodeURIComponent(searchTerm)}`);
+      const response = await authedFetch(`/api/people?q=${encodeURIComponent(searchTerm)}`);
       const payload = await response.json();
       setSearchResults(payload.people || []);
     }, 220);
@@ -32,9 +35,8 @@ export default function MessagesPage() {
   }, [searchTerm]);
 
   const sendMessage = async () => {
-    const response = await fetch('/api/messages', {
+    const response = await authedFetch('/api/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ recipient_id: recipientId, body })
     });
     const payload = await response.json();
@@ -43,12 +45,19 @@ export default function MessagesPage() {
   };
 
   useEffect(() => {
-    void fetch('/api/messages').then(async (response) => {
+    void authedFetch('/api/messages').then(async (response) => {
       const payload = await response.json();
       if (payload.error) {
         setMessage(payload.error);
       }
     });
+
+    const loadRequests = async () => {
+      const resp = await authedFetch('/api/connections');
+      const payload = await resp.json();
+      setRequests(payload.requests || []);
+    };
+    void loadRequests();
   }, []);
 
   return (
@@ -58,6 +67,30 @@ export default function MessagesPage() {
         <p className="mt-2 text-sm text-slate-400">Open a direct thread with an accepted connection.</p>
 
         <div className="mt-4 space-y-3">
+          <div className="flex gap-3 mb-3">
+            <button onClick={() => setActiveTab('chats')} className={`px-3 py-2 rounded-2xl ${activeTab === 'chats' ? 'bg-amber-400/10 text-white' : 'text-slate-300 hover:bg-white/5'}`}>Chats</button>
+            <button onClick={() => setActiveTab('requests')} className={`px-3 py-2 rounded-2xl ${activeTab === 'requests' ? 'bg-amber-400/10 text-white' : 'text-slate-300 hover:bg-white/5'}`}>Requests</button>
+          </div>
+
+          {activeTab === 'requests' ? (
+            <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-3">
+              {requests.length > 0 ? requests.map((r) => (
+                <div key={r.id} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 mb-2">
+                  <p className="font-medium text-white">{r.requester_id}</p>
+                  <div className="mt-2 flex gap-2">
+                    <button onClick={async () => {
+                      await authedFetch('/api/connections', { method: 'POST', body: JSON.stringify({ action: 'accept', connection_id: r.id }) });
+                      setRequests((cur) => cur.filter((x) => x.id !== r.id));
+                    }} className="rounded-xl bg-gradient-to-r from-amber-400 to-sky-500 px-3 py-2 text-sm font-semibold text-slate-950">Accept</button>
+                    <button onClick={async () => {
+                      await authedFetch('/api/connections', { method: 'POST', body: JSON.stringify({ action: 'decline', connection_id: r.id }) });
+                      setRequests((cur) => cur.filter((x) => x.id !== r.id));
+                    }} className="rounded-xl bg-rose-500 px-3 py-2 text-sm font-semibold text-slate-950">Decline</button>
+                  </div>
+                </div>
+              )) : <p className="text-sm text-slate-400">No requests</p>}
+            </div>
+          ) : null}
           <input value={searchTerm} onChange={(event) => {
             setSearchTerm(event.target.value);
             setRecipientId('');
