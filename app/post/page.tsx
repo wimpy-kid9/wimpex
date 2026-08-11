@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
@@ -40,6 +40,10 @@ export default function CreatePostPage() {
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [audioTime, setAudioTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -93,6 +97,19 @@ export default function CreatePostPage() {
   }, [mediaFile]);
 
   useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const onTime = () => setAudioTime(el.currentTime);
+    const onMeta = () => setAudioDuration(el.duration || 0);
+    el.addEventListener('timeupdate', onTime);
+    el.addEventListener('loadedmetadata', onMeta);
+    return () => {
+      el.removeEventListener('timeupdate', onTime);
+      el.removeEventListener('loadedmetadata', onMeta);
+    };
+  }, [selectedTrack]);
+
+  useEffect(() => {
     if (!spotifyQuery.trim()) {
       setTrackResults([]);
       return;
@@ -134,6 +151,20 @@ export default function CreatePostPage() {
       setError('Unsupported file type. Choose an image or video.');
       setMediaFile(null);
     }
+  };
+
+  const handleDrop = (ev: React.DragEvent) => {
+    ev.preventDefault();
+    const f = ev.dataTransfer.files?.[0] || null;
+    if (f) handleMediaChange(f);
+  };
+
+  const triggerFileSelect = () => fileInputRef.current?.click();
+
+  const removeMedia = () => {
+    setMediaFile(null);
+    setPreviewUrl(null);
+    setMediaType('video');
   };
 
   const selectTrack = (track: any) => {
@@ -245,14 +276,21 @@ export default function CreatePostPage() {
               <div className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
                 <div className="rounded-md border border-hairline bg-panel-2/70 p-4">
                   <label className="block text-sm font-medium text-slate">Add media</label>
-                  <label className="mt-3 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-hairline bg-panel/70 px-4 py-6 text-sm text-slate transition hover:bg-panel-2">
+                  <label onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} className="relative mt-3 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-hairline bg-panel/70 px-4 py-6 text-sm text-slate transition hover:bg-panel-2">
                     <input
+                      ref={fileInputRef}
                       type="file"
                       accept="image/*,video/*"
                       className="sr-only"
                       onChange={(event) => handleMediaChange(event.target.files?.[0] || null)}
                     />
                     {mediaFile ? `Selected: ${mediaFile.name}` : previewUrl ? 'Using existing media preview' : 'Drop an image or video or tap to choose'}
+                    { (previewUrl || mediaFile) ? (
+                      <div className="absolute top-3 right-3 flex gap-2">
+                        <button type="button" onClick={removeMedia} className="rounded-full bg-rose-500/20 px-2 py-1 text-xs text-rose-200">Remove</button>
+                        <button type="button" onClick={triggerFileSelect} className="rounded-full bg-ivory/5 px-2 py-1 text-xs text-ivory">Replace</button>
+                      </div>
+                    ) : null}
                   </label>
 
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -270,15 +308,20 @@ export default function CreatePostPage() {
                   </div>
 
                   {previewUrl ? (
-                    <div className={`mt-4 overflow-hidden rounded-md border border-hairline bg-panel-2/70 ${filterClasses[filterPreset]}`}>
+                    <div className={`mt-4 relative overflow-hidden rounded-md border border-hairline bg-panel-2/70 ${filterClasses[filterPreset]}`}>
                       {mediaType === 'image' ? (
                         <img src={previewUrl} alt={draft || 'Post preview'} className="h-[40vh] w-full object-cover md:h-72" />
                       ) : (
                         <video controls src={previewUrl} className="h-[40vh] w-full object-cover md:h-72" />
                       )}
+                      {/* thumbnail edit controls */}
+                      <div className="absolute bottom-3 right-3 flex gap-2">
+                        <button type="button" onClick={removeMedia} className="rounded-full bg-rose-500/20 px-2 py-1 text-xs text-rose-200">Remove</button>
+                        <button type="button" onClick={triggerFileSelect} className="rounded-full bg-ivory/5 px-2 py-1 text-xs text-ivory">Replace</button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="mt-4 flex h-56 items-center justify-center rounded-md border border-hairline bg-panel/60 text-sm text-slate">
+                    <div className="mt-4 flex h-40 md:h-56 items-center justify-center rounded-md border border-hairline bg-panel/60 text-sm text-slate">
                       Your image or video preview will appear here.
                     </div>
                   )}
@@ -325,7 +368,25 @@ export default function CreatePostPage() {
                         </div>
                       </div>
                       {selectedTrack.preview_url ? (
-                        <audio controls src={selectedTrack.preview_url} className="mt-4 w-full" />
+                        <div className="mt-4">
+                          <audio ref={audioRef} src={selectedTrack.preview_url} className="w-full" controls />
+                          <div className="mt-2 flex items-center gap-2">
+                            <input
+                              type="range"
+                              min={0}
+                              max={audioDuration || 0}
+                              step={0.01}
+                              value={audioTime}
+                              onChange={(e) => {
+                                const v = Number(e.target.value);
+                                if (audioRef.current) audioRef.current.currentTime = v;
+                                setAudioTime(v);
+                              }}
+                              className="w-full"
+                            />
+                            <div className="text-xs text-slate">{new Date(audioTime * 1000).toISOString().substr(14, 5)}</div>
+                          </div>
+                        </div>
                       ) : (
                         <p className="mt-4 text-xs text-slate">No preview available for this track.</p>
                       )}

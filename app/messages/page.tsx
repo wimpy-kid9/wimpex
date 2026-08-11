@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { authedFetch } from '@/lib/api-client';
 
 interface ProfileMatch {
@@ -49,6 +50,7 @@ export default function MessagesPage() {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
   const [recorder, setRecorder] = useState<MediaRecorder | null>(null);
+  const router = useRouter();
 
   const sortedConversations = useMemo(() => {
     return [...conversations].sort((a, b) => new Date(b.previewAt).getTime() - new Date(a.previewAt).getTime());
@@ -253,11 +255,16 @@ export default function MessagesPage() {
                       try {
                         if (resp.ok) {
                           // create an initial conversation so the user can immediately message
-                          await authedFetch('/api/messages', {
+                          const createResp = await authedFetch('/api/messages', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ recipient_id: request.requester_id, body: 'Connection accepted — hi!' })
                           });
+                          const created = await createResp.json().catch(() => ({}));
+                          if (createResp.ok && created.conversation?.id) {
+                            // navigate directly to the new thread
+                            try { router.push(`/messages/${created.conversation.id}`); } catch { window.location.href = `/messages/${created.conversation.id}`; }
+                          }
                         }
                       } catch {
                         // ignore conversation creation errors
