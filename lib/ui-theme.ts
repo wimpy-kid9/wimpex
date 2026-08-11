@@ -5,7 +5,8 @@ export const accent = {
 };
 
 // Kept for API compatibility with existing call sites.
-export function getUserAccent() {
+export function getUserAccent(seed: string) {
+  void seed;
   return accent;
 }
    
