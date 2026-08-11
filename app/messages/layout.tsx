@@ -1,9 +1,10 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import MessageList from '@/app/messages/MessageList';
 
-export default function MessagesLayout({ children }: { children: React.ReactNode }) {
+export default function MessagesLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isThreadRoute = /^\/messages\/[^/]+$/.test(pathname || '');
 

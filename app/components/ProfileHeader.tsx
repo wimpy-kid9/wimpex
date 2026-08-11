@@ -59,11 +59,13 @@ export default function ProfileHeader({ profile }: { profile: any }) {
         </div>
         <div>
           {isOwn ? (
-            <div>{summary ? summary.followerCount ?? 0 : '—'} followers</div>
-            <div>{summary ? summary.followingCount ?? 0 : '—'} following</div>
-            {summary?.shouldFollowBack ? <div className="text-gold">Follows you — follow back?</div> : null}
-            {summary?.mutual ? <div className="text-ivory/80">Follows each other</div> : null}
-          </div>
+            <div>
+              <div>{summary ? summary.followerCount ?? 0 : '—'} followers</div>
+              <div>{summary ? summary.followingCount ?? 0 : '—'} following</div>
+              {summary?.shouldFollowBack ? <div className="text-gold">Follows you — follow back?</div> : null}
+              {summary?.mutual ? <div className="text-ivory/80">Follows each other</div> : null}
+            </div>
+          ) : null}
         </div>
         <div>
           {isOwn ? (

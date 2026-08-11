@@ -312,7 +312,6 @@ export default function MessageList() {
               )}
             </div>
           </div>
-        </div>
 
           <div className="rounded-3xl border border-hairline bg-panel-2/70 p-4">
             <div>
