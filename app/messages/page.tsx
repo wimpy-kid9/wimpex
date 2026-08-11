@@ -248,8 +248,20 @@ export default function MessagesPage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     onClick={async () => {
-                      await authedFetch('/api/connections', { method: 'POST', body: JSON.stringify({ action: 'accept', connection_id: request.id }) });
+                      const resp = await authedFetch('/api/connections', { method: 'POST', body: JSON.stringify({ action: 'accept', connection_id: request.id }) });
                       setRequests((cur) => cur.filter((item) => item.id !== request.id));
+                      try {
+                        if (resp.ok) {
+                          // create an initial conversation so the user can immediately message
+                          await authedFetch('/api/messages', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ recipient_id: request.requester_id, body: 'Connection accepted — hi!' })
+                          });
+                        }
+                      } catch {
+                        // ignore conversation creation errors
+                      }
                     }}
                     className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-2 text-sm font-semibold text-slate-950"
                   >

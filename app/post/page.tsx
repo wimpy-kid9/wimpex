@@ -242,22 +242,7 @@ export default function CreatePostPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate">Caption</label>
-                <textarea
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  maxLength={280}
-                  placeholder="What are you sharing today?"
-                  className="min-h-[120px] w-full rounded-md border border-hairline bg-panel-2 px-4 py-3 text-sm text-ivory outline-none"
-                />
-                <div className="mt-2 flex items-center justify-between text-xs text-slate">
-                  <span>Keep it concise and intimate.</span>
-                  <span>{characterCount}/280</span>
-                </div>
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
                 <div className="rounded-md border border-hairline bg-panel-2/70 p-4">
                   <label className="block text-sm font-medium text-slate">Add media</label>
                   <label className="mt-3 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-hairline bg-panel/70 px-4 py-6 text-sm text-slate transition hover:bg-panel-2">
@@ -287,9 +272,9 @@ export default function CreatePostPage() {
                   {previewUrl ? (
                     <div className={`mt-4 overflow-hidden rounded-md border border-hairline bg-panel-2/70 ${filterClasses[filterPreset]}`}>
                       {mediaType === 'image' ? (
-                        <img src={previewUrl} alt={draft || 'Post preview'} className="h-[28vh] w-full object-cover md:h-56" />
+                        <img src={previewUrl} alt={draft || 'Post preview'} className="h-[40vh] w-full object-cover md:h-72" />
                       ) : (
-                        <video controls src={previewUrl} className="h-[28vh] w-full object-cover md:h-56" />
+                        <video controls src={previewUrl} className="h-[40vh] w-full object-cover md:h-72" />
                       )}
                     </div>
                   ) : (
@@ -353,6 +338,21 @@ export default function CreatePostPage() {
                       <p className="mt-2 text-slate">Choose who can see this post once it goes live.</p>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate">Caption</label>
+                <textarea
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  maxLength={280}
+                  placeholder="What are you sharing today?"
+                  className="min-h-[120px] w-full rounded-md border border-hairline bg-panel-2 px-4 py-3 text-sm text-ivory outline-none"
+                />
+                <div className="mt-2 flex items-center justify-between text-xs text-slate">
+                  <span>Keep it concise and intimate.</span>
+                  <span>{characterCount}/280</span>
                 </div>
               </div>
 
