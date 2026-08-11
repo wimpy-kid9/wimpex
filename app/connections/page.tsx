@@ -113,7 +113,7 @@ export default function ConnectionsPage() {
                 <p className="mt-1 text-xs uppercase tracking-[0.24em] text-slate">Pending request</p>
                 <div className="mt-2 flex gap-2">
                   <button onClick={() => respond(request.id, 'accept')} className="rounded-xl bg-gradient-to-r from-gold to-gold-deep px-3 py-2 text-sm font-semibold text-obsidian">Accept</button>
-                  <button onClick={() => respond(request.id, 'decline')} className="rounded-xl bg-rose-500 px-3 py-2 text-sm font-semibold text-slate-950">Decline</button>
+                  <button onClick={() => respond(request.id, 'decline')} className="rounded-xl bg-rose-500 px-3 py-2 text-sm font-semibold text-obsidian">Decline</button>
                 </div>
               </div>
             ))}

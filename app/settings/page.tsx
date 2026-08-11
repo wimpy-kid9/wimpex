@@ -114,7 +114,7 @@ export default function SettingsPage() {
           <button
             onClick={saveSettings}
             disabled={saving}
-            className="rounded-2xl bg-gold px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-gold-deep disabled:opacity-50"
+            className="rounded-2xl bg-gold px-6 py-3 text-sm font-semibold text-obsidian transition hover:bg-gold-deep disabled:opacity-50"
           >
             {saving ? 'Saving…' : 'Save changes'}
           </button>
