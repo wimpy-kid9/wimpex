@@ -28,6 +28,8 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 ## Phase 2 — Core posting, feed, and visual identity
 - [x] Implement video upload pipeline
 - [x] Add per-post visibility controls (public / connections-only / private)
+- [x] Add image post support and media_type enforcement
+- [x] Add audio metadata fields for posts
 - [ ] Build mobile and desktop feed layouts
 - [x] Apply the Adire Signal visual identity
 - [x] Add report/block affordances on posts and profiles
@@ -42,6 +44,8 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [x] Implement 1:1 text messaging
 - [x] Add persistent desktop messaging panel
 - [x] Add mobile full-screen messaging UI
+- [x] Add chat media support
+- [x] Add storage buckets and object policies for chat/media uploads
 - [x] Create `wpx_notifications` for requests and messages
 - [ ] Confirm two users can connect and message each other
 
