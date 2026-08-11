@@ -43,11 +43,22 @@ export default function ProfileHeader({ profile }: { profile: any }) {
   return (
     <section className="surface-veil rounded-md bg-panel-2/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
       <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          {profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt={profile.display_name || profile.username || 'Profile avatar'} className="h-20 w-20 rounded-full object-cover" />
+          ) : (
+            <div className="grid h-20 w-20 place-items-center rounded-full bg-panel-2 text-3xl font-semibold text-slate">
+              {profile?.display_name?.charAt(0)?.toUpperCase() || profile?.username?.charAt(0)?.toUpperCase() || 'P'}
+            </div>
+          )}
+          <div>
+            <p className="text-sm uppercase tracking-[0.3em] text-gold">Profile</p>
+            <h1 className="text-display mt-3 text-3xl text-ivory">{profile?.display_name ?? 'Profile'}</h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate">{profile?.bio ?? 'This user has not added a bio.'}</p>
+          </div>
+        </div>
         <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-gold">Profile</p>
-          <h1 className="text-display mt-3 text-3xl text-ivory">{profile?.display_name ?? 'Profile'}</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate">{profile?.bio ?? 'This user has not added a bio.'}</p>
-          <div className="mt-3 flex items-center gap-4 text-sm text-slate">
+          {isOwn ? (
             <div>{summary ? summary.followerCount ?? 0 : '—'} followers</div>
             <div>{summary ? summary.followingCount ?? 0 : '—'} following</div>
             {summary?.shouldFollowBack ? <div className="text-gold">Follows you — follow back?</div> : null}

@@ -82,30 +82,67 @@ export default function ProfileTabs({ profile, isOwn }: { profile: any; isOwn: b
           <p className="text-sm text-slate">No items found.</p>
         ) : (
           <div className="space-y-4">
-            {items.map((item) => (
-              <div key={item.id} className="rounded-2xl border border-hairline bg-panel-2/80 p-4">
-                {item.type === 'user' ? (
-                  <a href={`/user/${item.id}`} className="block">
-                    <div className="flex items-center gap-3">
-                      {item.profile?.avatar_url ? (
-                        <img src={item.profile.avatar_url} alt={item.profile.display_name || item.profile.username} className="h-10 w-10 rounded-full object-cover" />
-                      ) : (
-                        <div className="h-10 w-10 rounded-full bg-panel-2" />
-                      )}
-                      <div>
-                        <p className="font-semibold text-ivory">{item.profile?.display_name || item.profile?.username || item.id}</p>
-                        <p className="text-xs text-slate">@{item.profile?.username || item.id}</p>
+            {items.map((item) => {
+              const previewUrl = item.thumbnailUrl || item.imageUrl || item.videoUrl || null;
+              const isVideo = item.mediaType === 'video' && !!item.videoUrl;
+
+              return (
+                <div key={item.id} className="rounded-2xl border border-hairline bg-panel-2/80 p-4">
+                  {item.type === 'user' ? (
+                    <a href={`/user/${item.id}`} className="block">
+                      <div className="flex items-center gap-3">
+                        {item.profile?.avatar_url ? (
+                          <img src={item.profile.avatar_url} alt={item.profile.display_name || item.profile.username} className="h-10 w-10 rounded-full object-cover" />
+                        ) : (
+                          <div className="grid h-10 w-10 place-items-center rounded-full bg-panel-2 text-sm text-slate">
+                            {item.profile?.display_name?.charAt(0)?.toUpperCase() || item.profile?.username?.charAt(0)?.toUpperCase() || 'U'}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-semibold text-ivory">{item.profile?.display_name || item.profile?.username || item.id}</p>
+                          <p className="text-xs text-slate">@{item.profile?.username || item.id}</p>
+                        </div>
+                      </div>
+                    </a>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-[auto_1fr] md:items-start">
+                      <div className="flex items-center gap-3">
+                        {item.avatar_url ? (
+                          <img src={item.avatar_url} alt={item.author || item.handle || 'Author avatar'} className="h-10 w-10 rounded-full object-cover" />
+                        ) : (
+                          <div className="grid h-10 w-10 place-items-center rounded-full bg-panel-2 text-sm text-slate">
+                            {item.author?.charAt(0)?.toUpperCase() || item.handle?.charAt(1)?.toUpperCase() || 'W'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="font-semibold text-ivory">{item.author || 'Unknown author'}</p>
+                          <p className="text-xs text-slate">{item.handle || '@wimpex'}</p>
+                        </div>
+                        <p className="text-sm text-slate">{item.caption || 'No caption yet.'}</p>
+                        {previewUrl ? (
+                          <div className="overflow-hidden rounded-3xl border border-hairline bg-panel/80">
+                            {isVideo ? (
+                              <video
+                                muted
+                                playsInline
+                                loop
+                                src={item.videoUrl}
+                                poster={item.thumbnailUrl || ''}
+                                className="h-28 w-full object-cover"
+                              />
+                            ) : (
+                              <img src={previewUrl} alt={item.caption || 'Post preview'} className="h-28 w-full object-cover" />
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
-                  </a>
-                ) : (
-                  <>
-                    <p className="font-semibold text-ivory">{item.author || 'Unknown author'}</p>
-                    <p className="mt-2 text-sm text-slate">{item.caption}</p>
-                  </>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

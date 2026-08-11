@@ -97,11 +97,20 @@ export default function SearchPage() {
         {results.length > 0 ? (
           results.map((person) => (
             <Link key={person.user_id} href={`/user/${person.user_id}`} className="block rounded-md border border-hairline bg-panel-2/80 p-5 transition hover:border-amber-400/30 hover:bg-panel/90">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-lg font-semibold text-ivory">{person.display_name || person.username}</p>
-                  <p className="text-sm text-slate">@{person.username}</p>
-                  {person.bio ? <p className="mt-2 text-sm text-slate">{person.bio}</p> : null}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-4">
+                  {person.avatar_url ? (
+                    <img src={person.avatar_url} alt={person.display_name || person.username} className="h-12 w-12 rounded-full object-cover" />
+                  ) : (
+                    <div className="grid h-12 w-12 place-items-center rounded-full bg-panel-2 text-sm font-semibold text-slate">
+                      {person.display_name?.charAt(0)?.toUpperCase() || person.username?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-lg font-semibold text-ivory">{person.display_name || person.username}</p>
+                    <p className="text-sm text-slate">@{person.username}</p>
+                    {person.bio ? <p className="mt-2 text-sm text-slate">{person.bio}</p> : null}
+                  </div>
                 </div>
                 <span className="rounded-full bg-gold/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-gold">View profile</span>
               </div>

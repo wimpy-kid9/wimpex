@@ -139,10 +139,19 @@ export default function PostCard({ post }: { post: any }) {
     <article className="feed-snap-item thread-card surface-veil rounded-md bg-panel-2/80 p-5 shadow-lg shadow-black/20 backdrop-blur-xl min-h-[78vh] md:min-h-0">
       <div className={`rounded-md bg-gradient-to-r ${accent.gradient} p-[1px]`}>
         <div className="rounded-md bg-panel/90 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-lg font-semibold text-ivory">{post.author}</p>
-              <p className="text-sm text-slate">{post.handle}</p>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-center gap-3">
+              {post.avatar_url ? (
+                <img src={post.avatar_url} alt={post.author || post.handle || 'Author avatar'} className="h-12 w-12 rounded-full object-cover" />
+              ) : (
+                <div className="grid h-12 w-12 place-items-center rounded-full bg-panel-2 text-sm font-semibold text-slate">
+                  {post.author?.charAt(0).toUpperCase() || post.handle?.charAt(1)?.toUpperCase() || 'W'}
+                </div>
+              )}
+              <div>
+                <p className="text-lg font-semibold text-ivory">{post.author}</p>
+                <p className="text-sm text-slate">{post.handle}</p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               {followerCount !== null ? <div className="text-sm text-slate">{followerCount} followers</div> : null}

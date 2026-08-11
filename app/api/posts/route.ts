@@ -5,12 +5,15 @@ import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-serve
 const VIDEO_BUCKET = 'wpx-videos';
 const IMAGE_BUCKET = 'wpx-images';
 
-function mapPost(post: any, likeCounts: Record<string, number>, favoriteCounts: Record<string, number>) {
+function mapPost(post: any, likeCounts: Record<string, number>, favoriteCounts: Record<string, number>, authorMap: Record<string, any>) {
+  const author = authorMap[post.author_id] || {};
+
   return {
     id: post.id,
     author_id: post.author_id,
-    author: post.author_display_name || 'WIMPEX user',
-    handle: post.author_handle || '@wimpex',
+    author: author.display_name || post.author_display_name || 'WIMPEX user',
+    handle: author.username ? `@${author.username}` : post.author_handle || '@wimpex',
+    avatar_url: author.avatar_url || null,
     caption: post.caption || '',
     visibility: post.visibility || 'public',
     createdAt: post.created_at,
@@ -29,6 +32,24 @@ function mapPost(post: any, likeCounts: Record<string, number>, favoriteCounts: 
     favorite_count: favoriteCounts[post.id] ?? 0,
     share_count: post.share_count ?? 0
   };
+}
+
+async function loadAuthors(authorIds: string[]) {
+  if (authorIds.length === 0) return {};
+
+  const { data: authors, error: authorError } = await supabaseServer
+    .from('wpx_profiles')
+    .select('user_id, display_name, username, avatar_url')
+    .in('user_id', authorIds);
+
+  if (authorError) {
+    return {};
+  }
+
+  return (authors || []).reduce((acc: Record<string, any>, author: any) => {
+    if (author?.user_id) acc[author.user_id] = author;
+    return acc;
+  }, {} as Record<string, any>);
 }
 
 async function loadCounts(postIds: string[]) {
@@ -152,10 +173,12 @@ export async function GET(request: NextRequest) {
   }
 
   const postIds = rows.map((post) => post.id);
+  const authorIds = Array.from(new Set(rows.map((post) => post.author_id).filter(Boolean)));
+  const authorMap = await loadAuthors(authorIds);
   const { likeCounts, favoriteCounts } = await loadCounts(postIds);
 
   return NextResponse.json({
-    posts: rows.map((post) => mapPost(post, likeCounts, favoriteCounts))
+    posts: rows.map((post) => mapPost(post, likeCounts, favoriteCounts, authorMap))
   });
 }
 

@@ -23,9 +23,27 @@ export default async function PostPage({ params }: Props) {
     );
   }
 
+  let enrichedPost = post;
+  if (post.author_id) {
+    const { data: profile } = await supabaseServer
+      .from('wpx_profiles')
+      .select('display_name, username, avatar_url')
+      .eq('user_id', post.author_id)
+      .maybeSingle();
+
+    if (profile) {
+      enrichedPost = {
+        ...post,
+        author: profile.display_name || post.author_display_name || 'WIMPEX user',
+        handle: profile.username ? `@${profile.username}` : post.author_handle || '@wimpex',
+        avatar_url: profile.avatar_url || null
+      };
+    }
+  }
+
   return (
     <main className="p-8">
-      <PostDetailClient post={post} />
+      <PostDetailClient post={enrichedPost} />
     </main>
   );
 }

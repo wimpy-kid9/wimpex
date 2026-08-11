@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { supabaseServer } from '@/lib/supabase-server';
 
+async function enrichPostWithAuthor(post: any) {
+  if (!post?.author_id) return post;
+
+  const { data: profile, error: profileError } = await supabaseServer
+    .from('wpx_profiles')
+    .select('display_name, username, avatar_url')
+    .eq('user_id', post.author_id)
+    .maybeSingle();
+
+  if (profileError) return post;
+
+  return {
+    ...post,
+    author: profile?.display_name || post.author_display_name || 'WIMPEX user',
+    handle: profile?.username ? `@${profile.username}` : post.author_handle || '@wimpex',
+    avatar_url: profile?.avatar_url || null
+  };
+}
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const postId = params.id;
   try {
@@ -14,7 +33,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  return NextResponse.json({ post: data });
+  const post = await enrichPostWithAuthor(data);
+  return NextResponse.json({ post });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
