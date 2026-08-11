@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authedFetch } from '@/lib/api-client';
@@ -15,8 +15,11 @@ export default function ThreadPage() {
   const [draft, setDraft] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [notice, setNotice] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+  const touchCurrentX = useRef<number | null>(null);
 
-  const loadThread = async () => {
+  const loadThread = useCallback(async () => {
     const resp = await authedFetch(`/api/messages?conversation_id=${encodeURIComponent(conversationId)}`);
     const payload = await resp.json();
     if (!resp.ok) {
@@ -25,12 +28,66 @@ export default function ThreadPage() {
     }
     setMessages(payload.messages || []);
     if (payload.conversation) setConversation(payload.conversation);
-  };
+  }, [conversationId]);
 
   useEffect(() => {
     if (!conversationId) return;
     void loadThread();
-  }, [conversationId]);
+  }, [conversationId, loadThread]);
+
+  const startCall = async (callType: 'voice' | 'video') => {
+    if (!conversation?.otherUser?.user_id) return;
+    try {
+      const resp = await authedFetch('/api/calls', {
+        method: 'POST',
+        body: JSON.stringify({ callee_id: conversation.otherUser.user_id, call_type: callType })
+      });
+      const payload = await resp.json();
+      if (resp.ok && payload.room_id) {
+        window.location.href = `/calls?room_id=${encodeURIComponent(payload.room_id)}`;
+      } else {
+        setNotice(payload.error || 'Unable to start call.');
+      }
+    } catch (error) {
+      console.error('Unable to start call', error);
+      setNotice('Unable to start call.');
+    }
+  };
+
+  useEffect(() => {
+    const onTouchStart = (event: TouchEvent) => {
+      touchStartX.current = event.touches[0]?.clientX ?? null;
+      touchCurrentX.current = touchStartX.current;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      touchCurrentX.current = event.touches[0]?.clientX ?? null;
+      if (touchStartX.current !== null && touchCurrentX.current !== null && touchCurrentX.current - touchStartX.current < -40) {
+        setIsDragging(true);
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (touchStartX.current !== null && touchCurrentX.current !== null) {
+        const delta = touchCurrentX.current - touchStartX.current;
+        if (delta < -100) {
+          router.push('/messages');
+        }
+      }
+      touchStartX.current = null;
+      touchCurrentX.current = null;
+      setIsDragging(false);
+    };
+
+    window.addEventListener('touchstart', onTouchStart);
+    window.addEventListener('touchmove', onTouchMove);
+    window.addEventListener('touchend', onTouchEnd);
+    return () => {
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [router]);
 
   const sendMessage = async () => {
     if (!draft.trim() && !attachment) {
@@ -54,45 +111,43 @@ export default function ThreadPage() {
     setAttachment(null);
     await loadThread();
     // optionally refresh conversations list on parent route
-    try { router.refresh(); } catch {}
+    try {
+      router.refresh();
+    } catch (error) {
+      console.error('Unable to refresh router after sending message', error);
+    }
   };
 
   return (
-    <main>
+    <main className={`transition-transform duration-300 ${isDragging ? 'translate-x-[-8px]' : 'translate-x-0'}`}>
       <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-gold">Thread</p>
-          <h2 className="text-2xl font-semibold text-ivory">{conversation?.title || conversation?.otherUser?.display_name || `Conversation ${conversationId}`}</h2>
-          {conversation?.otherUser?.user_id ? (
-            <Link href={`/user/${conversation.otherUser.user_id}`} className="text-xs text-slate hover:underline">View profile</Link>
-          ) : null}
+        <div className="flex items-center gap-3">
+          <Link href="/messages" className="rounded-full border border-hairline bg-panel/60 p-2 text-ivory transition hover:bg-ivory/10" aria-label="Back to messages">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M15 18l-6-6 6-6" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </Link>
+          <div>
+            <p className="text-sm uppercase tracking-[0.3em] text-gold">Thread</p>
+            <h2 className="text-2xl font-semibold text-ivory">{conversation?.title || conversation?.otherUser?.display_name || `Conversation ${conversationId}`}</h2>
+            {conversation?.otherUser?.user_id ? (
+              <Link href={`/user/${conversation.otherUser.user_id}`} className="text-xs text-slate hover:underline">View profile</Link>
+            ) : null}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={async () => {
-              if (!conversation?.otherUser?.user_id) return;
-              try {
-                const resp = await authedFetch('/api/calls', {
-                  method: 'POST',
-                  body: JSON.stringify({ participant_id: conversation.otherUser.user_id })
-                });
-                const payload = await resp.json();
-                if (resp.ok && payload.room_id) {
-                  // navigate to calls page which can join the room
-                  window.location.href = `/calls?room_id=${encodeURIComponent(payload.room_id)}`;
-                } else {
-                  setNotice(payload.error || 'Unable to start call.');
-                }
-              } catch (err) {
-                setNotice('Unable to start call.');
-              }
-            }}
-            className="rounded-md p-2 text-ivory bg-panel/60"
-            title="Start call"
+            onClick={() => startCall('voice')}
+            className="rounded-full border border-hairline bg-panel/60 p-2 text-ivory transition hover:bg-ivory/10"
+            title="Start voice call"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M22 16.92V21a1 1 0 0 1-1.11 1 19.86 19.86 0 0 1-8.63-3.07A19.38 19.38 0 0 1 3.07 9.74 19.86 19.86 0 0 1 0 1.11 1 1 0 0 1 1 0h4.09a1 1 0 0 1 1 .76c.12.83.33 1.64.63 2.42a1 1 0 0 1-.24 1.03L5.2 6.79a16 16 0 0 0 10.45 10.45l1.58-1.58a1 1 0 0 1 1.03-.24c.78.3 1.59.51 2.42.63a1 1 0 0 1 .76 1V22z" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
-          <a href={`/user/${conversation?.otherUser?.user_id}`} className="text-sm text-slate hover:underline">View profile</a>
+          <button
+            onClick={() => startCall('video')}
+            className="rounded-full border border-hairline bg-panel/60 p-2 text-ivory transition hover:bg-ivory/10"
+            title="Start video call"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M15 7h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="6" width="12" height="12" rx="2" strokeWidth="1.4"/><path d="M9 10v4" strokeWidth="1.4" strokeLinecap="round"/></svg>
+          </button>
         </div>
       </div>
 

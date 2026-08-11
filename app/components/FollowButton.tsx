@@ -7,6 +7,7 @@ export default function FollowButton({ userId }: { userId: string }) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [following, setFollowing] = useState<boolean | null>(null);
+  const [shouldFollowBack, setShouldFollowBack] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function FollowButton({ userId }: { userId: string }) {
         const summary = await summaryResp.json();
         setFollowerCount(summary.followerCount ?? null);
         setFollowing(!!summary.isFollowing);
+        setShouldFollowBack(!!summary.shouldFollowBack);
       } catch (err) {
         setFollowerCount(null);
         setFollowing(false);
@@ -69,7 +71,7 @@ export default function FollowButton({ userId }: { userId: string }) {
       {followerCount !== null ? <div className="text-sm text-slate">{followerCount} followers</div> : null}
       {currentUserId && currentUserId !== userId ? (
         <button onClick={toggleFollow} disabled={loading} className={`rounded-2xl px-4 py-2 text-sm font-semibold ${following ? 'bg-ivory/5 text-ivory' : 'bg-gold/20 text-gold'}`}>
-          {following ? 'Following' : 'Follow'}
+          {following ? 'Following' : shouldFollowBack ? 'Follow Back' : 'Follow'}
         </button>
       ) : null}
     </div>

@@ -56,7 +56,10 @@ export default function ProfileHeader({ profile }: { profile: any }) {
         </div>
         <div>
           {isOwn ? (
-            <a href="/settings" className="rounded-2xl border border-hairline px-4 py-2 text-sm font-semibold text-ivory transition hover:bg-ivory/10">Edit profile</a>
+            <div className="flex flex-wrap gap-2">
+              <a href="/settings" className="rounded-2xl border border-hairline px-4 py-2 text-sm font-semibold text-ivory transition hover:bg-ivory/10">Edit profile</a>
+              <a href="/calls" className="rounded-2xl border border-hairline px-4 py-2 text-sm font-semibold text-ivory transition hover:bg-ivory/10">Call history</a>
+            </div>
           ) : (
             profile?.user_id ? (
               <div className="flex flex-wrap gap-2">

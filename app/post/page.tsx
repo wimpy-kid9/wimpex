@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
@@ -153,7 +153,7 @@ export default function CreatePostPage() {
     }
   };
 
-  const handleDrop = (ev: React.DragEvent) => {
+  const handleDrop = (ev: DragEvent) => {
     ev.preventDefault();
     const f = ev.dataTransfer.files?.[0] || null;
     if (f) handleMediaChange(f);
@@ -273,161 +273,188 @@ export default function CreatePostPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-              <div className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
-                <div className="rounded-md border border-hairline bg-panel-2/70 p-4">
-                  <label className="block text-sm font-medium text-slate">Add media</label>
-                  <label onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} className="relative mt-3 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-hairline bg-panel/70 px-4 py-6 text-sm text-slate transition hover:bg-panel-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*,video/*"
-                      className="sr-only"
-                      onChange={(event) => handleMediaChange(event.target.files?.[0] || null)}
-                    />
-                    {mediaFile ? `Selected: ${mediaFile.name}` : previewUrl ? 'Using existing media preview' : 'Drop an image or video or tap to choose'}
-                    { (previewUrl || mediaFile) ? (
-                      <div className="absolute top-3 right-3 flex gap-2">
-                        <button type="button" onClick={removeMedia} className="rounded-full bg-rose-500/20 px-2 py-1 text-xs text-rose-200">Remove</button>
-                        <button type="button" onClick={triggerFileSelect} className="rounded-full bg-ivory/5 px-2 py-1 text-xs text-ivory">Replace</button>
+              <div className="overflow-hidden rounded-[2rem] border border-hairline bg-panel-2/70">
+                <div className="relative aspect-[9/16] min-h-[320px] overflow-hidden bg-panel/70 sm:aspect-[4/5] lg:min-h-[520px]">
+                  {previewUrl ? (
+                    <div className={`absolute inset-0 ${filterClasses[filterPreset]}`}>
+                      {mediaType === 'image' ? (
+                        <img src={previewUrl} alt={draft || 'Post preview'} className="h-full w-full object-cover" />
+                      ) : (
+                        <video controls src={previewUrl} className="h-full w-full object-cover" />
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-gradient-to-br from-panel-2 via-panel to-obsidian p-8 text-center text-slate">
+                      <div className="max-w-sm">
+                        <p className="text-xs uppercase tracking-[0.32em] text-gold">Media first</p>
+                        <p className="mt-3 text-lg font-semibold text-ivory">Drop a photo or video here to publish.</p>
+                        <p className="mt-2 text-sm text-slate">The preview stays front and center, while captions, visibility, and audio live below.</p>
                       </div>
-                    ) : null}
-                  </label>
+                    </div>
+                  )}
 
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <div className="absolute inset-x-0 top-4 flex items-center justify-between px-4 sm:px-6">
+                    <div className="rounded-full border border-hairline bg-obsidian/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-ivory">
+                      {visibility === 'public' ? 'Public' : visibility === 'connections' ? 'Connections' : 'Private'}
+                    </div>
+                    <div className="flex gap-2">
+                      {previewUrl || mediaFile ? (
+                        <>
+                          <button type="button" onClick={removeMedia} className="rounded-full bg-rose-500/20 px-2.5 py-1 text-xs font-semibold text-rose-100">Remove</button>
+                          <button type="button" onClick={triggerFileSelect} className="rounded-full bg-ivory/10 px-2.5 py-1 text-xs font-semibold text-ivory">Replace</button>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-obsidian/95 via-obsidian/65 to-transparent px-4 py-4 sm:px-6">
+                    <label onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-hairline bg-panel/50 px-4 py-3 text-sm text-slate transition hover:bg-panel-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,video/*"
+                        className="sr-only"
+                        onChange={(event) => handleMediaChange(event.target.files?.[0] || null)}
+                      />
+                      {mediaFile ? `Selected: ${mediaFile.name}` : previewUrl ? 'Tap to change media' : 'Drop a photo or video or tap to choose'}
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-4 p-4 sm:p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.32em] text-slate">Filters</p>
+                      <p className="mt-1 text-sm text-slate">Choose a preset to tone the preview before publishing.</p>
+                    </div>
+                    <div className="rounded-full border border-hairline bg-ivory/5 px-3 py-1 text-xs uppercase tracking-[0.26em] text-slate">
+                      {mediaType === 'image' ? 'Image' : 'Video'}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
                     {FILTER_PRESETS.map((preset) => (
                       <button
                         key={preset.key}
                         type="button"
                         onClick={() => setFilterPreset(preset.key)}
-                        className={`rounded-2xl border px-3 py-2 text-left text-sm ${filterPreset === preset.key ? 'border-amber-400 bg-gold/10 text-ivory' : 'border-hairline text-slate hover:border-white/20 hover:bg-ivory/5'}`}
+                        className={`rounded-full border px-3 py-2 text-left text-sm ${filterPreset === preset.key ? 'border-amber-400 bg-gold/10 text-ivory' : 'border-hairline text-slate hover:border-white/20 hover:bg-ivory/5'}`}
                       >
-                        <p className="font-semibold">{preset.label}</p>
-                        <p className="text-xs text-slate">{preset.description}</p>
+                        <span className="font-semibold">{preset.label}</span>
                       </button>
                     ))}
                   </div>
 
-                  {previewUrl ? (
-                    <div className={`mt-4 relative overflow-hidden rounded-md border border-hairline bg-panel-2/70 ${filterClasses[filterPreset]}`}>
-                      {mediaType === 'image' ? (
-                        <img src={previewUrl} alt={draft || 'Post preview'} className="h-[40vh] w-full object-cover md:h-72" />
-                      ) : (
-                        <video controls src={previewUrl} className="h-[40vh] w-full object-cover md:h-72" />
-                      )}
-                      {/* thumbnail edit controls */}
-                      <div className="absolute bottom-3 right-3 flex gap-2">
-                        <button type="button" onClick={removeMedia} className="rounded-full bg-rose-500/20 px-2 py-1 text-xs text-rose-200">Remove</button>
-                        <button type="button" onClick={triggerFileSelect} className="rounded-full bg-ivory/5 px-2 py-1 text-xs text-ivory">Replace</button>
+                  <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate">Caption</label>
+                      <textarea
+                        value={draft}
+                        onChange={(event) => setDraft(event.target.value)}
+                        maxLength={280}
+                        placeholder="What are you sharing today?"
+                        className="min-h-[120px] w-full rounded-2xl border border-hairline bg-panel-2 px-4 py-3 text-sm text-ivory outline-none"
+                      />
+                      <div className="mt-2 flex items-center justify-between text-xs text-slate">
+                        <span>Keep it concise and intimate.</span>
+                        <span>{characterCount}/280</span>
                       </div>
                     </div>
-                  ) : (
-                    <div className="mt-4 flex h-40 md:h-56 items-center justify-center rounded-md border border-hairline bg-panel/60 text-sm text-slate">
-                      Your image or video preview will appear here.
-                    </div>
-                  )}
-                </div>
 
-                <div className="rounded-md border border-hairline bg-panel-2/70 p-4">
-                  <label className="block text-sm font-medium text-slate">Spotify audio</label>
-                  <input
-                    value={spotifyQuery}
-                    onChange={(event) => {
-                      setSpotifyQuery(event.target.value);
-                      setSelectedTrack(null);
-                    }}
-                    placeholder="Search for a track to attach"
-                    className="mt-3 w-full rounded-md border border-hairline bg-panel px-4 py-3 text-sm text-ivory outline-none"
-                  />
-                  {trackResults.length > 0 ? (
-                    <div className="mt-3 space-y-2 max-h-72 overflow-y-auto">
-                      {trackResults.map((track) => (
-                        <button
-                          key={track.id}
-                          type="button"
-                          onClick={() => selectTrack(track)}
-                          className="w-full rounded-2xl border border-hairline bg-panel/80 px-4 py-3 text-left text-sm text-ivory transition hover:border-hairline-strong hover:bg-panel-2"
-                        >
-                          <p className="font-semibold">{track.title}</p>
-                          <p className="text-xs text-slate">{track.artist}</p>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  {selectedTrack ? (
-                    <div className="mt-4 rounded-md border border-amber-400/20 bg-panel/90 p-4 text-sm text-ivory">
-                      <div className="flex items-center gap-3">
-                        {selectedTrack.cover_art_url ? (
-                          <img src={selectedTrack.cover_art_url} alt={`${selectedTrack.title} cover`} className="h-14 w-14 rounded-2xl object-cover" />
-                        ) : (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-panel-2 text-xs uppercase tracking-[0.25em] text-slate">Audio</div>
-                        )}
-                        <div>
-                          <p className="font-semibold text-ivory">{selectedTrack.title}</p>
-                          <p className="text-xs text-slate">{selectedTrack.artist}</p>
+                    <div className="space-y-4 rounded-2xl border border-hairline bg-panel/60 p-4">
+                      <div className="rounded-2xl border border-hairline bg-gradient-to-r from-obsidian to-panel p-[1px]">
+                        <div className="rounded-[calc(1.2rem-1px)] bg-panel/90 p-4 text-sm text-slate">
+                          <p className="font-semibold text-ivory">Visibility</p>
+                          <select value={visibility} onChange={(event) => setVisibility(event.target.value as 'public' | 'connections' | 'private')} className="mt-3 w-full rounded-xl border border-hairline bg-panel px-3 py-2 text-sm text-ivory outline-none">
+                            <option value="public">Public</option>
+                            <option value="connections">Connections only</option>
+                            <option value="private">Private</option>
+                          </select>
                         </div>
                       </div>
-                      {selectedTrack.preview_url ? (
-                        <div className="mt-4">
-                          <audio ref={audioRef} src={selectedTrack.preview_url} className="w-full" controls />
-                          <div className="mt-2 flex items-center gap-2">
-                            <input
-                              type="range"
-                              min={0}
-                              max={audioDuration || 0}
-                              step={0.01}
-                              value={audioTime}
-                              onChange={(e) => {
-                                const v = Number(e.target.value);
-                                if (audioRef.current) audioRef.current.currentTime = v;
-                                setAudioTime(v);
-                              }}
-                              className="w-full"
-                            />
-                            <div className="text-xs text-slate">{new Date(audioTime * 1000).toISOString().substr(14, 5)}</div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate">Spotify audio</label>
+                        <input
+                          value={spotifyQuery}
+                          onChange={(event) => {
+                            setSpotifyQuery(event.target.value);
+                            setSelectedTrack(null);
+                          }}
+                          placeholder="Search for a track to attach"
+                          className="mt-3 w-full rounded-xl border border-hairline bg-panel px-4 py-3 text-sm text-ivory outline-none"
+                        />
+                        {trackResults.length > 0 ? (
+                          <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
+                            {trackResults.map((track) => (
+                              <button
+                                key={track.id}
+                                type="button"
+                                onClick={() => selectTrack(track)}
+                                className="w-full rounded-2xl border border-hairline bg-panel/80 px-4 py-3 text-left text-sm text-ivory transition hover:border-hairline-strong hover:bg-panel-2"
+                              >
+                                <p className="font-semibold">{track.title}</p>
+                                <p className="text-xs text-slate">{track.artist}</p>
+                              </button>
+                            ))}
                           </div>
-                        </div>
-                      ) : (
-                        <p className="mt-4 text-xs text-slate">No preview available for this track.</p>
-                      )}
-                    </div>
-                  ) : null}
+                        ) : null}
 
-                  <div className="mt-6 rounded-md border border-hairline bg-gradient-to-r from-obsidian to-panel p-[1px]">
-                    <div className="rounded-[calc(1.2rem-1px)] bg-panel/90 p-4 text-sm text-slate">
-                      <p className="font-semibold text-ivory">Visibility</p>
-                      <p className="mt-2 text-slate">Choose who can see this post once it goes live.</p>
+                        {selectedTrack ? (
+                          <div className="mt-4 rounded-2xl border border-amber-400/20 bg-panel/90 p-4 text-sm text-ivory">
+                            <div className="flex items-center gap-3">
+                              {selectedTrack.cover_art_url ? (
+                                <img src={selectedTrack.cover_art_url} alt={`${selectedTrack.title} cover`} className="h-14 w-14 rounded-2xl object-cover" />
+                              ) : (
+                                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-panel-2 text-xs uppercase tracking-[0.25em] text-slate">Audio</div>
+                              )}
+                              <div>
+                                <p className="font-semibold text-ivory">{selectedTrack.title}</p>
+                                <p className="text-xs text-slate">{selectedTrack.artist}</p>
+                              </div>
+                            </div>
+                            {selectedTrack.preview_url ? (
+                              <div className="mt-4">
+                                <audio ref={audioRef} src={selectedTrack.preview_url} className="w-full" controls />
+                                <div className="mt-2 flex items-center gap-2">
+                                  <input
+                                    type="range"
+                                    min={0}
+                                    max={audioDuration || 0}
+                                    step={0.01}
+                                    value={audioTime}
+                                    onChange={(e) => {
+                                      const v = Number(e.target.value);
+                                      if (audioRef.current) audioRef.current.currentTime = v;
+                                      setAudioTime(v);
+                                    }}
+                                    className="w-full"
+                                  />
+                                  <div className="text-xs text-slate">{new Date(audioTime * 1000).toISOString().substr(14, 5)}</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="mt-4 text-xs text-slate">No preview available for this track.</p>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
+
+                  {error ? <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-slate">Posting uses the same upload logic as the feed composer.</p>
+                    <button
+                      type="submit"
+                      className={`rounded-full bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
+                      disabled={busy}
+                    >
+                      {busy ? 'Publishing…' : editingId ? 'Update post' : 'Publish post'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate">Caption</label>
-                <textarea
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  maxLength={280}
-                  placeholder="What are you sharing today?"
-                  className="min-h-[120px] w-full rounded-md border border-hairline bg-panel-2 px-4 py-3 text-sm text-ivory outline-none"
-                />
-                <div className="mt-2 flex items-center justify-between text-xs text-slate">
-                  <span>Keep it concise and intimate.</span>
-                  <span>{characterCount}/280</span>
-                </div>
-              </div>
-
-              {error ? <p className="rounded-md border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-slate">Posting uses the same upload logic as the feed composer.</p>
-                <button
-                  type="submit"
-                  className={`rounded-md bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
-                  disabled={busy}
-                >
-                  {busy ? 'Publishing…' : editingId ? 'Update post' : 'Publish post'}
-                </button>
               </div>
             </form>
           </div>

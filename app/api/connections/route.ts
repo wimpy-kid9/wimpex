@@ -32,9 +32,35 @@ export async function GET(request: NextRequest) {
   }
 
   const rows = (data || []).filter((row: any) => row.requester_id === authContext.user.id || row.recipient_id === authContext.user.id);
+  const pendingRequests = rows.filter((row: any) => row.status === 'pending');
+  const requesterIds = pendingRequests.map((row: any) => row.requester_id).filter(Boolean);
+  const profileMap = new Map<string, any>();
+
+  if (requesterIds.length > 0) {
+    const { data: profiles, error: profileError } = await supabaseServer
+      .from('wpx_profiles')
+      .select('user_id,username,display_name')
+      .in('user_id', requesterIds);
+
+    if (!profileError) {
+      for (const profile of profiles || []) {
+        profileMap.set(profile.user_id, profile);
+      }
+    }
+  }
+
+  const requests = pendingRequests.map((row: any) => {
+    const profile = profileMap.get(row.requester_id);
+    return {
+      ...row,
+      requester_display_name: profile?.display_name || row.requester_display_name || null,
+      requester_username: profile?.username || row.requester_username || null
+    };
+  });
+
   return NextResponse.json({
     connections: rows.filter((row: any) => row.status === 'accepted'),
-    requests: rows.filter((row: any) => row.status === 'pending')
+    requests
   });
 }
 

@@ -21,7 +21,7 @@ export default function AppShell({ children }: AppShellProps) {
     { label: 'Feed', href: '/feed' },
     { label: 'Post', href: '/post' },
     { label: 'Messages', href: '/messages' },
-    { label: 'Calls', href: '/calls' },
+    { label: 'Stories', href: '/stories' },
     { label: 'Profile', href: '/profile' }
   ];
   // mobileNavItems was removed in redesign; keep navItems for desktop and mobile BottomNav
@@ -115,8 +115,8 @@ export default function AppShell({ children }: AppShellProps) {
                   {item.href === '/feed' && (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   )}
-                  {item.href === '/calls' && (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M22 16.92V21a1 1 0 0 1-1.11 1 19.86 19.86 0 0 1-8.63-3.07A19.38 19.38 0 0 1 3.07 9.74 19.86 19.86 0 0 1 0 1.11 1 1 0 0 1 1 0h4.09a1 1 0 0 1 1 .76c.12.83.33 1.64.63 2.42a1 1 0 0 1-.24 1.03L5.2 6.79a16 16 0 0 0 10.45 10.45l1.58-1.58a1 1 0 0 1 1.03-.24c.78.3 1.59.51 2.42.63a1 1 0 0 1 .76 1V22z" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  {item.href === '/stories' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><circle cx="12" cy="8" r="3" strokeWidth="1.5"/><path d="M21 21c-2.5-3-6.5-5-9-5s-6.5 2-9 5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   )}
                   {item.href === '/connections' && (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M16 11a4 4 0 1 0-8 0v1" strokeWidth="1.5"/><path d="M12 21v-4" strokeWidth="1.5"/></svg>

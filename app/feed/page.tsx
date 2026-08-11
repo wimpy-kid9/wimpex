@@ -60,10 +60,16 @@ export default function FeedPage() {
       {loading ? <p className="text-sm text-slate">Loading feed…</p> : null}
 
       <div className="mt-4">
-        <div className="flex gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex gap-3">
           <button onClick={() => setActiveTab('books')} className={`px-3 py-2 rounded-2xl ${activeTab === 'books' ? 'bg-gold/10 text-ivory' : 'text-slate hover:bg-ivory/5'}`}>Books</button>
           <button onClick={() => setActiveTab('feed')} className={`px-3 py-2 rounded-2xl ${activeTab === 'feed' ? 'bg-gold/10 text-ivory' : 'text-slate hover:bg-ivory/5'}`}>Feed</button>
           <button onClick={() => setActiveTab('friends')} className={`px-3 py-2 rounded-2xl ${activeTab === 'friends' ? 'bg-gold/10 text-ivory' : 'text-slate hover:bg-ivory/5'}`}>Friends</button>
+          </div>
+          <Link href="/search" className="inline-flex items-center gap-2 rounded-full border border-hairline bg-ivory/5 px-3 py-2 text-sm text-slate hover:bg-ivory/10">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-4 w-4"><circle cx="11" cy="11" r="6" strokeWidth="1.5"/><path d="m20 20-4.2-4.2" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            Search
+          </Link>
         </div>
 
         {activeTab === 'books' ? (

@@ -47,6 +47,8 @@ export default function MessagesPage() {
   const [activeTab, setActiveTab] = useState<'chats' | 'requests'>('chats');
   const [requests, setRequests] = useState<any[]>([]);
   const [groupRecipients, setGroupRecipients] = useState<ProfileMatch[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [activeConversation, setActiveConversation] = useState<ConversationSummary | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
   const [recorder, setRecorder] = useState<MediaRecorder | null>(null);
@@ -91,7 +93,9 @@ export default function MessagesPage() {
           }
         })();
       }
-    } catch {}
+    } catch (error) {
+      console.error('Unable to preselect recipient', error);
+    }
   }, []);
 
   useEffect(() => {
@@ -220,6 +224,8 @@ export default function MessagesPage() {
     setNotice('Message sent.');
     setDraft('');
     setGroupRecipients([]);
+    setMessages([]);
+    setActiveConversation(null);
     await loadConversations();
     // if API returned a conversation id, navigate client-side handled by new thread route
   };
@@ -242,11 +248,15 @@ export default function MessagesPage() {
             {requests.length > 0 ? requests.map((request) => (
               <div key={request.id} className="rounded-3xl border border-hairline bg-panel/80 p-4">
                 <p className="font-semibold text-ivory">
-                  Connection request from {request.requester_display_name || request.requester_username || (
-                    <a href={`/user/${request.requester_id}`} className="underline">{request.requester_id.slice(0, 8)}…</a>
+                  {request.requester_display_name || request.requester_username ? (
+                    <>
+                      Connection request from <span className="text-gold">{request.requester_display_name || request.requester_username}</span>
+                    </>
+                  ) : (
+                    <a href={`/user/${request.requester_id}`} className="underline">Connection request</a>
                   )}
                 </p>
-                <p className="mt-1 text-xs uppercase tracking-[0.24em] text-slate">Pending request</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.24em] text-slate">Pending connection request</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     onClick={async () => {
