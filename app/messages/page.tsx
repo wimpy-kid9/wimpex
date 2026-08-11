@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
 
@@ -40,8 +41,6 @@ export default function MessagesPage() {
   const [searchResults, setSearchResults] = useState<ProfileMatch[]>([]);
   const [selectedRecipient, setSelectedRecipient] = useState<ProfileMatch | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [activeConversation, setActiveConversation] = useState<ConversationSummary | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   const [notice, setNotice] = useState('');
   const [activeTab, setActiveTab] = useState<'chats' | 'requests'>('chats');
@@ -71,15 +70,7 @@ export default function MessagesPage() {
     setRequests(payload.requests || []);
   };
 
-  const loadMessages = async (conversationId: string) => {
-    const response = await authedFetch(`/api/messages?conversation_id=${encodeURIComponent(conversationId)}`);
-    const payload = await response.json();
-    if (!response.ok) {
-      setNotice(payload.error || 'Unable to load messages.');
-      return;
-    }
-    setMessages(payload.messages || []);
-  };
+  
 
   useEffect(() => {
     void loadConversations();
@@ -169,36 +160,26 @@ export default function MessagesPage() {
     }
   };
 
-  const openConversation = async (conversation: ConversationSummary) => {
-    setActiveConversation(conversation);
-    setDraft('');
-    await loadMessages(conversation.id);
-  };
-
   const sendMessage = async () => {
+    // kept for new-start message composition (starts a new conversation)
     if (!draft.trim()) {
       setNotice('Please type a message.');
       return;
     }
 
     const payloadBody: any = { body: draft.trim() };
-    if (activeConversation?.id) {
-      payloadBody.conversation_id = activeConversation.id;
-    } else if (groupRecipients.length > 0) {
+    if (groupRecipients.length > 0) {
       payloadBody.recipient_ids = groupRecipients.map((recipient) => recipient.user_id);
       payloadBody.title = groupRecipients.length > 1 ? `Group with ${groupRecipients.length + 1}` : undefined;
     } else if (selectedRecipient) {
       payloadBody.recipient_id = selectedRecipient.user_id;
     } else {
-      setNotice('Select a recipient or open a conversation first.');
+      setNotice('Select a recipient to start a conversation.');
       return;
     }
 
     const formData = new FormData();
     formData.append('body', draft.trim());
-    if (payloadBody.conversation_id) {
-      formData.append('conversation_id', payloadBody.conversation_id);
-    }
     if (payloadBody.recipient_ids) {
       formData.append('recipient_ids', JSON.stringify(payloadBody.recipient_ids));
     }
@@ -207,9 +188,6 @@ export default function MessagesPage() {
     }
     if (payloadBody.title) {
       formData.append('title', payloadBody.title);
-    }
-    if (attachment) {
-      formData.append('media', attachment);
     }
 
     const response = await authedFetch('/api/messages', {
@@ -224,17 +202,9 @@ export default function MessagesPage() {
 
     setNotice('Message sent.');
     setDraft('');
-    setAttachment(null);
-    setRecording(false);
+    setGroupRecipients([]);
     await loadConversations();
-    if (payload.conversation?.id) {
-      await openConversation({
-        ...activeConversation,
-        id: payload.conversation.id,
-        otherUser: selectedRecipient || activeConversation?.otherUser || { user_id: null, username: '', display_name: '' },
-        title: payload.conversation.title || activeConversation?.title
-      } as ConversationSummary);
-    }
+    // if API returned a conversation id, navigate client-side handled by new thread route
   };
 
   return (
@@ -342,10 +312,10 @@ export default function MessagesPage() {
               <h2 className="text-sm font-semibold text-ivory">Conversations</h2>
               <div className="mt-4 space-y-3">
                 {sortedConversations.length > 0 ? sortedConversations.map((conversation) => (
-                  <button
+                  <Link
                     key={conversation.id}
-                    onClick={() => openConversation(conversation)}
-                    className={`w-full rounded-2xl border px-4 py-3 text-left transition ${activeConversation?.id === conversation.id ? 'border-hairline-strong bg-gold/5' : 'border-hairline bg-panel/80 hover:border-white/20 hover:bg-panel-2'}`}
+                    href={`/messages/${conversation.id}`}
+                    className={`w-full block rounded-2xl border px-4 py-3 text-left transition ${/* no active highlight here; thread route will handle active state */''} border-hairline bg-panel/80 hover:border-white/20 hover:bg-panel-2`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -355,7 +325,7 @@ export default function MessagesPage() {
                       <span className="text-[11px] uppercase tracking-[0.25em] text-slate">{new Date(conversation.previewAt).toLocaleDateString()}</span>
                     </div>
                     <p className="mt-2 text-sm text-slate">{conversation.previewSentByMe ? 'You: ' : ''}{conversation.preview}</p>
-                  </button>
+                  </Link>
                 )) : (
                   <p className="text-sm text-slate">No conversations yet. Search for a connection to start one.</p>
                 )}
