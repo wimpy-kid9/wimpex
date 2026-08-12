@@ -166,9 +166,9 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
   const overlayFilter = FILTER_CLASSES[post.filterPreset || 'none'] || '';
 
   return (
-    <article ref={cardRef} className={`w-full relative overflow-hidden bg-black text-ivory ${isFeedItem ? 'feed-snap-item h-[100dvh]' : ''}`}>
+    <article ref={cardRef} className={`w-full relative overflow-hidden bg-black text-ivory ${isFeedItem ? 'feed-snap-item h-[100dvh] md:h-auto md:max-h-[80vh]' : ''}`}>
       {post.mediaType === 'image' && post.imageUrl ? (
-        <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-cover ${overlayFilter}`} />
+        <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`} />
       ) : post.mediaType === 'video' && post.videoUrl ? (
         <video
           ref={videoRef}
@@ -176,8 +176,25 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
           muted={muted}
           playsInline
           loop
-          className={`absolute inset-0 h-full w-full object-cover ${overlayFilter}`}
-          onClick={() => setMuted(false)}
+            className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`}
+            onClick={async () => {
+              try {
+                // User interaction: toggle mute and ensure playback
+                if (videoRef.current) {
+                  const v = videoRef.current;
+                  if (muted) {
+                    v.muted = false;
+                    setMuted(false);
+                    await v.play().catch(() => undefined);
+                  } else {
+                    v.muted = true;
+                    setMuted(true);
+                  }
+                }
+              } catch (e) {
+                // ignore
+              }
+            }}
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-panel-900 text-slate">No media available.</div>
@@ -223,6 +240,33 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
           <span className="text-xs font-semibold text-ivory">{favoriteCount ?? 0}</span>
         </button>
       </div>
+
+      {/* Unmute / play control */}
+      {post.mediaType === 'video' && post.videoUrl ? (
+        <div className="absolute right-4 bottom-40">
+          <button
+            type="button"
+            onClick={async (e) => {
+              e.stopPropagation();
+              const v = videoRef.current;
+              if (!v) return;
+              if (muted) {
+                v.muted = false;
+                setMuted(false);
+                await v.play().catch(() => undefined);
+              } else {
+                v.muted = true;
+                setMuted(true);
+              }
+            }}
+            className="rounded-full border border-white/10 bg-black/60 px-3 py-2 text-sm font-semibold text-ivory backdrop-blur-sm hover:scale-105"
+            aria-pressed={!muted}
+            aria-label={muted ? 'Unmute video' : 'Mute video'}
+          >
+            {muted ? '🔈' : '🔊'}
+          </button>
+        </div>
+      ) : null}
 
       <div className="absolute left-3 bottom-6 max-w-[75%] space-y-3 text-sm leading-6">
         <Link href={postLink} className="inline-flex items-center gap-2 text-sm font-semibold text-ivory transition hover:text-gold">

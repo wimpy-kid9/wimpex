@@ -54,13 +54,16 @@ export async function GET(request: NextRequest) {
     return {
       ...row,
       requester_display_name: profile?.display_name || row.requester_display_name || null,
-      requester_username: profile?.username || row.requester_username || null
+      requester_username: profile?.username || row.requester_username || null,
+      isIncoming: row.recipient_id === authContext.user.id,
+      isOutgoing: row.requester_id === authContext.user.id
     };
   });
 
   return NextResponse.json({
     connections: rows.filter((row: any) => row.status === 'accepted'),
-    requests
+    requests,
+    current_user_id: authContext.user.id
   });
 }
 
