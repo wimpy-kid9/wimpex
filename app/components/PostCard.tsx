@@ -31,7 +31,8 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
   const [commentBody, setCommentBody] = useState('');
   const [replyTo, setReplyTo] = useState<any | null>(null);
   const [repliesOpen, setRepliesOpen] = useState<Record<string, boolean>>({});
-  const [muted, setMuted] = useState(true);
+  // Default to unmuted per UX request
+  const [muted, setMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
 
@@ -259,11 +260,14 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
                 setMuted(true);
               }
             }}
-            className="rounded-full border border-white/10 bg-black/60 px-3 py-2 text-sm font-semibold text-ivory backdrop-blur-sm hover:scale-105"
+            className={`rounded-full px-3 py-2 text-lg font-semibold text-ivory transition-transform focus:outline-none focus:ring-2 focus:ring-gold/40 ${muted ? 'bg-black/60 border border-white/10 hover:scale-105' : 'bg-gradient-to-r from-gold to-gold-deep shadow-lg transform hover:scale-105 ring-2 ring-gold/30'}`}
             aria-pressed={!muted}
             aria-label={muted ? 'Unmute video' : 'Mute video'}
+            title={muted ? 'Unmute' : 'Mute'}
           >
-            {muted ? '🔈' : '🔊'}
+            <span className="inline-block" aria-hidden>
+              {muted ? '🔈' : '🔊'}
+            </span>
           </button>
         </div>
       ) : null}
