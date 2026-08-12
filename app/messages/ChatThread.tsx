@@ -36,6 +36,14 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   }, [conversationId, loadThread]);
 
   useEffect(() => {
+    if (!conversationId) return;
+    const id = window.setInterval(() => {
+      void loadThread();
+    }, 3000);
+    return () => window.clearInterval(id);
+  }, [conversationId, loadThread]);
+
+  useEffect(() => {
     const node = scrollRef.current;
     if (node) {
       node.scrollTop = node.scrollHeight;

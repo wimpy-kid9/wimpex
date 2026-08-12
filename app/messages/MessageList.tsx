@@ -54,7 +54,7 @@ export default function MessageList() {
     [conversations]
   );
 
-  const loadState = async () => {
+  const loadState = useCallback(async () => {
     const [messagesResponse, connectionsResponse] = await Promise.all([
       authedFetch('/api/messages'),
       authedFetch('/api/connections')
@@ -83,11 +83,13 @@ export default function MessageList() {
       });
       setAcceptedConnectionIds(acceptedMap);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void loadState();
-  }, []);
+    const id = window.setInterval(() => void loadState(), 5000);
+    return () => window.clearInterval(id);
+  }, [loadState]);
 
   useEffect(() => {
     const timer = window.setTimeout(async () => {
