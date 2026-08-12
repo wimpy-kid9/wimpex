@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
 
 const FILTER_CLASSES: Record<string, string> = {
@@ -21,7 +21,7 @@ const FILTER_CLASSES: Record<string, string> = {
   infrared: 'filter hue-rotate-310 saturate-140 contrast-115'
 };
 
-export default function PostCard({ post }: { post: any }) {
+export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?: boolean }) {
   const [liked, setLiked] = useState<boolean>(post?.liked_by_me ?? false);
   const [likeCount, setLikeCount] = useState<number | null>(post?.like_count ?? null);
   const [favorited, setFavorited] = useState<boolean>(post?.favorited_by_me ?? false);
@@ -30,9 +30,54 @@ export default function PostCard({ post }: { post: any }) {
   const [comments, setComments] = useState<any[] | null>(null);
   const [commentBody, setCommentBody] = useState('');
   const [replyTo, setReplyTo] = useState<any | null>(null);
+  const [repliesOpen, setRepliesOpen] = useState<Record<string, boolean>>({});
   const [muted, setMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
+
+  const commentsById = useMemo(() => {
+    const map = new Map<string, any>();
+    (comments || []).forEach((comment) => {
+      if (comment?.id) {
+        map.set(comment.id, comment);
+      }
+    });
+    return map;
+  }, [comments]);
+
+  const topLevelComments = useMemo(
+    () => (comments || []).filter((comment) => !comment.parent_comment_id),
+    [comments]
+  );
+
+  const repliesByParent = useMemo(() => {
+    const map = new Map<string, any[]>();
+    (comments || []).forEach((comment) => {
+      if (comment?.parent_comment_id) {
+        const parentId = comment.parent_comment_id as string;
+        const existing = map.get(parentId) || [];
+        existing.push(comment);
+        map.set(parentId, existing);
+      }
+    });
+    return map;
+  }, [comments]);
+
+  const findTopLevelComment = (comment: any) => {
+    let current = comment;
+    while (current?.parent_comment_id) {
+      const parent = commentsById.get(current.parent_comment_id);
+      if (!parent) break;
+      current = parent;
+    }
+    return current;
+  };
+
+  const getCommentReplyTarget = (comment: any) => {
+    if (!comment?.id) return null;
+    if (!comment.parent_comment_id) return comment;
+    return findTopLevelComment(comment) || comment;
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -121,7 +166,7 @@ export default function PostCard({ post }: { post: any }) {
   const overlayFilter = FILTER_CLASSES[post.filterPreset || 'none'] || '';
 
   return (
-    <article ref={cardRef} className="h-[100dvh] w-full relative overflow-hidden bg-black text-ivory">
+    <article ref={cardRef} className={`w-full relative overflow-hidden bg-black text-ivory ${isFeedItem ? 'feed-snap-item h-[100dvh]' : ''}`}>
       {post.mediaType === 'image' && post.imageUrl ? (
         <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-cover ${overlayFilter}`} />
       ) : post.mediaType === 'video' && post.videoUrl ? (
@@ -193,47 +238,109 @@ export default function PostCard({ post }: { post: any }) {
       </div>
 
       {showComments ? (
-        <div className="absolute inset-x-3 bottom-3 max-h-[55%] overflow-hidden rounded-3xl border border-hairline bg-panel/95 shadow-2xl backdrop-blur-xl">
-          <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-ivory">Comments</p>
-              <p className="text-xs text-slate">Tap a reply to respond inline.</p>
-            </div>
-            <button onClick={() => setShowComments(false)} className="text-sm text-slate transition hover:text-ivory">Close</button>
-          </div>
-          <div className="max-h-[260px] overflow-y-auto px-4 py-3 space-y-3">
-            {comments && comments.length > 0 ? (
-              comments.map((c) => (
-                <div key={c.id} className="rounded-3xl border border-hairline bg-panel-90 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-ivory">{c.author || c.author_handle || 'User'}</p>
-                      <p className="text-xs text-slate">{new Date(c.created_at).toLocaleString()}</p>
-                    </div>
-                    <button onClick={() => setReplyTo(c)} className="text-xs text-gold transition hover:text-amber-100">Reply</button>
-                  </div>
-                  <p className="mt-2 text-sm text-slate">{c.body}</p>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-3xl border border-dashed border-hairline bg-panel-80 p-4 text-center text-sm text-slate">No comments yet.</div>
-            )}
-          </div>
-          <div className="border-t border-hairline px-4 py-4">
-            {replyTo ? (
-              <div className="mb-3 rounded-2xl bg-panel/80 px-3 py-2 text-xs text-slate">
-                Replying to <span className="font-semibold text-ivory">{replyTo.author || replyTo.author_handle || 'that comment'}</span>
-                <button onClick={() => setReplyTo(null)} className="ml-2 text-gold">Cancel</button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <button
+            type="button"
+            onClick={() => setShowComments(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <div className="relative w-full max-w-3xl rounded-t-[32px] border border-hairline bg-panel/95 shadow-2xl backdrop-blur-xl">
+            <div className="mx-auto mt-3 h-1.5 w-16 rounded-full bg-slate/40" />
+            <div className="flex items-center justify-between px-5 pt-4 pb-3">
+              <div>
+                <p className="text-sm font-semibold text-ivory">Comments</p>
+                <p className="text-xs text-slate">Tap a reply to respond inline.</p>
               </div>
-            ) : null}
-            <div className="flex gap-2">
-              <textarea
-                value={commentBody}
-                onChange={(e) => setCommentBody(e.target.value)}
-                placeholder="Write a comment"
-                className="min-h-[80px] flex-1 rounded-3xl border border-hairline bg-panel px-3 py-2 text-sm text-ivory outline-none"
-              />
-              <button onClick={postComment} className="rounded-3xl bg-gold px-4 py-3 text-sm font-semibold text-obsidian">Post</button>
+              <button onClick={() => setShowComments(false)} className="text-sm text-slate transition hover:text-ivory">Close</button>
+            </div>
+
+            <div className="max-h-[calc(80vh-220px)] overflow-y-auto px-5 pb-4 space-y-4">
+              {comments && comments.length > 0 ? (
+                topLevelComments.map((c) => {
+                  const replies = repliesByParent.get(c.id) || [];
+                  return (
+                    <div key={c.id} className="space-y-3">
+                      <div className="rounded-3xl border border-hairline bg-panel-90 p-4">
+                        <div className="flex items-start gap-3">
+                          {c.author_avatar_url ? (
+                            <img src={c.author_avatar_url} alt={c.author || c.author_handle || 'User avatar'} className="h-11 w-11 rounded-full object-cover" />
+                          ) : (
+                            <div className="grid h-11 w-11 place-items-center rounded-full bg-panel-2 text-sm text-slate">
+                              {(c.author || c.author_handle || 'U').charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-ivory">{c.author || c.author_handle || 'User'}</p>
+                                <p className="mt-1 text-xs text-slate">{new Date(c.created_at).toLocaleString()}</p>
+                              </div>
+                              <button onClick={() => setReplyTo(getCommentReplyTarget(c))} className="text-xs text-gold transition hover:text-amber-100">Reply</button>
+                            </div>
+                            <p className="mt-3 text-sm text-slate">{c.body}</p>
+                          </div>
+                        </div>
+                        {replies.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setRepliesOpen((open) => ({ ...open, [c.id]: !open[c.id] }))}
+                            className="mt-3 text-xs font-medium text-slate transition hover:text-ivory"
+                          >
+                            {repliesOpen[c.id] ? `Hide ${replies.length} repl${replies.length === 1 ? 'y' : 'ies'}` : `View ${replies.length} repl${replies.length === 1 ? 'y' : 'ies'}`}
+                          </button>
+                        ) : null}
+                      </div>
+                      {repliesOpen[c.id] ? (
+                        <div className="space-y-3 px-4">
+                          {replies.map((reply) => (
+                            <div key={reply.id} className="rounded-3xl border border-hairline bg-panel-90 p-4 pl-5">
+                              <div className="flex items-start gap-3">
+                                {reply.author_avatar_url ? (
+                                  <img src={reply.author_avatar_url} alt={reply.author || reply.author_handle || 'User avatar'} className="h-9 w-9 rounded-full object-cover" />
+                                ) : (
+                                  <div className="grid h-9 w-9 place-items-center rounded-full bg-panel-2 text-xs text-slate">
+                                    {(reply.author || reply.author_handle || 'U').charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <p className="text-sm font-semibold text-ivory">{reply.author || reply.author_handle || 'User'}</p>
+                                      <p className="mt-1 text-xs text-slate">{new Date(reply.created_at).toLocaleString()}</p>
+                                    </div>
+                                    <button onClick={() => setReplyTo(getCommentReplyTarget(reply))} className="text-xs text-gold transition hover:text-amber-100">Reply</button>
+                                  </div>
+                                  <p className="mt-3 text-sm text-slate">{reply.body}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="rounded-3xl border border-dashed border-hairline bg-panel-80 p-4 text-center text-sm text-slate">No comments yet.</div>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 border-t border-hairline bg-panel/95 px-5 py-4">
+              {replyTo ? (
+                <div className="mb-3 rounded-2xl bg-panel/80 px-3 py-2 text-xs text-slate">
+                  Replying to <span className="font-semibold text-ivory">{replyTo.author || replyTo.author_handle || 'that comment'}</span>
+                  <button onClick={() => setReplyTo(null)} className="ml-2 text-gold">Cancel</button>
+                </div>
+              ) : null}
+              <div className="flex gap-2">
+                <textarea
+                  value={commentBody}
+                  onChange={(e) => setCommentBody(e.target.value)}
+                  placeholder="Write a comment"
+                  className="min-h-[80px] flex-1 rounded-3xl border border-hairline bg-panel px-3 py-2 text-sm text-ivory outline-none"
+                />
+                <button onClick={postComment} className="rounded-3xl bg-gold px-4 py-3 text-sm font-semibold text-obsidian">Post</button>
+              </div>
             </div>
           </div>
         </div>

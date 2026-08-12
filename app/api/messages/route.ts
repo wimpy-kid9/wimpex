@@ -177,6 +177,23 @@ async function createGroupConversation(authUserId: string, recipientIds: string[
   return dataConversation;
 }
 
+async function ensureAcceptedConnection(authUserId: string, recipientId: string) {
+  if (authUserId === recipientId) {
+    return false;
+  }
+
+  const { data: connectionRows, error: connectionError } = await supabaseServer
+    .from('wpx_connections')
+    .select('requester_id, recipient_id, status')
+    .or(`and(requester_id.eq.${authUserId},recipient_id.eq.${recipientId}),and(requester_id.eq.${recipientId},recipient_id.eq.${authUserId})`);
+
+  if (connectionError) {
+    throw new Error(connectionError.message);
+  }
+
+  return (connectionRows || []).some((row: any) => row.status === 'accepted');
+}
+
 export async function GET(request: NextRequest) {
   if (!isSupabaseServerConfigured) {
     return NextResponse.json({ conversations: [] });
@@ -239,6 +256,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (participantId) {
+    if (participantId === authContext.user.id) {
+      return NextResponse.json({ error: 'Cannot open a chat with yourself.' }, { status: 400 });
+    }
+
     const { data: membershipRows, error: membershipError } = await supabaseServer
       .from('wpx_conversation_members')
       .select('conversation_id, user_id')
@@ -254,7 +275,22 @@ export async function GET(request: NextRequest) {
     }, {} as Record<string, number>);
 
     const existingConversationId = Object.keys(conversationCounts).find((conversationId) => conversationCounts[conversationId] === 2);
-    return NextResponse.json({ conversation: existingConversationId ? { id: existingConversationId } : null });
+    if (existingConversationId) {
+      return NextResponse.json({ conversation: { id: existingConversationId } });
+    }
+
+    let conversation;
+    try {
+      const isAcceptedConnection = await ensureAcceptedConnection(authContext.user.id, participantId);
+      if (!isAcceptedConnection) {
+        return NextResponse.json({ error: 'You must be an accepted connection to start a chat.' }, { status: 403 });
+      }
+      conversation = await findOrCreateDirectConversation(authContext.user.id, participantId);
+    } catch (error) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    }
+
+    return NextResponse.json({ conversation: { id: conversation.id } });
   }
 
   const { data: memberships, error: membershipError } = await supabaseServer.from('wpx_conversation_members').select('conversation_id').eq('user_id', authContext.user.id);
@@ -375,23 +411,14 @@ export async function POST(request: NextRequest) {
 
   const recipients = Array.from(new Set(recipientIds)).filter((recipientId): recipientId is string => typeof recipientId === 'string');
   if (recipients.length > 0) {
-      for (const recipientId of recipients) {
+    for (const recipientId of recipients) {
       if (recipientId === authContext.user.id) continue;
-      // Fetch any connection rows between the two users and validate accepted status
-      const { data: connectionRows, error: connectionError } = await supabaseServer
-        .from('wpx_connections')
-        .select('*')
-        .or(`requester_id.eq.${authContext.user.id},recipient_id.eq.${authContext.user.id},requester_id.eq.${recipientId},recipient_id.eq.${recipientId}`);
-      if (connectionError) {
-        return NextResponse.json({ error: connectionError.message }, { status: 500 });
+      let isAcceptedConnection = false;
+      try {
+        isAcceptedConnection = await ensureAcceptedConnection(authContext.user.id, recipientId);
+      } catch (error) {
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
       }
-      const pairMatch = (connectionRows || []).some((row: any) => {
-        return (
-          (row.requester_id === authContext.user.id && row.recipient_id === recipientId) ||
-          (row.requester_id === recipientId && row.recipient_id === authContext.user.id)
-        );
-      });
-      const isAcceptedConnection = (connectionRows || []).some((row: any) => pairMatch && row.status === 'accepted');
       if (!isAcceptedConnection) {
         return NextResponse.json({ error: 'All recipients must be accepted connections.' }, { status: 403 });
       }

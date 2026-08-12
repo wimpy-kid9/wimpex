@@ -16,7 +16,7 @@ export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [indicatorStyle, setIndicatorStyle] = useState<{ top?: number; height?: number }>({});
-  const itemRefs = useRef<Array<HTMLAnchorElement | null>>([]);
+  const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const navItems = [
     { label: 'Feed', href: '/feed' },
     { label: 'Post', href: '/post' },
@@ -58,10 +58,13 @@ export default function AppShell({ children }: AppShellProps) {
     void loadProfileAccent();
   }, []);
 
+  const isFeedRoute = pathname?.startsWith('/feed');
+
   return (
     <div className="min-h-screen text-ivory">
-      <div className="hidden md:block md:fixed md:inset-y-0 md:w-64 md:border-r md:border-hairline md:bg-panel/70 md:px-4 md:py-8 md:backdrop-blur-xl">
-        <div className="relative space-y-8">
+      {!isFeedRoute && (
+        <div className="hidden md:block md:fixed md:inset-y-0 md:w-64 md:border-r md:border-hairline md:bg-panel/70 md:px-4 md:py-8 md:backdrop-blur-xl">
+          <div className="relative space-y-8">
           <div className="thread-line">
             <div className={`mb-3 inline-flex rounded-full bg-gradient-to-r ${accent.gradient} p-[1px]`}>
               <div className="thread-pill rounded-full bg-panel/90 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-ivory">
@@ -142,9 +145,10 @@ export default function AppShell({ children }: AppShellProps) {
           </nav>
         </div>
       </div>
+      )}
 
-      <div className="md:pl-72">
-        <div className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 lg:px-8 md:pb-8">{children}</div>
+      <div className={isFeedRoute ? '' : 'md:pl-72'}>
+        {isFeedRoute ? children : <div className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 lg:px-8 md:pb-8">{children}</div>}
       </div>
 
       {/* Bottom nav redesigned */}

@@ -55,22 +55,24 @@ export default function FeedPage() {
   }, []);
 
   return (
-    <main className="min-h-screen overflow-hidden bg-obsidian text-ivory">
-      {error ? <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
-      {loading ? <p className="p-6 text-sm text-slate">Loading feed…</p> : null}
-
-      <div className="flex items-center justify-between gap-3 border-b border-hairline bg-panel/80 px-4 py-4 sm:px-6">
-        <div className="flex gap-2">
-          <button onClick={() => setActiveTab('feed')} className={`rounded-full px-3 py-2 text-sm font-semibold ${activeTab === 'feed' ? 'bg-gold/20 text-ivory' : 'text-slate hover:bg-ivory/10'}`}>For You</button>
-          <button onClick={() => setActiveTab('friends')} className={`rounded-full px-3 py-2 text-sm font-semibold ${activeTab === 'friends' ? 'bg-gold/20 text-ivory' : 'text-slate hover:bg-ivory/10'}`}>Following</button>
+    <main className="relative min-h-screen overflow-hidden bg-obsidian text-ivory">
+      <div className="fixed inset-x-0 top-0 z-20 border-b border-hairline bg-panel/95 backdrop-blur-xl px-4 py-4 sm:px-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex gap-2">
+            <button onClick={() => setActiveTab('feed')} className={`rounded-full px-3 py-2 text-sm font-semibold ${activeTab === 'feed' ? 'bg-gold/20 text-ivory' : 'text-slate hover:bg-ivory/10'}`}>For You</button>
+            <button onClick={() => setActiveTab('friends')} className={`rounded-full px-3 py-2 text-sm font-semibold ${activeTab === 'friends' ? 'bg-gold/20 text-ivory' : 'text-slate hover:bg-ivory/10'}`}>Following</button>
+          </div>
+          <Link href="/search" className="inline-flex items-center gap-2 rounded-full border border-hairline bg-panel/70 px-3 py-2 text-sm text-slate hover:bg-ivory/10">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-4 w-4"><circle cx="11" cy="11" r="6" strokeWidth="1.5"/><path d="m20 20-4.2-4.2" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            Search
+          </Link>
         </div>
-        <Link href="/search" className="inline-flex items-center gap-2 rounded-full border border-hairline bg-panel/70 px-3 py-2 text-sm text-slate hover:bg-ivory/10">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-4 w-4"><circle cx="11" cy="11" r="6" strokeWidth="1.5"/><path d="m20 20-4.2-4.2" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          Search
-        </Link>
       </div>
 
-      <div className="feed-snap-stack overflow-y-auto snap-y snap-mandatory h-[calc(100vh-72px)]">
+      <div className="absolute inset-x-0 top-[72px] bottom-0 overflow-y-auto snap-y snap-mandatory feed-snap-stack">
+        {error ? <div className="mx-4 mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div> : null}
+        {loading ? <div className="mx-4 mt-5 rounded-2xl border border-hairline bg-panel-2/70 px-4 py-3 text-sm text-slate">Loading feed…</div> : null}
+
         {posts.filter((post) => {
           if (activeTab === 'friends') {
             if (!followingIds || !post.author_id) return false;
@@ -78,7 +80,7 @@ export default function FeedPage() {
           }
           return true;
         }).map((post) => (
-          <PostCard key={post.id} post={post} />
+          <PostCard key={post.id} post={post} isFeedItem />
         ))}
       </div>
 
