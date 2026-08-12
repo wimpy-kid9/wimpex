@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
 import { getUserAccent } from '@/lib/ui-theme';
 
@@ -11,7 +11,15 @@ const FILTER_CLASSES: Record<string, string> = {
   mono: 'filter grayscale contrast-110',
   warm: 'filter sepia contrast-105 saturate-110',
   cool: 'filter hue-rotate-190 saturate-120 contrast-105',
-  neon: 'filter saturate-200 drop-shadow-[0_0_20px_rgba(56,189,248,0.45)]'
+  neon: 'filter saturate-200 drop-shadow-[0_0_20px_rgba(56,189,248,0.45)]',
+  dreamy: 'filter saturate-110 contrast-105 brightness-110 drop-shadow-[0_0_20px_rgba(255,255,255,0.12)]',
+  noir: 'filter grayscale contrast-130 brightness-90',
+  retro: 'filter sepia contrast-110 saturate-110',
+  duotone: 'filter contrast-125 saturate-150',
+  golden: 'filter sepia brightness-110 contrast-105',
+  cyberpunk: 'filter hue-rotate-280 saturate-180 contrast-120',
+  pastel: 'filter brightness-110 saturate-120 contrast-95',
+  infrared: 'filter hue-rotate-310 saturate-140 contrast-115'
 };
 
 export default function PostCard({ post }: { post: any }) {
@@ -22,13 +30,14 @@ export default function PostCard({ post }: { post: any }) {
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<any[] | null>(null);
   const [commentBody, setCommentBody] = useState('');
-
+  const [replyTo, setReplyTo] = useState<any | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [following, setFollowing] = useState<boolean | null>(null);
   const [followerCount, setFollowerCount] = useState<number | null>(post?.follower_count ?? null);
-
-  const accent = getUserAccent(post.author || post.handle || 'wimpex-post');
-  const router = useRouter();
+  const [muted, setMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const cardRef = useRef<HTMLElement | null>(null);
+  const _unusedAccent = getUserAccent(post.author || post.handle || 'wimpex-post');
 
   useEffect(() => {
     const init = async () => {
@@ -57,23 +66,39 @@ export default function PostCard({ post }: { post: any }) {
             setFollowing(false);
           }
         }
-      } catch (err) {
+      } catch {
         // ignore
       }
     };
     void init();
   }, [post?.author_id]);
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const video = videoRef.current;
+        if (!video) return;
+        if (entry.isIntersecting) {
+          void video.play().catch(() => undefined);
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    if (cardRef.current) observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const toggleLike = async () => {
     const prevLiked = liked;
     const prevCount = likeCount ?? 0;
-    // optimistic
     setLiked(!prevLiked);
     setLikeCount(prevLiked ? Math.max(0, prevCount - 1) : prevCount + 1);
 
     const resp = await authedFetch(`/api/posts/${post.id}/like`, { method: 'POST' });
     if (!resp.ok) {
-      // rollback
       setLiked(prevLiked);
       setLikeCount(prevCount);
       return;
@@ -100,24 +125,7 @@ export default function PostCard({ post }: { post: any }) {
     setFavoriteCount(json.count ?? prevCount);
   };
 
-  const toggleFollow = async () => {
-    if (!post?.author_id) return;
-    if (currentUserId && post.author_id === currentUserId) return; // can't follow self
-    const prev = following;
-    const prevCount = followerCount ?? 0;
-    setFollowing(!prev);
-    setFollowerCount(prev ? Math.max(0, prevCount - 1) : prevCount + 1);
-
-    const resp = await authedFetch('/api/follow', { method: 'POST', body: JSON.stringify({ followed_id: post.author_id }) });
-    if (!resp.ok) {
-      // rollback
-      setFollowing(prev);
-      setFollowerCount(prevCount);
-      return;
-    }
-    const json = await resp.json();
-    setFollowing(json.following);
-  };
+  // follow/unfollow handled elsewhere; keep follower state updated but remove unused toggle
 
   const loadComments = async () => {
     const resp = await authedFetch(`/api/posts/${post.id}/comments`);
@@ -127,113 +135,140 @@ export default function PostCard({ post }: { post: any }) {
 
   const postComment = async () => {
     if (!commentBody.trim()) return;
-    const resp = await authedFetch(`/api/posts/${post.id}/comments`, { method: 'POST', body: JSON.stringify({ body: commentBody.trim() }) });
+    const payload = { body: commentBody.trim() } as any;
+    if (replyTo?.id) payload.parent_comment_id = replyTo.id;
+    const resp = await authedFetch(`/api/posts/${post.id}/comments`, { method: 'POST', body: JSON.stringify(payload) });
     const json = await resp.json();
     if (resp.ok && json.comment) {
-      setComments((c) => (c ? [json.comment, ...c] : [json.comment]));
+      setComments((c) => (c ? [...(replyTo ? [json.comment, ...c] : [json.comment, ...c])] : [json.comment]));
       setCommentBody('');
+      setReplyTo(null);
     }
   };
 
+  const postLink = `/user/${post.author_id}`;
+  const topText = post.author || post.handle || 'WIMPEX user';
+  const caption = post.caption || '';
+  const overlayFilter = FILTER_CLASSES[post.filterPreset || 'none'] || '';
+
   return (
-    <article className="feed-snap-item thread-card surface-veil rounded-md bg-panel-2/80 p-5 shadow-lg shadow-black/20 backdrop-blur-xl min-h-[78vh] md:min-h-0">
-      <div className={`rounded-md bg-gradient-to-r ${accent.gradient} p-[1px]`}>
-        <div className="rounded-md bg-panel/90 p-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="flex items-center gap-3">
-              {post.avatar_url ? (
-                <img src={post.avatar_url} alt={post.author || post.handle || 'Author avatar'} className="h-12 w-12 rounded-full object-cover" />
-              ) : (
-                <div className="grid h-12 w-12 place-items-center rounded-full bg-panel-2 text-sm font-semibold text-slate">
-                  {post.author?.charAt(0).toUpperCase() || post.handle?.charAt(1)?.toUpperCase() || 'W'}
-                </div>
-              )}
-              <div>
-                <p className="text-lg font-semibold text-ivory">{post.author}</p>
-                <p className="text-sm text-slate">{post.handle}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {followerCount !== null ? <div className="text-sm text-slate">{followerCount} followers</div> : null}
-              {currentUserId && post.author_id !== currentUserId ? (
-                <button onClick={toggleFollow} className={`rounded-full px-3 py-1 text-xs font-semibold ${following ? 'bg-ivory/5 text-ivory' : 'bg-gold/20 text-gold'}`}>
-                  {following ? 'Following' : 'Follow'}
-                </button>
-              ) : null}
-              <span className="thread-pill rounded-full border border-hairline px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate">{post.visibility}</span>
-            </div>
+    <article ref={cardRef} className="h-[100dvh] w-full relative overflow-hidden bg-black text-ivory">
+      {post.mediaType === 'image' && post.imageUrl ? (
+        <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-cover ${overlayFilter}`} />
+      ) : post.mediaType === 'video' && post.videoUrl ? (
+        <video
+          ref={videoRef}
+          src={post.videoUrl}
+          muted={muted}
+          playsInline
+          loop
+          className={`absolute inset-0 h-full w-full object-cover ${overlayFilter}`}
+          onClick={() => setMuted(false)}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center bg-panel-900 text-slate">No media available.</div>
+      )}
+
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+      <div className="absolute left-3 top-3 flex items-center gap-3 rounded-3xl bg-black/60 px-3 py-2 backdrop-blur-sm">
+        <Link href={postLink} className="flex items-center gap-3">
+          {post.avatar_url ? (
+            <img src={post.avatar_url} alt={post.author || post.handle || 'Author avatar'} className="h-11 w-11 rounded-full object-cover" />
+          ) : (
+            <div className="grid h-11 w-11 place-items-center rounded-full bg-panel-2 text-base text-slate">{(post.author || post.handle || 'W').charAt(0).toUpperCase()}</div>
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-ivory">{topText}</p>
+            <p className="text-xs text-slate">{post.handle || '@wimpex'}</p>
           </div>
-          <div className="mt-4 overflow-hidden rounded-md border border-hairline bg-panel-2/70">
-            {post.mediaType === 'image' && post.imageUrl ? (
-              <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`h-[56vh] w-full object-cover md:h-56 ${FILTER_CLASSES[post.filterPreset || 'none'] || ''}`} />
-            ) : post.mediaType === 'video' && post.videoUrl ? (
-              <video controls src={post.videoUrl} className={`h-[56vh] w-full object-cover md:h-56 ${FILTER_CLASSES[post.filterPreset || 'none'] || ''}`} />
+        </Link>
+      </div>
+
+      <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5 text-slate">
+        <Link href={postLink} className="rounded-full border border-white/10 bg-black/70 p-1 transition hover:scale-105">
+          {post.avatar_url ? (
+            <img src={post.avatar_url} alt={post.author || post.handle || 'Author avatar'} className="h-12 w-12 rounded-full object-cover" />
+          ) : (
+            <div className="grid h-12 w-12 place-items-center rounded-full bg-panel-2 text-sm text-slate">{(post.author || post.handle || 'W').charAt(0).toUpperCase()}</div>
+          )}
+        </Link>
+
+        <button type="button" onClick={toggleLike} className="flex flex-col items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-center transition hover:bg-black/80">
+          <span className="text-lg">❤️</span>
+          <span className="text-xs font-semibold text-ivory">{likeCount ?? 0}</span>
+        </button>
+
+        <button type="button" onClick={() => { setShowComments(true); if (!comments) void loadComments(); }} className="flex flex-col items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-center transition hover:bg-black/80">
+          <span className="text-lg">💬</span>
+          <span className="text-xs font-semibold text-ivory">{comments?.length ?? 0}</span>
+        </button>
+
+        <button type="button" onClick={toggleFavorite} className="flex flex-col items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-center transition hover:bg-black/80">
+          <span className="text-lg">📌</span>
+          <span className="text-xs font-semibold text-ivory">{favoriteCount ?? 0}</span>
+        </button>
+      </div>
+
+      <div className="absolute left-3 bottom-6 max-w-[75%] space-y-3 text-sm leading-6">
+        <Link href={postLink} className="inline-flex items-center gap-2 text-sm font-semibold text-ivory transition hover:text-gold">
+          <span>@{post.handle?.replace(/^@/, '') || 'wimpex'}</span>
+        </Link>
+        <p className="line-clamp-2 text-ivory/90">{caption || 'No caption yet.'}</p>
+        {post.audioTrackName ? (
+          <div className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-xs text-slate backdrop-blur-sm">
+            <span>🎵</span>
+            <span>{post.audioTrackName}{post.audioArtistName ? ` — ${post.audioArtistName}` : ''}</span>
+          </div>
+        ) : null}
+      </div>
+
+      {showComments ? (
+        <div className="absolute inset-x-3 bottom-3 max-h-[55%] overflow-hidden rounded-3xl border border-hairline bg-panel/95 shadow-2xl backdrop-blur-xl">
+          <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-ivory">Comments</p>
+              <p className="text-xs text-slate">Tap a reply to respond inline.</p>
+            </div>
+            <button onClick={() => setShowComments(false)} className="text-sm text-slate transition hover:text-ivory">Close</button>
+          </div>
+          <div className="max-h-[260px] overflow-y-auto px-4 py-3 space-y-3">
+            {comments && comments.length > 0 ? (
+              comments.map((c) => (
+                <div key={c.id} className="rounded-3xl border border-hairline bg-panel-90 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-ivory">{c.author || c.author_handle || 'User'}</p>
+                      <p className="text-xs text-slate">{new Date(c.created_at).toLocaleString()}</p>
+                    </div>
+                    <button onClick={() => setReplyTo(c)} className="text-xs text-gold transition hover:text-amber-100">Reply</button>
+                  </div>
+                  <p className="mt-2 text-sm text-slate">{c.body}</p>
+                </div>
+              ))
             ) : (
-              <div className="flex h-[56vh] items-center justify-center bg-panel/70 text-slate md:h-56">No media attached.</div>
+              <div className="rounded-3xl border border-dashed border-hairline bg-panel-80 p-4 text-center text-sm text-slate">No comments yet.</div>
             )}
           </div>
-          <p className="mt-4 text-sm leading-7 text-slate">{post.caption}</p>
-          {post.filterPreset && post.filterPreset !== 'none' ? (
-            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-hairline bg-ivory/5 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate">
-              Filter: {post.filterPreset}
-            </div>
-          ) : null}
-          {post.audioTrackName ? (
-            <div className="mt-4 rounded-md border border-hairline bg-panel/80 p-4 text-sm text-ivory">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-3">
-                  {post.audioCoverArtUrl ? (
-                    <img src={post.audioCoverArtUrl} alt={post.audioTrackName} className="h-16 w-16 rounded-3xl object-cover" />
-                  ) : (
-                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-panel-2 text-xs uppercase tracking-[0.3em] text-slate">Audio</div>
-                  )}
-                  <div>
-                    <p className="font-semibold text-ivory">{post.audioTrackName}</p>
-                    <p className="text-sm text-slate">{post.audioArtistName}</p>
-                  </div>
-                </div>
-                {post.audioPreviewUrl ? (
-                  <audio controls src={post.audioPreviewUrl} className="w-full md:w-auto" />
-                ) : (
-                  <p className="text-xs text-slate">Preview not available</p>
-                )}
+          <div className="border-t border-hairline px-4 py-4">
+            {replyTo ? (
+              <div className="mb-3 rounded-2xl bg-panel/80 px-3 py-2 text-xs text-slate">
+                Replying to <span className="font-semibold text-ivory">{replyTo.author || replyTo.author_handle || 'that comment'}</span>
+                <button onClick={() => setReplyTo(null)} className="ml-2 text-gold">Cancel</button>
               </div>
-            </div>
-          ) : null}
-
-          <div className="mt-4 flex items-center gap-3">
-            <button onClick={toggleLike} className={`rounded-xl px-3 py-2 ${liked ? 'bg-gold/20 text-gold' : 'bg-ivory/5 text-ivory'}`}>{liked ? 'Liked' : 'Like'}{likeCount !== null ? ` (${likeCount})` : ''}</button>
-            <button onClick={toggleFavorite} className={`rounded-xl px-3 py-2 ${favorited ? 'bg-gold/20 text-gold' : 'bg-ivory/5 text-ivory'}`}>{favorited ? 'Saved' : 'Save'}{favoriteCount !== null ? ` (${favoriteCount})` : ''}</button>
-            <button onClick={() => { setShowComments((s) => !s); if (!comments) void loadComments(); }} className="rounded-xl px-3 py-2 bg-ivory/5 text-ivory">Comments{comments ? ` (${comments.length})` : ''}</button>
-            <button onClick={async () => { await authedFetch(`/api/posts/${post.id}/share`, { method: 'POST' }); }} className="rounded-xl px-3 py-2 bg-ivory/5 text-ivory">Share</button>
-            {currentUserId && post.author_id === currentUserId ? (
-              <button onClick={() => router.push(`/post?edit=${post.id}`)} className="rounded-xl px-3 py-2 bg-ivory/5 text-ivory">Edit</button>
             ) : null}
-          </div>
-
-          {showComments ? (
-            <div className="mt-4">
-              <div className="space-y-2">
-                <textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} className="w-full rounded-2xl bg-panel px-3 py-2 text-sm text-ivory" placeholder="Write a comment" />
-                <div className="flex gap-2">
-                  <button onClick={postComment} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-3 py-2 text-sm font-semibold text-obsidian">Post</button>
-                  <button onClick={() => setShowComments(false)} className="rounded-2xl border border-hairline px-3 py-2 text-sm text-ivory">Close</button>
-                </div>
-              </div>
-              {comments && comments.length > 0 ? (
-                <div className="mt-4 space-y-3">
-                  {comments.map((c) => (
-                    <div key={c.id} className="rounded-xl border border-hairline bg-panel/70 p-3 text-sm text-ivory">
-                      <p className="font-medium text-ivory">{c.author_id}</p>
-                      <p className="mt-1 text-slate">{c.body}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+            <div className="flex gap-2">
+              <textarea
+                value={commentBody}
+                onChange={(e) => setCommentBody(e.target.value)}
+                placeholder="Write a comment"
+                className="min-h-[80px] flex-1 rounded-3xl border border-hairline bg-panel px-3 py-2 text-sm text-ivory outline-none"
+              />
+              <button onClick={postComment} className="rounded-3xl bg-gold px-4 py-3 text-sm font-semibold text-obsidian">Post</button>
             </div>
-          ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
     </article>
   );
 }

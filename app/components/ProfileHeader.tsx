@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import FollowButton from './FollowButton';
 import BlockButton from './BlockButton';
@@ -16,7 +16,7 @@ export default function ProfileHeader({ profile }: { profile: any }) {
         if (!resp.ok) return;
         const p = await resp.json();
         setCurrentUserId(p.profile?.user_id ?? null);
-      } catch (err) {
+      } catch {
         // ignore
       }
     };
@@ -57,16 +57,24 @@ export default function ProfileHeader({ profile }: { profile: any }) {
             <p className="mt-2 max-w-2xl text-sm text-slate">{profile?.bio ?? 'This user has not added a bio.'}</p>
           </div>
         </div>
-        <div>
-          {isOwn ? (
-            <div>
-              <div>{summary ? summary.followerCount ?? 0 : '—'} followers</div>
-              <div>{summary ? summary.followingCount ?? 0 : '—'} following</div>
-              {summary?.shouldFollowBack ? <div className="text-gold">Follows you — follow back?</div> : null}
-              {summary?.mutual ? <div className="text-ivory/80">Follows each other</div> : null}
+
+        {summary ? (
+          <div className="grid gap-3 sm:flex sm:items-center sm:gap-6">
+            <div className="rounded-3xl bg-panel/80 px-4 py-3 text-center">
+              <p className="text-2xl font-semibold text-ivory">{summary.followerCount ?? 0}</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate">Followers</p>
             </div>
-          ) : null}
-        </div>
+            <div className="rounded-3xl bg-panel/80 px-4 py-3 text-center">
+              <p className="text-2xl font-semibold text-ivory">{summary.followingCount ?? 0}</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate">Following</p>
+            </div>
+            <div className="rounded-3xl bg-panel/80 px-4 py-3 text-center">
+              <p className="text-2xl font-semibold text-ivory">{summary.totalLikeCount ?? 0}</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate">Likes</p>
+            </div>
+          </div>
+        ) : null}
+
         <div>
           {isOwn ? (
             <div className="flex flex-wrap gap-2">

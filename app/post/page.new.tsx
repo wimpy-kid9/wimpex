@@ -95,6 +95,7 @@ export default function CreatePostPage() {
         setDraft(post.caption || '');
         setVisibility(post.visibility || 'public');
         setFilterPreset(post.filter_preset || 'none');
+        setStatus(post.status || 'published');
 
         if (post.imageUrl) {
           setMediaType('image');

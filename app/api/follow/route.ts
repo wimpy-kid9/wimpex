@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { supabaseServer } from '@/lib/supabase-server';
 
@@ -24,11 +24,10 @@ export async function POST(request: NextRequest) {
 
   const { error } = await supabaseServer.from('wpx_follows').insert({ follower_id: authContext.user.id, followed_id: followedId });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  // create notification for followed user
   try {
     await supabaseServer.from('wpx_notifications').insert({ user_id: followedId, type: 'follow', metadata: { follower_id: authContext.user.id } });
   } catch {
-    // ignore notification errors
+    // ignore notification failures
   }
   return NextResponse.json({ following: true });
 }
@@ -69,7 +68,18 @@ export async function GET(request: NextRequest) {
     const mutual = isFollowing && isFollowedBy;
     const shouldFollowBack = isFollowedBy && !isFollowing;
 
-    return NextResponse.json({ followerCount: followerCount ?? 0, followingCount: followingCount ?? 0, isFollowing, isFollowedBy, mutual, shouldFollowBack });
+    const { data: authorPosts, error: authorPostsErr } = await supabaseServer.from('wpx_posts').select('id').eq('author_id', userId);
+    if (authorPostsErr) return NextResponse.json({ error: authorPostsErr.message }, { status: 500 });
+
+    const postIds = (authorPosts || []).map((post: any) => post.id).filter(Boolean);
+    let totalLikeCount = 0;
+    if (postIds.length > 0) {
+      const { count: likeCount, error: likeErr } = await supabaseServer.from('wpx_post_likes').select('*', { count: 'exact', head: true }).in('post_id', postIds);
+      if (likeErr) return NextResponse.json({ error: likeErr.message }, { status: 500 });
+      totalLikeCount = likeCount ?? 0;
+    }
+
+    return NextResponse.json({ followerCount: followerCount ?? 0, followingCount: followingCount ?? 0, totalLikeCount, isFollowing, isFollowedBy, mutual, shouldFollowBack });
   }
 
   if (!type) return NextResponse.json({ error: 'Missing type' }, { status: 400 });

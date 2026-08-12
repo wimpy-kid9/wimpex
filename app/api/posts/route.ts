@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 
@@ -30,7 +30,8 @@ function mapPost(post: any, likeCounts: Record<string, number>, favoriteCounts: 
     filterPreset: post.filter_preset || 'none',
     like_count: likeCounts[post.id] ?? 0,
     favorite_count: favoriteCounts[post.id] ?? 0,
-    share_count: post.share_count ?? 0
+    share_count: post.share_count ?? 0,
+    status: post.status || 'published'
   };
 }
 
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
   const currentOnly = request.nextUrl.searchParams.get('current_only') === 'true';
 
   let authContext: any = null;
-  if (type === 'liked' || type === 'favorited' || currentOnly) {
+  if (type === 'liked' || type === 'favorited' || type === 'drafts' || currentOnly) {
     try {
       authContext = await requireAuth(request);
     } catch {
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
   }
 
   const query = supabaseServer.from('wpx_posts').select(
-    `id, author_id, visibility, caption, media_type, video_url, image_url, thumbnail_url, audio_track_id, audio_track_name, audio_artist_name, audio_preview_url, audio_cover_art_url, filter_preset, share_count, created_at`
+    `id, author_id, visibility, caption, media_type, video_url, image_url, thumbnail_url, audio_track_id, audio_track_name, audio_artist_name, audio_preview_url, audio_cover_art_url, filter_preset, share_count, created_at, status`
   );
 
   let rows: any[] = [];
@@ -147,6 +148,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     rows = data || [];
+  } else if (type === 'drafts') {
+    const userId = authorId || authContext.user.id;
+    if (userId !== authContext.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { data, error } = await query.eq('author_id', userId).eq('status', 'draft').order('created_at', { ascending: false });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    rows = data || [];
   } else if (authorId) {
     if (authorId === authContext?.user?.id) {
       const { data, error } = await query.eq('author_id', authorId).order('created_at', { ascending: false });
@@ -158,6 +170,7 @@ export async function GET(request: NextRequest) {
       const { data, error } = await query
         .eq('author_id', authorId)
         .eq('visibility', 'public')
+        .eq('status', 'published')
         .order('created_at', { ascending: false });
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -165,7 +178,7 @@ export async function GET(request: NextRequest) {
       rows = data || [];
     }
   } else {
-    const { data, error } = await query.eq('visibility', 'public').order('created_at', { ascending: false }).limit(20);
+    const { data, error } = await query.eq('visibility', 'public').eq('status', 'published').order('created_at', { ascending: false }).limit(20);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -190,12 +203,13 @@ export async function POST(request: NextRequest) {
   let authContext;
   try {
     authContext = await requireAuth(request);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   let caption = '';
   let visibility: string = 'public';
+  let status: string = 'published';
   let videoUrl = '';
   let imageUrl = '';
   let thumbnailUrl = '';
@@ -212,6 +226,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     caption = formData.get('caption')?.toString() || '';
     visibility = formData.get('visibility')?.toString() || 'public';
+    status = formData.get('status')?.toString() || 'published';
     thumbnailUrl = formData.get('thumbnail_url')?.toString() || '';
     mediaType = formData.get('media_type')?.toString() || 'video';
     filterPreset = formData.get('filter_preset')?.toString() || 'none';
@@ -277,6 +292,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     caption = body.caption || '';
     visibility = body.visibility || 'public';
+    status = body.status || 'published';
     videoUrl = body.video_url || '';
     imageUrl = body.image_url || '';
     thumbnailUrl = body.thumbnail_url || '';
@@ -289,7 +305,7 @@ export async function POST(request: NextRequest) {
     audioCoverArtUrl = body.audio_cover_art_url || '';
   }
 
-  if (!imageUrl && !videoUrl) {
+  if (!imageUrl && !videoUrl && status !== 'draft') {
     return NextResponse.json({ error: 'Please upload an image or video.' }, { status: 400 });
   }
 
@@ -299,6 +315,7 @@ export async function POST(request: NextRequest) {
       author_id: authContext.user.id,
       caption,
       visibility,
+      status: status === 'draft' ? 'draft' : 'published',
       media_type: mediaType,
       video_url: videoUrl || null,
       image_url: imageUrl || null,
@@ -339,7 +356,8 @@ export async function POST(request: NextRequest) {
       audioArtistName: data.audio_artist_name || null,
       audioPreviewUrl: data.audio_preview_url || null,
       audioCoverArtUrl: data.audio_cover_art_url || null,
-      filterPreset: data.filter_preset || 'none'
+      filterPreset: data.filter_preset || 'none',
+      status: data.status || 'published'
     }
   });
 }

@@ -50,7 +50,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const body = await request.json();
   if (!body?.body?.trim()) return NextResponse.json({ error: 'Comment body required.' }, { status: 400 });
 
-  const { data: inserted, error } = await supabaseServer.from('wpx_post_comments').insert({ post_id: postId, author_id: authContext.user.id, body: body.body.trim() }).select().single();
+  const parentCommentId = body.parent_comment_id || null;
+  const { data: inserted, error } = await supabaseServer.from('wpx_post_comments').insert({ post_id: postId, author_id: authContext.user.id, body: body.body.trim(), parent_comment_id: parentCommentId }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   // notify post author
   try {
