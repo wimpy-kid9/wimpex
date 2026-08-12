@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type TouchEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { authedFetch } from '@/lib/api-client';
 
@@ -16,12 +16,40 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [draft, setDraft] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [notice, setNotice] = useState('');
+  const [replyingTo, setReplyingTo] = useState<any | null>(null);
+  const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
+  const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
+  const [replySwipeOffset, setReplySwipeOffset] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const [allowsFinePointer, setAllowsFinePointer] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<BlobPart[]>([]);
+  const recordedChunksRef = useRef<any[]>([]);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const touchStateRef = useRef({
+    messageId: '',
+    startX: 0,
+    startY: 0,
+    replySwipe: false,
+    moved: false,
+    longPressTriggered: false,
+    holding: false
+  });
+  const longPressTimerRef = useRef<number | null>(null);
+  const reactionOptions = useMemo(() => ['👍', '❤️', '😂', '👏', '🔥'], []);
+  const messagesById = useMemo(() => new Map(messages.map((message) => [message.id, message])), [messages]);
+  const messagesWithReply = useMemo(
+    () =>
+      messages.map((message) => ({
+        ...message,
+        replyPreview:
+          message.replyPreview ?? (message.reply_to_message_id ? messagesById.get(message.reply_to_message_id) ?? null : null)
+      })),
+    [messages, messagesById]
+  );
 
   const loadThread = useCallback(async () => {
     const resp = await authedFetch(`/api/messages?conversation_id=${encodeURIComponent(conversationId)}`);
@@ -40,9 +68,13 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   }, [conversationId, loadThread]);
 
   useEffect(() => {
+    setAllowsFinePointer(typeof window !== 'undefined' && window.matchMedia('(pointer:fine)').matches);
+  }, []);
+
+  useEffect(() => {
     if (!conversationId) return;
     const es = new EventSource('/api/messages/stream');
-    const handler = (ev: MessageEvent) => {
+    const handler = () => {
       try {
         // always reload thread on update; server could include conversation hint in future
         void loadThread();
@@ -71,6 +103,12 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   }, [messages]);
 
   useEffect(() => {
+    if (!highlightedMessageId) return;
+    const timeout = window.setTimeout(() => setHighlightedMessageId(null), 1200);
+    return () => window.clearTimeout(timeout);
+  }, [highlightedMessageId]);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       () => undefined,
       { root: null, threshold: 0.2 }
@@ -78,6 +116,56 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     if (scrollRef.current) observer.observe(scrollRef.current);
     return () => observer.disconnect();
   }, []);
+
+  const clearReply = useCallback(() => {
+    setReplyingTo(null);
+  }, []);
+
+  const handleReplyToMessage = useCallback((message: any) => {
+    setReplyingTo(message);
+    setReactionPickerFor(null);
+    setActionMenuFor(null);
+    inputRef.current?.focus();
+  }, []);
+
+  const handleMessageBubbleClick = useCallback(
+    (messageId: string, event: MouseEvent<HTMLDivElement>) => {
+      if (!allowsFinePointer) return;
+      event.stopPropagation();
+      setActionMenuFor((current) => (current === messageId ? null : messageId));
+      setReactionPickerFor(null);
+    },
+    [allowsFinePointer]
+  );
+
+  const scrollToMessage = useCallback((messageId: string) => {
+    const node = messageRefs.current.get(messageId);
+    if (!node || !scrollRef.current) return;
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightedMessageId(messageId);
+  }, []);
+
+  const toggleReactionPicker = useCallback((messageId: string) => {
+    setReactionPickerFor((current) => (current === messageId ? null : messageId));
+  }, []);
+
+  const sendReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      setNotice('');
+      const response = await authedFetch('/api/messages/reactions', {
+        method: 'POST',
+        body: JSON.stringify({ message_id: messageId, emoji })
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        setNotice(payload.error || 'Unable to add reaction.');
+        return;
+      }
+      setMessages((current) => current.map((msg) => (msg.id === messageId ? { ...msg, ...payload.message } : msg)));
+      setReactionPickerFor(null);
+    },
+    []
+  );
 
   const sendMessage = async () => {
     if (!draft.trim() && !attachment) {
@@ -88,6 +176,9 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     const form = new FormData();
     form.append('body', draft.trim());
     form.append('conversation_id', conversationId);
+    if (replyingTo) {
+      form.append('reply_to_message_id', replyingTo.id);
+    }
     if (attachment) form.append('media', attachment);
 
     const resp = await authedFetch('/api/messages', { method: 'POST', body: form });
@@ -99,6 +190,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
 
     setDraft('');
     setAttachment(null);
+    clearReply();
     void loadThread();
   };
 
@@ -108,19 +200,19 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
       mediaStreamRef.current = stream;
       const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       recordedChunksRef.current = [];
-      mr.ondataavailable = (ev) => {
-        if (ev.data && ev.data.size > 0) recordedChunksRef.current.push(ev.data);
+      mr.ondataavailable = (event: BlobEvent) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
       };
       mr.onstop = async () => {
         const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
         const file = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
         setAttachment(file);
-        // stop tracks
         mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
         mediaStreamRef.current = null;
         mediaRecorderRef.current = null;
         setIsRecording(false);
-        // send the recorded voice note
         await sendMessage();
       };
       mediaRecorderRef.current = mr;
@@ -143,11 +235,88 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     }
   };
 
-  const otherUserName = conversation?.title || conversation?.otherUser?.display_name || conversation?.otherUser?.username || 'Chat';
+  const otherUserName = useMemo(
+    () => conversation?.title || conversation?.otherUser?.display_name || conversation?.otherUser?.username || 'Chat',
+    [conversation]
+  );
+
+  const handleMessageTouchStart = (messageId: string, event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    touchStateRef.current = {
+      messageId,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      replySwipe: false,
+      moved: false,
+      longPressTriggered: false,
+      holding: true
+    };
+    setReplySwipeOffset(0);
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+    }
+    longPressTimerRef.current = window.setTimeout(() => {
+      const current = touchStateRef.current;
+      if (current.holding) {
+        current.longPressTriggered = true;
+      }
+    }, 320);
+  };
+
+  const handleMessageTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    const current = touchStateRef.current;
+    const deltaX = touch.clientX - current.startX;
+    const deltaY = touch.clientY - current.startY;
+    if (Math.abs(deltaY) > 30) {
+      current.holding = false;
+      current.longPressTriggered = false;
+      if (longPressTimerRef.current) {
+        window.clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      return;
+    }
+    if (current.longPressTriggered && deltaX > 16) {
+      current.replySwipe = true;
+      current.moved = true;
+      setReplySwipeOffset(Math.min(deltaX, 80));
+    }
+  };
+
+  const handleMessageTouchEnd = () => {
+    const current = touchStateRef.current;
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    if (current.longPressTriggered) {
+      if (current.replySwipe && current.moved && replySwipeOffset > 50) {
+        const message = messagesById.get(current.messageId);
+        if (message) {
+          handleReplyToMessage(message);
+        }
+      } else {
+        setReactionPickerFor(current.messageId);
+      }
+    }
+
+    setReplySwipeOffset(0);
+    touchStateRef.current = {
+      messageId: '',
+      startX: 0,
+      startY: 0,
+      replySwipe: false,
+      moved: false,
+      longPressTriggered: false,
+      holding: false
+    };
+  };
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-3xl space-y-6">
+    <main onClick={() => actionMenuFor && setActionMenuFor(null)} className="h-[100dvh] overflow-hidden flex flex-col px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col space-y-6">
         <section className="rounded-3xl border border-hairline bg-panel-2/70 p-4 shadow-sm">
           <div className="flex items-center gap-3">
             {showBackButton ? (
@@ -177,35 +346,100 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
           </div>
         </section>
 
-        <section className="flex min-h-[60vh] flex-col rounded-3xl border border-hairline bg-panel-2/70 shadow-inner shadow-black/10">
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+        <section className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-3xl border border-hairline bg-panel-2/70 shadow-inner shadow-black/10">
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-4">
             {notice ? (
               <div className="rounded-3xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-100">{notice}</div>
             ) : null}
-            {messages.length > 0 ? (
-              messages.map((messageItem) => {
+            {messagesWithReply.length > 0 ? (
+              messagesWithReply.map((messageItem) => {
                 const incoming = messageItem.sender_id === conversation?.otherUser?.user_id;
+                const replyPreview = messageItem.replyPreview;
+                const isHighlighted = highlightedMessageId === messageItem.id;
                 return (
-                  <div key={messageItem.id} className={`flex ${incoming ? 'justify-start' : 'justify-end'}`}>
-                    <div className={`max-w-[84%] rounded-3xl px-4 py-3 text-sm leading-7 ${incoming ? 'bg-panel/90 text-ivory' : 'bg-gold/10 text-obsidian'}`}>
+                  <div
+                    key={messageItem.id}
+                    ref={(node) => {
+                      if (node) {
+                        messageRefs.current.set(messageItem.id, node);
+                      } else {
+                        messageRefs.current.delete(messageItem.id);
+                      }
+                    }}
+                    className={`flex ${incoming ? 'justify-start' : 'justify-end'}`}
+                    onClick={(event) => handleMessageBubbleClick(messageItem.id, event)}
+                    onTouchStart={(event) => handleMessageTouchStart(messageItem.id, event)}
+                    onTouchMove={handleMessageTouchMove}
+                    onTouchEnd={handleMessageTouchEnd}
+                  >
+                    <div
+                      className={`relative max-w-[84%] rounded-3xl px-4 py-3 text-sm leading-7 ${incoming ? 'bg-panel/90 text-ivory' : 'bg-gold/10 text-obsidian'} ${isHighlighted ? 'ring-2 ring-gold/60' : ''}`}
+                      style={{ transform: messageItem.id === touchStateRef.current.messageId ? `translateX(${replySwipeOffset}px)` : undefined }}
+                    >
+                      {replyPreview ? (
+                        <button
+                          type="button"
+                          onClick={() => replyPreview?.id && scrollToMessage(replyPreview.id)}
+                          className="mb-2 w-full rounded-3xl border border-hairline bg-panel/80 px-3 py-2 text-left text-xs text-slate transition hover:bg-panel/70"
+                        >
+                          Replying to: {replyPreview.body ? `${replyPreview.body.slice(0, 80)}${replyPreview.body.length > 80 ? '…' : ''}` : 'Media message'}
+                        </button>
+                      ) : null}
                       {messageItem.body ? <p>{messageItem.body}</p> : null}
                       {messageItem.media_url ? (
-                                  <div className="mt-3 overflow-hidden rounded-3xl border border-hairline bg-panel/80">
-                                    {messageItem.media_type?.startsWith('image') ? (
-                                      <img src={messageItem.media_url} alt="Attachment" className="h-full w-full object-cover" />
-                                    ) : messageItem.media_type?.startsWith('video') ? (
-                                      <video controls src={messageItem.media_url} className="h-full w-full object-cover" />
-                                    ) : (
-                                      <div className="flex items-center gap-3 px-4 py-3">
-                                        <audio controls src={messageItem.media_url} className="w-full" />
-                                        <div className={`${Date.now() - new Date(messageItem.created_at).getTime() < 3000 ? 'animate-pulse' : ''} ml-2`}> 
-                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-6 w-6 text-gold"><path d="M2 12c0-2.21 1.79-4 4-4v8c-2.21 0-4-1.79-4-4zM10 6v12c0-3.31-2.69-6-6-6" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : null}
-                      <p className="mt-2 text-xs text-slate">{new Date(messageItem.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        <div className="mt-3 overflow-hidden rounded-3xl border border-hairline bg-panel/80">
+                          {messageItem.media_type?.startsWith('image') ? (
+                            <img src={messageItem.media_url} alt="Attachment" className="h-full w-full object-cover" />
+                          ) : messageItem.media_type?.startsWith('video') ? (
+                            <video controls src={messageItem.media_url} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex items-center gap-3 px-4 py-3">
+                              <audio controls src={messageItem.media_url} className="w-full" />
+                              <div className={`${Date.now() - new Date(messageItem.created_at).getTime() < 3000 ? 'animate-pulse' : ''} ml-2`}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-6 w-6 text-gold"><path d="M2 12c0-2.21 1.79-4 4-4v8c-2.21 0-4-1.79-4-4zM10 6v12c0-3.31-2.69-6-6-6" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                      <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate">
+                        <span>{new Date(messageItem.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); handleReplyToMessage(messageItem); }} className="rounded-full px-2 py-1 transition hover:bg-panel/80">Reply</button>
+                          <button type="button" onClick={(event) => { event.stopPropagation(); toggleReactionPicker(messageItem.id); }} className="rounded-full px-2 py-1 transition hover:bg-panel/80">React</button>
+                        </div>
+                      </div>
+                      {Object.keys(messageItem.reactions || {}).length ? (
+                        <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                          {Object.entries(messageItem.reactions).map(([emoji, reaction]: any) => (
+                            <button
+                              key={`${messageItem.id}-${emoji}`}
+                              type="button"
+                              onClick={() => void sendReaction(messageItem.id, emoji)}
+                              className={`inline-flex items-center rounded-full px-2 py-1 text-xs transition ${reaction.reactedByMe ? 'bg-gold/15 text-gold' : 'bg-panel/80 text-slate'} hover:bg-panel/90`}
+                            >
+                              <span>{emoji}</span>
+                              {reaction.count > 1 ? <span className="ml-1 text-[10px]">{reaction.count}</span> : null}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                      {reactionPickerFor === messageItem.id ? (
+                        <div className="mt-3 flex flex-wrap gap-2 rounded-3xl bg-panel/90 p-3">
+                          {reactionOptions.map((emoji) => (
+                            <button key={emoji} type="button" onClick={() => void sendReaction(messageItem.id, emoji)} className="rounded-full border border-hairline bg-panel px-3 py-2 text-sm transition hover:bg-panel-2">
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                      {actionMenuFor === messageItem.id ? (
+                        <div className="absolute right-0 top-0 z-10 mt-1 w-32 rounded-3xl border border-hairline bg-panel p-2 shadow-2xl shadow-black/20">
+                          <button type="button" onClick={() => handleReplyToMessage(messageItem)} className="w-full rounded-3xl px-3 py-2 text-left text-xs text-ivory transition hover:bg-panel/80">Reply</button>
+                          <button type="button" onClick={() => toggleReactionPicker(messageItem.id)} className="w-full rounded-3xl px-3 py-2 text-left text-xs text-ivory transition hover:bg-panel/80">React</button>
+                          <button type="button" onClick={() => setActionMenuFor(null)} className="w-full rounded-3xl px-3 py-2 text-left text-xs text-slate transition hover:bg-panel/80">Close</button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -217,7 +451,15 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
             )}
           </div>
 
-          <div className="sticky bottom-0 z-10 rounded-b-3xl border border-t-0 border-hairline bg-panel/95 px-4 py-3 backdrop-blur-xl">
+          <div className="rounded-b-3xl border border-t-0 border-hairline bg-panel/95 px-4 py-3 backdrop-blur-xl">
+            {replyingTo ? (
+              <div className="mb-3 rounded-3xl border border-gold/30 bg-gold/5 px-4 py-3 text-sm text-slate">
+                Replying to <span className="font-semibold text-ivory">{replyingTo.body || 'a message'}</span>
+                <button type="button" onClick={clearReply} className="ml-3 text-xs uppercase tracking-[0.24em] text-gold">
+                  Cancel
+                </button>
+              </div>
+            ) : null}
             <div className="flex items-center gap-2">
               <label className="rounded-full p-2 text-slate transition hover:bg-panel-2" title="Attach file">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M21 12.79V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7.21" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 10l5 5 5-5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -265,7 +507,9 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                 ) : null}
               </div>
             </div>
-            {attachment ? <p className="mt-2 text-xs text-slate">Attachment ready: {attachment.name}</p> : null}
+            {attachment ? (
+              <div className="mt-2 rounded-3xl bg-panel/80 px-3 py-2 text-xs text-slate">Attachment ready: {attachment.name}</div>
+            ) : null}
           </div>
         </section>
       </div>

@@ -236,6 +236,52 @@ export async function GET(request: NextRequest) {
       )
     );
 
+    const replyToIds = Array.from(
+      new Set(
+        (messages || [])
+          .map((message: any) => message.reply_to_message_id)
+          .filter((id: string | null): id is string => Boolean(id))
+      )
+    );
+
+    const { data: replyMessages, error: replyMessagesError } = replyToIds.length
+      ? await supabaseServer.from('wpx_messages').select('id, body, sender_id').in('id', replyToIds)
+      : { data: [], error: null };
+
+    if (replyMessagesError) {
+      return NextResponse.json({ error: replyMessagesError.message }, { status: 500 });
+    }
+
+    const replyMessageMap = new Map((replyMessages || []).map((reply: any) => [reply.id, reply]));
+
+    const { data: reactions, error: reactionsError } = await supabaseServer
+      .from('wpx_message_reactions')
+      .select('message_id, emoji, user_id')
+      .in('message_id', (messages || []).map((message: any) => message.id));
+
+    if (reactionsError) {
+      return NextResponse.json({ error: reactionsError.message }, { status: 500 });
+    }
+
+    const reactionGroups = (reactions || []).reduce(
+      (acc: Record<string, Record<string, { count: number; reactedByMe: boolean }>>, reaction: any) => {
+        const messageReactions = acc[reaction.message_id] ??= {};
+        const group = messageReactions[reaction.emoji] ??= { count: 0, reactedByMe: false };
+        group.count += 1;
+        if (reaction.user_id === authContext.user.id) {
+          group.reactedByMe = true;
+        }
+        return acc;
+      },
+      {} as Record<string, Record<string, { count: number; reactedByMe: boolean }>>
+    );
+
+    const messagesWithReactions = (messages || []).map((message: any) => ({
+      ...message,
+      replyPreview: message.reply_to_message_id ? replyMessageMap.get(message.reply_to_message_id) ?? null : null,
+      reactions: reactionGroups[message.id] || {}
+    }));
+
     const { data: profiles, error: profileError } = await supabaseServer
       .from('wpx_profiles')
       .select('user_id, username, display_name, avatar_url')
@@ -252,7 +298,7 @@ export async function GET(request: NextRequest) {
       messages || []
     );
 
-    return NextResponse.json({ messages: messages || [], conversation: summary });
+    return NextResponse.json({ messages: messagesWithReactions, conversation: summary });
   }
 
   if (participantId) {
@@ -470,7 +516,7 @@ export async function POST(request: NextRequest) {
     body: textBody,
     media_type: mediaUrl ? mediaType : 'text',
     media_url: mediaUrl || null,
-    status: 'sent'
+    reply_to_message_id: body.reply_to_message_id || null
   }).select().single();
 
   if (messageError) {
