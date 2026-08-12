@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
-import { getUserAccent } from '@/lib/ui-theme';
 
 const FILTER_CLASSES: Record<string, string> = {
   none: '',
@@ -31,45 +30,15 @@ export default function PostCard({ post }: { post: any }) {
   const [comments, setComments] = useState<any[] | null>(null);
   const [commentBody, setCommentBody] = useState('');
   const [replyTo, setReplyTo] = useState<any | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [following, setFollowing] = useState<boolean | null>(null);
-  const [followerCount, setFollowerCount] = useState<number | null>(post?.follower_count ?? null);
   const [muted, setMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
-  const _unusedAccent = getUserAccent(post.author || post.handle || 'wimpex-post');
 
   useEffect(() => {
     const init = async () => {
-      try {
-        const meResp = await authedFetch('/api/profile');
-        let meId = null;
-        if (meResp.ok) {
-          const p = await meResp.json();
-          meId = p.profile?.user_id ?? null;
-          setCurrentUserId(meId);
-        }
-
-        if (post?.author_id) {
-          const fResp = await authedFetch(`/api/follow?user_id=${post.author_id}&type=followers`);
-          if (fResp.ok) {
-            const j = await fResp.json();
-            const followers = j.followers || [];
-            if (followers.length > 0 && typeof followers[0] === 'object') {
-              setFollowerCount(followers.length);
-              setFollowing(meId ? followers.some((f: any) => f.user_id === meId) : false);
-            } else {
-              setFollowerCount(followers.length);
-              setFollowing(meId ? followers.includes(meId) : false);
-            }
-          } else {
-            setFollowing(false);
-          }
-        }
-      } catch {
-        // ignore
-      }
+      // Optionally load post-specific state here later.
     };
+
     void init();
   }, [post?.author_id]);
 

@@ -67,9 +67,15 @@ export default function ProfileTabs({ profile, isOwn }: { profile: any; isOwn: b
     void loadData();
   }, [active, profile]);
 
+  const ownerTabs: Array<{ label: string; value: TabValue; icon: string }> = [
+    { label: 'Liked', value: 'liked', icon: '❤️' },
+    { label: 'Favorited', value: 'favorited', icon: '📌' },
+    { label: 'Drafts', value: 'drafts', icon: '📝' }
+  ];
+
   const tabs: { label: string; value: TabValue; icon: string }[] = [
     { label: 'Posts', value: 'posts', icon: '🖼️' },
-    ...(isOwn ? [{ label: 'Liked', value: 'liked', icon: '❤️' }, { label: 'Favorited', value: 'favorited', icon: '📌' }, { label: 'Drafts', value: 'drafts', icon: '📝' }] : []),
+    ...(isOwn ? ownerTabs : []),
     { label: 'Followers', value: 'followers', icon: '👥' },
     { label: 'Following', value: 'following', icon: '➡️' }
   ];
@@ -81,7 +87,7 @@ export default function ProfileTabs({ profile, isOwn }: { profile: any; isOwn: b
           <button
             key={tab.value}
             type="button"
-            onClick={() => setActive(tab.value as TabValue)}
+            onClick={() => setActive(tab.value)}
             className={`inline-flex items-center gap-2 rounded-3xl px-4 py-3 text-sm font-semibold transition ${active === tab.value ? 'bg-gold/20 text-amber-100' : 'bg-ivory/5 text-ivory hover:bg-ivory/10'}`}
           >
             <span>{tab.icon}</span>

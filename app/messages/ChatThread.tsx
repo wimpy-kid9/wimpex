@@ -117,6 +117,9 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
 
         <section className="flex min-h-[60vh] flex-col rounded-3xl border border-hairline bg-panel-2/70 shadow-inner shadow-black/10">
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+            {notice ? (
+              <div className="rounded-3xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-100">{notice}</div>
+            ) : null}
             {messages.length > 0 ? (
               messages.map((messageItem) => {
                 const incoming = messageItem.sender_id === conversation?.otherUser?.user_id;
