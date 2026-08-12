@@ -16,6 +16,10 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [draft, setDraft] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [notice, setNotice] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<BlobPart[]>([]);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -37,10 +41,26 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
 
   useEffect(() => {
     if (!conversationId) return;
-    const id = window.setInterval(() => {
-      void loadThread();
-    }, 3000);
-    return () => window.clearInterval(id);
+    const es = new EventSource('/api/messages/stream');
+    const handler = (ev: MessageEvent) => {
+      try {
+        // always reload thread on update; server could include conversation hint in future
+        void loadThread();
+      } catch (e) {
+        // ignore
+      }
+    };
+    es.addEventListener('update', handler);
+    es.onerror = () => {
+      es.close();
+      // fallback: poll
+      const id = window.setInterval(() => void loadThread(), 3000);
+      (es as any)._pollId = id;
+    };
+    return () => {
+      if ((es as any)._pollId) window.clearInterval((es as any)._pollId);
+      es.close();
+    };
   }, [conversationId, loadThread]);
 
   useEffect(() => {
@@ -82,6 +102,40 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     void loadThread();
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      recordedChunksRef.current = [];
+      mr.ondataavailable = (ev) => {
+        if (ev.data && ev.data.size > 0) recordedChunksRef.current.push(ev.data);
+      };
+      mr.onstop = async () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+        const file = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
+        setAttachment(file);
+        // stop tracks
+        mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+        mediaRecorderRef.current = null;
+        setIsRecording(false);
+        // send the recorded voice note
+        await sendMessage();
+      };
+      mediaRecorderRef.current = mr;
+      mr.start();
+      setIsRecording(true);
+    } catch (e) {
+      setNotice('Unable to access microphone.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+  };
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       event.preventDefault();
@@ -136,16 +190,21 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                     <div className={`max-w-[84%] rounded-3xl px-4 py-3 text-sm leading-7 ${incoming ? 'bg-panel/90 text-ivory' : 'bg-gold/10 text-obsidian'}`}>
                       {messageItem.body ? <p>{messageItem.body}</p> : null}
                       {messageItem.media_url ? (
-                        <div className="mt-3 overflow-hidden rounded-3xl border border-hairline bg-panel/80">
-                          {messageItem.media_type?.startsWith('image') ? (
-                            <img src={messageItem.media_url} alt="Attachment" className="h-full w-full object-cover" />
-                          ) : messageItem.media_type?.startsWith('video') ? (
-                            <video controls src={messageItem.media_url} className="h-full w-full object-cover" />
-                          ) : (
-                            <audio controls src={messageItem.media_url} className="w-full" />
-                          )}
-                        </div>
-                      ) : null}
+                                  <div className="mt-3 overflow-hidden rounded-3xl border border-hairline bg-panel/80">
+                                    {messageItem.media_type?.startsWith('image') ? (
+                                      <img src={messageItem.media_url} alt="Attachment" className="h-full w-full object-cover" />
+                                    ) : messageItem.media_type?.startsWith('video') ? (
+                                      <video controls src={messageItem.media_url} className="h-full w-full object-cover" />
+                                    ) : (
+                                      <div className="flex items-center gap-3 px-4 py-3">
+                                        <audio controls src={messageItem.media_url} className="w-full" />
+                                        <div className={`${Date.now() - new Date(messageItem.created_at).getTime() < 3000 ? 'animate-pulse' : ''} ml-2`}> 
+                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-6 w-6 text-gold"><path d="M2 12c0-2.21 1.79-4 4-4v8c-2.21 0-4-1.79-4-4zM10 6v12c0-3.31-2.69-6-6-6" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : null}
                       <p className="mt-2 text-xs text-slate">{new Date(messageItem.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
                   </div>
@@ -175,18 +234,36 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                 placeholder="Message"
                 className="flex-1 rounded-full border border-transparent bg-panel px-4 py-3 text-sm text-ivory outline-none focus:border-gold focus:ring-2 focus:ring-gold/20"
               />
-              <button
-                type="button"
-                onClick={() => void sendMessage()}
-                className="rounded-full bg-gold p-3 text-ivory transition hover:brightness-105"
-                title={draft.trim() ? 'Send message' : 'Record voice note'}
-              >
-                {draft.trim() ? (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M5 12h14" strokeWidth="1.6" strokeLinecap="round"/><path d="M12 5l7 7-7 7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 10a7 7 0 0 1-14 0" strokeWidth="1.6" strokeLinecap="round"/><path d="M12 19v4" strokeWidth="1.6" strokeLinecap="round"/></svg>
-                )}
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (draft.trim()) {
+                      await sendMessage();
+                      return;
+                    }
+                    if (isRecording) {
+                      stopRecording();
+                    } else {
+                      await startRecording();
+                    }
+                  }}
+                  className="rounded-full bg-gold p-3 text-ivory transition hover:brightness-105"
+                  title={draft.trim() ? 'Send message' : isRecording ? 'Stop recording' : 'Record voice note'}
+                >
+                  {draft.trim() ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M5 12h14" strokeWidth="1.6" strokeLinecap="round"/><path d="M12 5l7 7-7 7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 10a7 7 0 0 1-14 0" strokeWidth="1.6" strokeLinecap="round"/><path d="M12 19v4" strokeWidth="1.6" strokeLinecap="round"/></svg>
+                  )}
+                </button>
+                {isRecording ? (
+                  <span className="absolute -top-2 -right-2 flex h-3 w-3 items-center justify-center">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500/60" />
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-rose-500" />
+                  </span>
+                ) : null}
+              </div>
             </div>
             {attachment ? <p className="mt-2 text-xs text-slate">Attachment ready: {attachment.name}</p> : null}
           </div>

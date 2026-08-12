@@ -87,8 +87,19 @@ export default function MessageList() {
 
   useEffect(() => {
     void loadState();
-    const id = window.setInterval(() => void loadState(), 5000);
-    return () => window.clearInterval(id);
+    const es = new EventSource('/api/messages/stream');
+    es.addEventListener('update', () => void loadState());
+    es.addEventListener('connected', () => void loadState());
+    es.onerror = () => {
+      es.close();
+      // fallback to polling if SSE fails
+      const id = window.setInterval(() => void loadState(), 5000);
+      (es as any)._pollId = id;
+    };
+    return () => {
+      if ((es as any)._pollId) window.clearInterval((es as any)._pollId);
+      es.close();
+    };
   }, [loadState]);
 
   useEffect(() => {

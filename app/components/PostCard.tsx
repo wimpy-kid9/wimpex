@@ -167,7 +167,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
   const overlayFilter = FILTER_CLASSES[post.filterPreset || 'none'] || '';
 
   return (
-    <article ref={cardRef} className={`w-full relative overflow-hidden bg-black text-ivory ${isFeedItem ? 'feed-snap-item h-[100dvh] md:h-auto md:max-h-[80vh]' : ''}`}>
+    <article ref={cardRef} className={`w-full relative overflow-hidden bg-black text-ivory ${isFeedItem ? 'feed-snap-item h-[100dvh] md:h-[80vh]' : ''}`}>
       {post.mediaType === 'image' && post.imageUrl ? (
         <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`} />
       ) : post.mediaType === 'video' && post.videoUrl ? (
@@ -180,17 +180,12 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
             className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`}
             onClick={async () => {
               try {
-                // User interaction: toggle mute and ensure playback
-                if (videoRef.current) {
-                  const v = videoRef.current;
-                  if (muted) {
-                    v.muted = false;
-                    setMuted(false);
-                    await v.play().catch(() => undefined);
-                  } else {
-                    v.muted = true;
-                    setMuted(true);
-                  }
+                const v = videoRef.current;
+                if (!v) return;
+                if (v.paused) {
+                  await v.play().catch(() => undefined);
+                } else {
+                  v.pause();
                 }
               } catch (e) {
                 // ignore
