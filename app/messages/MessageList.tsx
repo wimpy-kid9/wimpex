@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { authedFetch } from '@/lib/api-client';
 
 interface ProfileMatch {
@@ -31,6 +31,8 @@ interface ConversationSummary {
 
 export default function MessageList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<ProfileMatch[]>([]);
   const [selectedRecipient, setSelectedRecipient] = useState<ProfileMatch | null>(null);
@@ -41,9 +43,10 @@ export default function MessageList() {
   const [requests, setRequests] = useState<any[]>([]);
   const [groupRecipients, setGroupRecipients] = useState<ProfileMatch[]>([]);
 
-  const sortedConversations = useMemo(() => {
-    return [...conversations].sort((a, b) => new Date(b.previewAt).getTime() - new Date(a.previewAt).getTime());
-  }, [conversations]);
+  const sortedConversations = useMemo(
+    () => [...conversations].sort((a, b) => new Date(b.previewAt).getTime() - new Date(a.previewAt).getTime()),
+    [conversations]
+  );
 
   const loadConversations = async () => {
     const response = await authedFetch('/api/messages');
@@ -86,6 +89,13 @@ export default function MessageList() {
     return () => window.clearTimeout(timeout);
   }, [searchTerm]);
 
+  useEffect(() => {
+    if (searchParams.get('compose') === '1') {
+      setActiveTab('chats');
+      searchInputRef.current?.focus();
+    }
+  }, [searchParams]);
+
   const selectRecipient = (person: ProfileMatch) => {
     setSelectedRecipient(person);
     setSearchTerm(`${person.display_name || person.username} (@${person.username})`);
@@ -94,7 +104,7 @@ export default function MessageList() {
 
   const addGroupRecipient = (person: ProfileMatch) => {
     setGroupRecipients((current) => {
-      if (current.find((recipient) => recipient.user_id === person.user_id)) {
+      if (current.some((recipient) => recipient.user_id === person.user_id)) {
         return current;
       }
       return [...current, person];
@@ -114,33 +124,24 @@ export default function MessageList() {
       return;
     }
 
-    const payloadBody: any = { body: draft.trim() };
+    const formData = new FormData();
+    formData.append('body', draft.trim());
 
     if (groupRecipients.length > 0) {
-      payloadBody.recipient_ids = groupRecipients.map((recipient) => recipient.user_id);
-      payloadBody.title = groupRecipients.length > 1 ? `Group with ${groupRecipients.length + 1}` : undefined;
+      formData.append('recipient_ids', JSON.stringify(groupRecipients.map((recipient) => recipient.user_id)));
+      if (groupRecipients.length > 1) {
+        formData.append('title', `Group with ${groupRecipients.length + 1}`);
+      }
     } else if (selectedRecipient) {
-      payloadBody.recipient_id = selectedRecipient.user_id;
+      formData.append('recipient_id', selectedRecipient.user_id);
     } else {
       setNotice('Select a recipient to start a conversation.');
       return;
     }
 
-    const formData = new FormData();
-    formData.append('body', draft.trim());
-    if (payloadBody.recipient_ids) {
-      formData.append('recipient_ids', JSON.stringify(payloadBody.recipient_ids));
-    }
-    if (payloadBody.recipient_id) {
-      formData.append('recipient_id', payloadBody.recipient_id);
-    }
-    if (payloadBody.title) {
-      formData.append('title', payloadBody.title);
-    }
-
     const response = await authedFetch('/api/messages', {
       method: 'POST',
-      body: formData
+      body: formData,
     });
     const payload = await response.json();
     if (!response.ok) {
@@ -159,197 +160,162 @@ export default function MessageList() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border border-hairline bg-panel/80 p-6">
-        <div>
-          <h1 className="text-display text-3xl text-ivory">Messages</h1>
-          <p className="mt-2 text-sm text-slate">Start a conversation with your accepted connections.</p>
+    <main className="space-y-6">
+      <section className="rounded-[2rem] border border-hairline bg-panel/80 p-6 shadow-[0_40px_100px_rgba(0,0,0,0.05)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.32em] text-gold">Messages</p>
+            <h2 className="mt-3 text-3xl font-semibold text-ivory">Search, manage requests, and compose in one place.</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate">A modern messaging workspace for quick replies and polished thread management.</p>
+          </div>
+          <div className="rounded-3xl border border-hairline bg-panel-2/70 p-5 text-sm text-slate">
+            <p className="font-semibold text-ivory">Need a quick start?</p>
+            <p className="mt-3">Search for a connection, preview recent threads, then send a message from the composer panel.</p>
+          </div>
         </div>
+      </section>
 
-        <div className="mt-6 flex gap-3">
-          <button onClick={() => setActiveTab('chats')} className={`rounded-2xl px-3 py-2 text-sm font-semibold ${activeTab === 'chats' ? 'bg-gold/20 text-ivory' : 'bg-ivory/5 text-slate hover:bg-ivory/10'}`}>Chats</button>
-          <button onClick={() => setActiveTab('requests')} className={`rounded-2xl px-3 py-2 text-sm font-semibold ${activeTab === 'requests' ? 'bg-gold/20 text-ivory' : 'bg-ivory/5 text-slate hover:bg-ivory/10'}`}>Requests</button>
-        </div>
-      </div>
+      {notice ? (
+        <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-200">{notice}</div>
+      ) : null}
 
-      {activeTab === 'requests' ? (
-        <div className="space-y-3 rounded-3xl border border-hairline bg-panel-2/70 p-4">
-          {requests.length > 0 ? requests.map((request) => (
-            <div key={request.id} className="rounded-3xl border border-hairline bg-panel/80 p-4">
-              <p className="font-semibold text-ivory">
-                {request.requester_display_name || request.requester_username ? (
-                  <>Connection request from <span className="text-gold">{request.requester_display_name || request.requester_username}</span></>
-                ) : (
-                  <Link href={`/user/${request.requester_id}`} className="underline">Connection request</Link>
-                )}
-              </p>
-              <p className="mt-1 text-xs uppercase tracking-[0.24em] text-slate">Pending connection request</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  onClick={async () => {
-                    const resp = await authedFetch('/api/connections', { method: 'POST', body: JSON.stringify({ action: 'accept', connection_id: request.id }) });
-                    setRequests((cur) => cur.filter((item) => item.id !== request.id));
-                    if (resp.ok) {
-                      const createResp = await authedFetch('/api/messages', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ recipient_id: request.requester_id, body: 'Connection accepted — hi!' })
-                      });
-                      const created = await createResp.json().catch(() => ({}));
-                      if (createResp.ok && created.conversation?.id) {
-                        router.push(`/messages/${created.conversation.id}`);
-                      }
-                    }
-                  }}
-                  className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-4 py-2 text-sm font-semibold text-obsidian"
-                >
-                  Accept
-                </button>
-                <button
-                  onClick={async () => {
-                    await authedFetch('/api/connections', { method: 'POST', body: JSON.stringify({ action: 'decline', connection_id: request.id }) });
-                    setRequests((cur) => cur.filter((item) => item.id !== request.id));
-                  }}
-                  className="rounded-2xl bg-rose-500 px-4 py-2 text-sm font-semibold text-obsidian"
-                >
-                  Decline
-                </button>
-                <Link href={`/user/${request.requester_id}`} className="inline-flex items-center justify-center rounded-2xl border border-hairline bg-panel px-4 py-2 text-sm text-ivory">View profile</Link>
-                <Link href={`/messages?recipient_id=${request.requester_id}`} className="inline-flex items-center justify-center rounded-2xl bg-gold px-4 py-2 text-sm font-semibold text-obsidian">Message</Link>
+      <div className="grid gap-6 lg:grid-cols-[1.55fr_0.95fr]">
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-hairline bg-panel-2/70 p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-gold">Search</p>
+                <h3 className="mt-2 text-2xl font-semibold text-ivory">Find a connection</h3>
               </div>
+              <span className="rounded-full bg-gold/10 px-3 py-1 text-xs uppercase tracking-[0.24em] text-gold">{sortedConversations.length} active chats</span>
             </div>
-          )) : (
-            <p className="rounded-2xl border border-dashed border-hairline bg-panel-2/70 p-6 text-sm text-slate">No connection requests at the moment.</p>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="rounded-3xl border border-hairline bg-panel-2/70 p-4">
-            <label className="text-sm text-slate">Search connections</label>
-            <input
-              value={searchTerm}
-              onChange={(event) => {
-                setSearchTerm(event.target.value);
-                setSelectedRecipient(null);
-              }}
-              placeholder="Search by username or display name"
-              className="mt-3 w-full rounded-2xl border border-hairline bg-panel/80 px-4 py-3 text-sm text-ivory outline-none focus:border-hairline-strong"
-            />
-            {searchResults.length > 0 ? (
-              <div className="mt-3 space-y-2">
-                {searchResults.map((person) => (
-                  <button
-                    key={person.user_id}
-                    type="button"
-                    onClick={() => {
-                      if (groupRecipients.length > 0) {
-                        addGroupRecipient(person);
-                      } else {
-                        selectRecipient(person);
-                      }
-                    }}
-                    className="w-full rounded-2xl border border-hairline bg-panel/80 px-4 py-3 text-left text-sm text-ivory transition hover:border-hairline-strong hover:bg-panel-2"
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="font-semibold">{person.display_name || person.username}</p>
-                        <p className="text-xs text-slate">@{person.username}</p>
-                        {person.bio ? <p className="mt-1 text-xs text-slate">{person.bio}</p> : null}
+            <div className="mt-5">
+              <input
+                ref={searchInputRef}
+                value={searchTerm}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  setSelectedRecipient(null);
+                }}
+                placeholder="Search by username or display name"
+                className="w-full rounded-3xl border border-hairline bg-panel px-4 py-4 text-sm text-ivory outline-none focus:border-gold focus:ring-2 focus:ring-gold/20"
+              />
+              {searchResults.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {searchResults.map((person) => (
+                    <button
+                      key={person.user_id}
+                      type="button"
+                      onClick={() => {
+                        if (groupRecipients.length > 0) {
+                          addGroupRecipient(person);
+                        } else {
+                          selectRecipient(person);
+                        }
+                      }}
+                      className="w-full rounded-3xl border border-hairline bg-panel/80 px-4 py-4 text-left text-sm text-ivory transition hover:border-gold hover:bg-panel-2"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold">{person.display_name || person.username}</p>
+                          <p className="text-xs text-slate">@{person.username}</p>
+                        </div>
+                        <span className="rounded-full bg-gold/10 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-gold">
+                          {groupRecipients.length > 0 ? 'Add' : 'Select'}
+                        </span>
                       </div>
-                      <span className="rounded-full bg-gold/10 px-2 py-1 text-[11px] uppercase tracking-[0.2em] text-gold">
-                        {groupRecipients.length > 0 ? 'Add' : 'Select'}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
-            {groupRecipients.length > 0 ? (
-              <div className="mt-4 rounded-2xl border border-hairline bg-panel/80 p-3 text-sm text-ivory">
-                <p className="text-xs uppercase tracking-[0.25em] text-slate">Group recipients</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {groupRecipients.map((recipient) => (
-                    <span key={recipient.user_id} className="inline-flex items-center gap-2 rounded-full border border-hairline bg-panel-2 px-3 py-2 text-sm text-ivory">
-                      {recipient.display_name || recipient.username}
-                      <button type="button" onClick={() => removeGroupRecipient(recipient.user_id)} className="rounded-full bg-rose-500/20 px-2 py-1 text-xs text-rose-200">×</button>
-                    </span>
+                      {person.bio ? <p className="mt-2 text-xs text-slate">{person.bio}</p> : null}
+                    </button>
                   ))}
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+
+              {groupRecipients.length > 0 ? (
+                <div className="mt-4 rounded-3xl border border-hairline bg-panel/80 p-4 text-sm text-ivory">
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate">Group recipients</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {groupRecipients.map((recipient) => (
+                      <span key={recipient.user_id} className="inline-flex items-center gap-2 rounded-full border border-hairline bg-panel-2 px-3 py-2 text-sm text-ivory">
+                        {recipient.display_name || recipient.username}
+                        <button type="button" onClick={() => removeGroupRecipient(recipient.user_id)} className="rounded-full bg-rose-500/20 px-2 py-1 text-xs text-rose-200">×</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          <div className="rounded-3xl border border-hairline bg-panel-2/70 p-4">
-            <h2 className="text-sm font-semibold text-ivory">Conversations</h2>
-            <div className="mt-4 space-y-3">
+          <div className="rounded-3xl border border-hairline bg-panel-2/70 p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-gold">Conversation feed</p>
+                <h3 className="mt-2 text-2xl font-semibold text-ivory">Recent chats</h3>
+              </div>
+              <span className="rounded-full bg-gold/10 px-3 py-1 text-xs uppercase tracking-[0.24em] text-gold">Tap to open</span>
+            </div>
+            <div className="mt-5 space-y-4">
               {sortedConversations.length > 0 ? sortedConversations.map((conversation) => (
                 <Link
                   key={conversation.id}
                   href={`/messages/${conversation.id}`}
-                  className="w-full block rounded-2xl border border-hairline bg-panel-80 px-4 py-3 text-left transition hover:border-white/20 hover:bg-panel-2"
+                  className="block rounded-3xl border border-hairline bg-panel/80 px-4 py-4 transition hover:border-gold hover:bg-panel-2"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      {conversation.otherUser?.avatar_url ? (
-                        <img src={conversation.otherUser.avatar_url} alt={conversation.otherUser.display_name || conversation.otherUser.username} className="h-12 w-12 rounded-full object-cover" />
-                      ) : (
-                        <div className="grid h-12 w-12 place-items-center rounded-full bg-panel-2 text-sm text-slate">
-                          {conversation.otherUser?.display_name?.charAt(0)?.toUpperCase() || conversation.otherUser?.username?.charAt(0)?.toUpperCase() || 'C'}
-                        </div>
-                      )}
-                      <div>
-                        <p className="font-semibold text-ivory">{conversation.otherUser?.display_name || conversation.otherUser?.username || 'Unknown user'}</p>
-                        <p className="text-xs text-slate">@{conversation.otherUser?.username || 'unknown'}</p>
-                      </div>
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-panel-2 text-center leading-[3.5rem] text-xl text-slate">
+                      {conversation.otherUser?.display_name?.charAt(0)?.toUpperCase() || conversation.otherUser?.username?.charAt(0)?.toUpperCase() || 'C'}
                     </div>
-                    <span className="text-[11px] uppercase tracking-[0.25em] text-slate">{new Date(conversation.previewAt).toLocaleDateString()}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="truncate text-lg font-semibold text-ivory">{conversation.title || conversation.otherUser?.display_name || conversation.otherUser?.username || 'Unknown chat'}</p>
+                        <span className="text-xs uppercase tracking-[0.24em] text-slate">{new Date(conversation.previewAt).toLocaleDateString()}</span>
+                      </div>
+                      <p className="mt-2 truncate text-sm text-slate">{conversation.previewSentByMe ? 'You: ' : ''}{conversation.preview}</p>
+                    </div>
                   </div>
-                  <p className="mt-2 text-sm text-slate">{conversation.previewSentByMe ? 'You: ' : ''}{conversation.preview}</p>
                 </Link>
               )) : (
-                <p className="text-sm text-slate">No conversations yet. Search for a connection to start one.</p>
+                <div className="rounded-3xl border border-dashed border-hairline bg-panel-70 p-6 text-center text-sm text-slate">
+                  No conversations yet. Search a connection to start a chat.
+                </div>
               )}
             </div>
           </div>
+        </div>
 
+        <aside className="space-y-6 rounded-3xl border border-hairline bg-panel/80 p-5">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-gold">Composer</p>
+            <h3 className="mt-2 text-2xl font-semibold text-ivory">Send a message</h3>
+            <p className="mt-2 text-sm leading-6 text-slate">Select a contact or group, draft your message, and send instantly.</p>
+          </div>
           <div className="rounded-3xl border border-hairline bg-panel-2/70 p-4">
             <div>
-              <label className="text-sm text-slate">New message</label>
+              <label className="mb-2 block text-sm font-medium text-slate">To</label>
+              <div className="min-h-[56px] rounded-2xl border border-hairline bg-panel px-4 py-3 text-sm text-ivory">
+                {groupRecipients.length > 0
+                  ? `${groupRecipients.length} recipients selected`
+                  : selectedRecipient
+                    ? `${selectedRecipient.display_name || selectedRecipient.username} (@${selectedRecipient.username})`
+                    : 'Choose someone from search'}
+              </div>
+            </div>
+            <div className="mt-4">
+              <label className="mb-2 block text-sm font-medium text-slate">Message</label>
               <textarea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                placeholder="Type a message"
-                className="mt-3 min-h-[140px] w-full rounded-3xl border border-hairline bg-panel/80 px-4 py-4 text-sm text-ivory outline-none focus:border-hairline-strong"
+                placeholder="Write your message…"
+                className="min-h-[180px] w-full rounded-3xl border border-hairline bg-panel px-4 py-4 text-sm text-ivory outline-none focus:border-gold focus:ring-2 focus:ring-gold/20"
               />
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-              <div className="space-y-3 rounded-3xl border border-hairline bg-panel-2/70 p-4">
-                <p className="text-sm text-slate">Attachments</p>
-                <div className="flex flex-wrap gap-3">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-hairline bg-panel px-4 py-3 text-sm text-ivory transition hover:bg-ivory/5">
-                    <span>Choose file</span>
-                    <input type="file" accept="image/*,video/*,audio/*" className="hidden" onChange={() => void 0} />
-                  </label>
-                </div>
-                <p className="text-xs text-slate">Attachments are coming soon in the thread composer.</p>
-              </div>
-              <div className="flex flex-col justify-between gap-3">
-                <div className="text-sm text-slate">
-                  {groupRecipients.length > 0
-                    ? `Group message to ${groupRecipients.length + 1}`
-                    : selectedRecipient
-                      ? `Sending to ${selectedRecipient.display_name || selectedRecipient.username}`
-                      : 'Pick a recipient to start.'}
-                </div>
-                <button onClick={sendMessage} className="rounded-2xl bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110">Send</button>
-              </div>
-            </div>
+            <button onClick={sendMessage} className="mt-5 w-full rounded-3xl bg-gradient-to-r from-gold to-gold-deep px-5 py-4 text-sm font-semibold text-obsidian transition hover:brightness-110">
+              Send message
+            </button>
+            <p className="mt-3 text-xs text-slate">Tip: you can search first and then send directly from this composer.</p>
           </div>
-        </div>
-      )}
-
-      {notice ? <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{notice}</p> : null}
-    </div>
+        </aside>
+      </div>
+    </main>
   );
 }

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 
-const SPOTIFY_TOKEN_KEY = 'spotify_access_token';
+const AUDIO_PROVIDER_TOKEN_KEY = 'audio_provider_access_token';
 
-async function fetchSpotifyAccessToken() {
+async function fetchAudioProviderAccessToken() {
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    throw new Error('Spotify client credentials are not configured.');
+    throw new Error('Audio provider client credentials are not configured.');
   }
 
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
@@ -23,13 +23,13 @@ async function fetchSpotifyAccessToken() {
 
   if (!response.ok) {
     const payload = await response.text();
-    throw new Error(`Spotify auth failed: ${response.status} ${payload}`);
+    throw new Error(`Audio provider auth failed: ${response.status} ${payload}`);
   }
 
   return response.json();
 }
 
-async function getCachedSpotifyToken() {
+async function getCachedAudioProviderToken() {
   if (!isSupabaseServerConfigured) {
     throw new Error('Supabase is not configured.');
   }
@@ -37,7 +37,7 @@ async function getCachedSpotifyToken() {
   const { data, error } = await supabaseServer
     .from('wpx_api_cache')
     .select('key, value, expires_at')
-    .eq('key', SPOTIFY_TOKEN_KEY)
+    .eq('key', AUDIO_PROVIDER_TOKEN_KEY)
     .maybeSingle();
 
   if (error) {
@@ -49,11 +49,11 @@ async function getCachedSpotifyToken() {
     return JSON.parse(data.value);
   }
 
-  const tokenResponse = await fetchSpotifyAccessToken();
+  const tokenResponse = await fetchAudioProviderAccessToken();
   const expiresAt = new Date(now.getTime() + (tokenResponse.expires_in - 60) * 1000).toISOString();
 
   await supabaseServer.from('wpx_api_cache').upsert({
-    key: SPOTIFY_TOKEN_KEY,
+    key: AUDIO_PROVIDER_TOKEN_KEY,
     value: JSON.stringify(tokenResponse),
     expires_at: expiresAt
   });
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
 
   let tokenResponse;
   try {
-    tokenResponse = await getCachedSpotifyToken();
+    tokenResponse = await getCachedAudioProviderToken();
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
 
   if (!searchRes.ok) {
     const payload = await searchRes.text();
-    return NextResponse.json({ error: `Spotify search failed: ${searchRes.status} ${payload}` }, { status: 500 });
+    return NextResponse.json({ error: `Audio provider search failed: ${searchRes.status} ${payload}` }, { status: 500 });
   }
 
   const data = await searchRes.json();
