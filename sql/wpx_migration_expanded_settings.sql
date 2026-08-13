@@ -6,6 +6,9 @@ ALTER TABLE wpx_profiles ADD COLUMN IF NOT EXISTS disappearing_messages_timer IN
 ALTER TABLE wpx_profiles ADD COLUMN IF NOT EXISTS notification_sound VARCHAR(50) DEFAULT 'default'; -- 'default', 'none', 'custom'
 ALTER TABLE wpx_profiles ADD COLUMN IF NOT EXISTS email_notifications BOOLEAN DEFAULT true;
 ALTER TABLE wpx_profiles ADD COLUMN IF NOT EXISTS push_notifications BOOLEAN DEFAULT true;
+ALTER TABLE wpx_profiles ADD COLUMN IF NOT EXISTS is_subscriber BOOLEAN DEFAULT false;
+ALTER TABLE wpx_profiles ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP WITH TIME ZONE;
 
 -- Create index for quick lookups
 CREATE INDEX IF NOT EXISTS idx_wpx_profiles_privacy_setting ON wpx_profiles(privacy_setting);
+CREATE INDEX IF NOT EXISTS idx_wpx_profiles_is_subscriber ON wpx_profiles(is_subscriber);
