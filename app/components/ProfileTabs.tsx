@@ -123,10 +123,13 @@ export default function ProfileTabs({ profile, isOwn }: { profile: any; isOwn: b
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {items.map((item) => {
+            {items.map((item, index) => {
               const preview = item.thumbnailUrl || item.imageUrl || item.videoUrl || item.previewUrl || '';
+              const postLink = active === 'liked' || active === 'favorited'
+                ? `/post/${item.id}?from=${active}&index=${index}`
+                : `/post/${item.id}`;
               return (
-                <a key={item.id} href={`/post/${item.id}`} className="group relative block overflow-hidden rounded-3xl border border-hairline bg-black/40 transition hover:border-gold">
+                <a key={item.id} href={postLink} className="group relative block overflow-hidden rounded-3xl border border-hairline bg-black/40 transition hover:border-gold">
                   {preview ? (
                     <img src={preview} alt={item.caption || item.title || 'Post preview'} className="h-48 w-full object-cover transition duration-300 group-hover:scale-105" />
                   ) : (
