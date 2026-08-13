@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
+import ShareSheet from './ShareSheet';
 
 const FILTER_CLASSES: Record<string, string> = {
   none: '',
@@ -26,7 +27,9 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
   const [likeCount, setLikeCount] = useState<number | null>(post?.like_count ?? null);
   const [favorited, setFavorited] = useState<boolean>(post?.favorited_by_me ?? false);
   const [favoriteCount, setFavoriteCount] = useState<number | null>(post?.favorite_count ?? null);
+  const [shareCount, setShareCount] = useState<number | null>(post?.share_count ?? null);
   const [showComments, setShowComments] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
   const [comments, setComments] = useState<any[] | null>(null);
   const [commentBody, setCommentBody] = useState('');
   const [replyTo, setReplyTo] = useState<any | null>(null);
@@ -167,6 +170,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
   const overlayFilter = FILTER_CLASSES[post.filterPreset || 'none'] || '';
 
   return (
+    <>
     <article ref={cardRef} className={`w-full relative overflow-hidden bg-black text-ivory ${isFeedItem ? 'feed-snap-item h-[100dvh] md:h-[80vh]' : ''}`}>
       {post.mediaType === 'image' && post.imageUrl ? (
         <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`} />
@@ -234,6 +238,11 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
         <button type="button" onClick={toggleFavorite} className="flex flex-col items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-center transition hover:bg-black/80">
           <span className="text-lg">📌</span>
           <span className="text-xs font-semibold text-ivory">{favoriteCount ?? 0}</span>
+        </button>
+
+        <button type="button" onClick={() => setShowShareSheet(true)} className="flex flex-col items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-center transition hover:bg-black/80">
+          <span className="text-lg">↗️</span>
+          <span className="text-xs font-semibold text-ivory">{shareCount ?? 0}</span>
         </button>
       </div>
 
@@ -389,5 +398,8 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
         </div>
       ) : null}
     </article>
+
+    <ShareSheet postId={post.id} isOpen={showShareSheet} onClose={() => setShowShareSheet(false)} />
+    </>
   );
 }
