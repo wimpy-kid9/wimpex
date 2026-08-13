@@ -56,6 +56,23 @@ async function updateProfileFromBody(body: any, authContext: any) {
     return NextResponse.json({ error: 'Username must be 3–20 letters, numbers, or underscores.' }, { status: 400 });
   }
 
+  const { data: existingProfile, error: existingProfileError } = await supabaseServer
+    .from('wpx_profiles')
+    .select('user_id, username')
+    .eq('user_id', authContext.user.id)
+    .maybeSingle();
+
+  if (existingProfileError) {
+    return NextResponse.json({ error: existingProfileError.message }, { status: 500 });
+  }
+
+  if (!existingProfile && !normalizedUsername) {
+    return NextResponse.json(
+      { error: 'No profile exists yet — username is required to create one.' },
+      { status: 400 }
+    );
+  }
+
   if (normalizedUsername) {
     const { data: existing, error: existingError } = await supabaseServer
       .from('wpx_profiles')
