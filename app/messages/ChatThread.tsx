@@ -502,6 +502,26 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                         <div className="flex items-center gap-2">
                           <button type="button" onClick={(event) => { event.stopPropagation(); handleReplyToMessage(messageItem); }} className="rounded-full px-2 py-1 transition hover:bg-panel/80">Reply</button>
                           <button type="button" onClick={(event) => { event.stopPropagation(); toggleReactionPicker(messageItem.id); }} className="rounded-full px-2 py-1 transition hover:bg-panel/80">React</button>
+                          {messageItem.media_url ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                const link = document.createElement('a');
+                                link.href = messageItem.media_url;
+                                link.download = messageItem.media_url.split('/').pop() || 'download';
+                                link.target = '_blank';
+                                link.rel = 'noopener noreferrer';
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="rounded-full px-2 py-1 transition hover:bg-panel/80"
+                              title="Download"
+                            >
+                              ↓
+                            </button>
+                          ) : null}
                         </div>
                       </div>
                       {Object.keys(messageItem.reactions || {}).length ? (
