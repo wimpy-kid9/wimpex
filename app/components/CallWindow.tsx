@@ -5,14 +5,13 @@ import { getRTCConfig } from '@/lib/webrtc-config';
 
 export interface CallProps {
   roomUrl: string;
-  userName?: string;
   onClose: () => void;
 }
 
 /**
  * CallWindow component for WebRTC peer-to-peer video calls
  */
-export default function CallWindow({ roomUrl, userName, onClose }: CallProps) {
+export default function CallWindow({ roomUrl, onClose }: CallProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);

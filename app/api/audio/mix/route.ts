@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer, isSupabaseServerConfigured } from '@/lib/supabase-server';
+import { isSupabaseServerConfigured } from '@/lib/supabase-server';
 import { requireAuth } from '@/lib/auth';
 
 /**
@@ -20,13 +20,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const authContext = await requireAuth(request);
-    const userId = authContext.user.id;
+    await requireAuth(request);
 
     const formData = await request.formData();
     const videoFile = formData.get('video') as File;
     const audioTrackUrl = formData.get('audioTrackUrl') as string;
-    const audioVolume = parseFloat(formData.get('audioVolume') as string) || 0.7;
 
     if (!videoFile || !audioTrackUrl) {
       return NextResponse.json(

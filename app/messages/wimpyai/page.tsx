@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authedFetch } from '@/lib/api-client';
 
 interface WimpyAIMessage {
   id: string;
@@ -12,7 +11,7 @@ interface WimpyAIMessage {
 }
 
 export default function WimpyAIChat() {
-  const router = useRouter();
+  const router = useRouter(); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [messages, setMessages] = useState<WimpyAIMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(false);

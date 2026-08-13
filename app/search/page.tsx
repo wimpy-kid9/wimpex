@@ -78,7 +78,6 @@ export default function SearchPage() {
     );
   }
 
-  const currentResults = tab === 'people' ? peopleResults : videoResults;
   const hasAnyResults = peopleResults.length > 0 || videoResults.length > 0;
 
   return (

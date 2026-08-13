@@ -52,7 +52,7 @@ export function useAudioMixer() {
           throw new Error(error.error || 'Failed to process audio mixing');
         }
 
-        const result = await response.json();
+        await response.json();
 
         setState({
           isProcessing: false,

@@ -114,7 +114,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const authContext = await requireAuth(request);
     const body = await request.json();
-    const { id, status, ended_at, started_at } = body;
+    const { id, status } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'A call id is required.' }, { status: 400 });

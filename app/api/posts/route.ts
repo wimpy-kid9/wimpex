@@ -220,7 +220,6 @@ async function buildPersonalizedFeed(candidatePosts: any[], userId: string, auth
 
   // Split: 75% ranked by affinity, 25% exploration (random from rest)
   const rankingIndex = Math.floor(scoredPosts.length * 0.75);
-  const rankedSet = new Set(scoredPosts.slice(0, rankingIndex).map((s) => s.post.id));
   const explorationSet = scoredPosts.slice(rankingIndex);
 
   // Shuffle exploration set
@@ -313,7 +312,7 @@ export async function GET(request: NextRequest) {
     const searchTerm = `%${searchQuery}%`;
 
     // Search by caption first
-    const { data: captionPosts, error: captionError } = await supabaseServer
+    const { data: captionPosts } = await supabaseServer
       .from('wpx_posts')
       .select(`id, author_id, visibility, caption, media_type, video_url, image_url, thumbnail_url, audio_track_id, audio_track_name, audio_artist_name, audio_preview_url, audio_cover_art_url, filter_preset, share_count, created_at, status`)
       .eq('visibility', 'public')
@@ -321,13 +320,13 @@ export async function GET(request: NextRequest) {
       .ilike('caption', searchTerm);
 
     // Search by hashtags
-    const { data: hashtags, error: hashtagError } = await supabaseServer
+    const { data: hashtags } = await supabaseServer
       .from('wpx_post_hashtags')
       .select('post_id')
       .ilike('tag', searchTerm);
 
     // Search by author username
-    const { data: authorProfiles, error: authorError } = await supabaseServer
+    const { data: authorProfiles } = await supabaseServer
       .from('wpx_profiles')
       .select('user_id')
       .ilike('username', searchTerm);

@@ -14,7 +14,6 @@ export default function PostDetailClient({ post }: { post: any }) {
   const fromIndex = search?.get('index') ? parseInt(search.get('index')!) : undefined;
   const [showToast, setShowToast] = useState<boolean>(edited);
   const [collectionPosts, setCollectionPosts] = useState<any[]>([]);
-  const [currentIndex, setCurrentIndex] = useState<number | undefined>(fromIndex);
 
   useEffect(() => {
     if (showToast) {

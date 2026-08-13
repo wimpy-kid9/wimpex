@@ -28,7 +28,6 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
   const [likeCount, setLikeCount] = useState<number | null>(post?.like_count ?? null);
   const [favorited, setFavorited] = useState<boolean>(post?.favorited_by_me ?? false);
   const [favoriteCount, setFavoriteCount] = useState<number | null>(post?.favorite_count ?? null);
-  const [shareCount, setShareCount] = useState<number | null>(post?.share_count ?? null);
   const [showComments, setShowComments] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [comments, setComments] = useState<any[] | null>(null);

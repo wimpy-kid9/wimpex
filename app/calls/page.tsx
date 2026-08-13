@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { authedFetch } from '@/lib/api-client';
 import { getUserAccent } from '@/lib/ui-theme';
@@ -8,16 +8,6 @@ import AuthActionPrompt from '@/app/components/AuthActionPrompt';
 import CallWindow from '@/app/components/CallWindow';
 import IncomingCallNotification from '@/app/components/IncomingCallNotification';
 import { useCalling } from '@/lib/use-calling';
-
-type CallRecord = {
-  id: string;
-  caller_id: string;
-  callee_id: string;
-  call_type: string;
-  status: string;
-  room_url?: string;
-  created_at: string;
-  started_at?: string | null;
   ended_at?: string | null;
 };
 
