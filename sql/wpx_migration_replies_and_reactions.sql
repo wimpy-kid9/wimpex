@@ -32,4 +32,8 @@ CREATE TABLE IF NOT EXISTS wpx_subscriptions (
 
 ALTER TABLE wpx_subscriptions ENABLE ROW LEVEL SECURITY;
 
+INSERT INTO public.plans (product_name, name, price, billing_interval)
+VALUES ('wimpex', 'Wimpex Pro', 4000, 'monthly')
+ON CONFLICT DO NOTHING;
+
 COMMIT;

@@ -83,7 +83,7 @@ export default function SettingsPage() {
     try {
       const response = await authedFetch('/api/wimpypay', {
         method: 'POST',
-        body: JSON.stringify({ product_name: 'wimpex', plan_name: 'gold_monthly' })
+        body: JSON.stringify({ product_name: 'wimpex', plan_name: 'Wimpex Pro' })
       });
       const payload = await response.json();
       if (!response.ok) {

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 
+const WIMPEX_PRODUCT_NAME = 'wimpex';
+const WIMPEX_PLAN_NAME = 'Wimpex Pro';
+
 function calculateExpiry(days = 30) {
   const expires = new Date();
   expires.setUTCDate(expires.getUTCDate() + days);
@@ -49,8 +52,22 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const productName = body.product_name || 'wimpex';
-  const planName = body.plan_name || body.plan || 'gold_monthly';
+  const requestedProductName = typeof body.product_name === 'string' ? body.product_name.trim() : '';
+  const requestedPlanName = typeof (body.plan_name ?? body.plan) === 'string' ? String(body.plan_name ?? body.plan).trim() : '';
+
+  if (requestedProductName && requestedProductName.toLowerCase() !== WIMPEX_PRODUCT_NAME) {
+    return NextResponse.json({ error: 'Only WIMPEX product plans can be purchased here.' }, { status: 400 });
+  }
+
+  const productName = WIMPEX_PRODUCT_NAME;
+  const normalizedPlanName = requestedPlanName
+    ? requestedPlanName.toLowerCase() === 'gold_monthly' || requestedPlanName.toLowerCase() === 'gold'
+      ? WIMPEX_PLAN_NAME
+      : requestedPlanName.toLowerCase() === 'wimpex_pro' || requestedPlanName.toLowerCase() === 'wimpex pro'
+      ? WIMPEX_PLAN_NAME
+      : requestedPlanName
+    : WIMPEX_PLAN_NAME;
+  const planName = normalizedPlanName || WIMPEX_PLAN_NAME;
 
   const externalApiUrl = process.env.WIMPYPAY_API_URL;
   const internalApiKey = process.env.WIMPYPAY_INTERNAL_API_KEY;

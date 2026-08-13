@@ -44,7 +44,11 @@ function getConversationTitle(conversation: any, members: any[], profiles: any[]
     display_name: 'Unknown',
     username: 'unknown'
   };
-  return conversation.title || profile.display_name || profile.username;
+  const directTitle = typeof conversation.title === 'string' && conversation.title.trim().toLowerCase() !== 'direct message'
+    ? conversation.title
+    : null;
+
+  return directTitle || profile.display_name || profile.username;
 }
 
 function getConversationSummary(conversation: any, members: any[], profiles: any[], messages: any[]) {
@@ -134,7 +138,7 @@ async function findOrCreateDirectConversation(authUserId: string, recipientId: s
 
   const { data: dataConversation, error: conversationError } = await supabaseServer
     .from('wpx_conversations')
-    .insert({ type: 'direct', title: 'Direct message' })
+    .insert({ type: 'direct', title: null })
     .select()
     .single();
 

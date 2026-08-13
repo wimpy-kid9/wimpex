@@ -14,7 +14,9 @@ export function isGoldSubscription(subscription: any | null | undefined) {
     .join(' ')
     .toLowerCase();
 
-  return planText.includes('gold') || (subscription.status === 'active' && subscription.metadata?.tier === 'gold');
+  const isWimpexProPlan = planText.includes('wimpex') && (planText.includes('pro') || planText.includes('premium'));
+
+  return planText.includes('gold') || isWimpexProPlan || (subscription.status === 'active' && subscription.metadata?.tier === 'gold');
 }
 
 export function isGoldStatus(status: string | null | undefined) {
