@@ -3,10 +3,10 @@ import { authedFetch } from '@/lib/api-client';
 
 export interface Call {
   id: string;
-  initiator_id: string;
-  recipient_id: string;
+  caller_id: string;
+  callee_id: string;
   status: 'pending' | 'ringing' | 'active' | 'ended' | 'missed' | 'declined';
-  call_type: 'audio' | 'video';
+  call_type: 'voice' | 'video';
   room_url?: string;
   started_at?: string;
   ended_at?: string;
@@ -41,7 +41,7 @@ export function useCalling(userId?: string) {
 
       // Separate active and incoming calls
       const activeCall = calls.find((c: Call) => c.status === 'active');
-      const incomingCall = calls.find((c: Call) => c.status === 'ringing' && c.recipient_id === userId);
+      const incomingCall = calls.find((c: Call) => c.status === 'ringing' && c.callee_id === userId);
 
       setState((prev) => ({
         ...prev,
@@ -63,14 +63,14 @@ export function useCalling(userId?: string) {
 
   // Initiate call
   const initiateCall = useCallback(
-    async (recipientId: string, callType: 'audio' | 'video' = 'video') => {
+    async (calleeId: string, callType: 'voice' | 'video' = 'video') => {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
       try {
         const response = await authedFetch('/api/calls', {
           method: 'POST',
           body: JSON.stringify({
-            callee_id: recipientId,
+            callee_id: calleeId,
             call_type: callType
           })
         });

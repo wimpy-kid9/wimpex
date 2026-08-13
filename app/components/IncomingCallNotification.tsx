@@ -8,7 +8,7 @@ export interface IncomingCallNotificationProps {
   callerId: string;
   callerName?: string;
   callerAvatar?: string;
-  callType: 'audio' | 'video';
+  callType: 'voice' | 'video';
   onAccept: (callId: string) => Promise<void>;
   onDecline: (callId: string) => Promise<void>;
 }
@@ -84,7 +84,7 @@ export default function IncomingCallNotification({
         </h2>
 
         <p className="mt-2 text-sm text-slate">
-          {callType === 'video' ? '📹 Video call' : '☎️ Audio call'}
+          {callType === 'video' ? '📹 Video call' : '☎️ Voice call'}
         </p>
 
         <div className="mt-6 flex gap-3">
