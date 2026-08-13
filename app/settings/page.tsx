@@ -26,6 +26,14 @@ export default function SettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [subscription, setSubscription] = useState<any | null>(null);
   const [message, setMessage] = useState('');
+  
+  // New settings
+  const [privacySetting, setPrivacySetting] = useState<'public' | 'friends' | 'private'>('public');
+  const [allowDirectMessages, setAllowDirectMessages] = useState(true);
+  const [disappearingMessages, setDisappearingMessages] = useState(false);
+  const [disappearingMessagesTimer, setDisappearingMessagesTimer] = useState(3600);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [pushNotifications, setPushNotifications] = useState(true);
 
   const upgrade = usePaidUpgradeFlow({
     productName: 'wimpex',
@@ -67,6 +75,12 @@ export default function SettingsPage() {
       setBio(result.profile?.bio ?? '');
       setGender(result.profile?.gender ?? '');
       setAvatarUrl(result.profile?.avatar_url ?? '');
+      setPrivacySetting(result.profile?.privacy_setting ?? 'public');
+      setAllowDirectMessages(result.profile?.allow_direct_messages ?? true);
+      setDisappearingMessages(result.profile?.disappearing_messages ?? false);
+      setDisappearingMessagesTimer(result.profile?.disappearing_messages_timer ?? 3600);
+      setEmailNotifications(result.profile?.email_notifications ?? true);
+      setPushNotifications(result.profile?.push_notifications ?? true);
       await loadSubscription();
       setLoading(false);
     };
@@ -145,7 +159,19 @@ export default function SettingsPage() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${data.session.access_token}`
       },
-      body: JSON.stringify({ username, display_name: displayName, bio, gender, avatar_url: avatarUrl })
+      body: JSON.stringify({
+        username,
+        display_name: displayName,
+        bio,
+        gender,
+        avatar_url: avatarUrl,
+        privacy_setting: privacySetting,
+        allow_direct_messages: allowDirectMessages,
+        disappearing_messages: disappearingMessages,
+        disappearing_messages_timer: disappearingMessagesTimer,
+        email_notifications: emailNotifications,
+        push_notifications: pushNotifications
+      })
     });
 
     if (response.ok) {
@@ -263,6 +289,94 @@ export default function SettingsPage() {
               <option value="nonbinary">Non-binary</option>
               <option value="other">Other</option>
             </select>
+          </div>
+
+          <div className="rounded-3xl border border-hairline bg-panel-2/50 p-6">
+            <h2 className="text-lg font-semibold text-ivory">Privacy & Messages</h2>
+            
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-slate">Profile visibility</label>
+              <select
+                value={privacySetting}
+                onChange={(event) => setPrivacySetting(event.target.value as 'public' | 'friends' | 'private')}
+                className="mt-2 w-full rounded-2xl border border-hairline bg-panel-2 px-4 py-3 text-ivory outline-none"
+              >
+                <option value="public">Public (everyone can view)</option>
+                <option value="friends">Friends only</option>
+                <option value="private">Private (no one can view)</option>
+              </select>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium text-slate">Allow direct messages</label>
+                <p className="mt-1 text-xs text-slate">Let anyone send you direct messages</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={allowDirectMessages}
+                onChange={(e) => setAllowDirectMessages(e.target.checked)}
+                className="h-5 w-5 rounded border-hairline"
+              />
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium text-slate">Disappearing messages</label>
+                <p className="mt-1 text-xs text-slate">Automatically delete sent messages after a set time</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={disappearingMessages}
+                onChange={(e) => setDisappearingMessages(e.target.checked)}
+                className="h-5 w-5 rounded border-hairline"
+              />
+            </div>
+
+            {disappearingMessages && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-slate">Disappear after (seconds)</label>
+                <input
+                  type="number"
+                  value={disappearingMessagesTimer}
+                  onChange={(e) => setDisappearingMessagesTimer(Math.max(60, parseInt(e.target.value) || 3600))}
+                  min="60"
+                  step="60"
+                  className="mt-2 w-full rounded-2xl border border-hairline bg-panel-2 px-4 py-3 text-ivory outline-none"
+                />
+                <p className="mt-1 text-xs text-slate">Minimum 1 minute (60 seconds)</p>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-3xl border border-hairline bg-panel-2/50 p-6">
+            <h2 className="text-lg font-semibold text-ivory">Notifications</h2>
+            
+            <div className="mt-4 flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium text-slate">Email notifications</label>
+                <p className="mt-1 text-xs text-slate">Receive email updates on activity</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={emailNotifications}
+                onChange={(e) => setEmailNotifications(e.target.checked)}
+                className="h-5 w-5 rounded border-hairline"
+              />
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium text-slate">Push notifications</label>
+                <p className="mt-1 text-xs text-slate">Receive browser push notifications</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={pushNotifications}
+                onChange={(e) => setPushNotifications(e.target.checked)}
+                className="h-5 w-5 rounded border-hairline"
+              />
+            </div>
           </div>
 
           <button
