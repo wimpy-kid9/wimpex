@@ -102,9 +102,24 @@ export default function SettingsPage() {
       return;
     }
 
-    setAvatarUrl(result.avatarUrl || '');
+    const newAvatarUrl = result.avatarUrl || '';
+    setAvatarUrl(newAvatarUrl);
     setMessage('Avatar updated.');
     setUploadingAvatar(false);
+
+    const patchResponse = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${data.session.access_token}`
+      },
+      body: JSON.stringify({ avatar_url: newAvatarUrl })
+    });
+
+    if (!patchResponse.ok) {
+      const patchResult = await patchResponse.json();
+      setMessage(patchResult.error || 'Avatar uploaded but could not save to profile.');
+    }
   };
 
   const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -175,9 +190,9 @@ export default function SettingsPage() {
                 <button onClick={runUpgradePurchase} disabled={upgrade.loading} className="rounded-2xl bg-gold px-5 py-3 text-sm font-semibold text-obsidian transition hover:bg-gold-deep disabled:opacity-50">
                   {upgrade.loading ? 'Processing…' : 'Subscribe to Gold'}
                 </button>
-                {upgrade.walletShortfall ? (
+                {upgrade.walletShortfall && upgrade.walletShortfall > 0 ? (
                   <button onClick={() => upgrade.fundWallet()} disabled={upgrade.fundingInProgress} className="rounded-2xl border border-gold/60 bg-gold/10 px-5 py-3 text-sm font-semibold text-gold transition hover:bg-gold/20 disabled:opacity-50">
-                    {upgrade.fundingInProgress ? 'Funding…' : 'Fund Wallet'}
+                    {upgrade.fundingInProgress ? 'Funding…' : `Fund Wallet (${formatNaira(upgrade.walletShortfall)})`}
                   </button>
                 ) : null}
               </div>
