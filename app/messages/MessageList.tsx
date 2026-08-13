@@ -316,6 +316,29 @@ export default function MessageList() {
         </section>
       ) : null}
 
+      <section className="space-y-3">
+        <button
+          type="button"
+          onClick={() => router.push('/messages/wimpyai')}
+          className="group flex w-full items-start gap-4 rounded-3xl border border-hairline bg-gradient-to-r from-purple-500/10 to-pink-500/10 px-4 py-4 text-left transition hover:border-purple-400 hover:bg-purple-500/10"
+        >
+          <div className="grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-purple-600 to-pink-600 text-2xl font-bold text-white">
+            AI
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-lg font-semibold text-ivory">WimpyAI</p>
+                  <span className="inline-block rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-purple-200">AI Assistant</span>
+                </div>
+                <p className="mt-2 truncate text-sm text-slate">Ask questions, get instant answers, explore creative ideas.</p>
+              </div>
+            </div>
+          </div>
+        </button>
+      </section>
+
       {(requests.length > 0) ? (
         <section className="rounded-3xl border border-hairline bg-panel-2/70 p-5">
           <div className="mb-4 text-sm uppercase tracking-[0.28em] text-gold">Chat requests</div>
