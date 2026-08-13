@@ -231,11 +231,20 @@ export async function GET(request: NextRequest) {
       rows = data || [];
     }
   } else {
-    const { data, error } = await query.eq('visibility', 'public').eq('status', 'published').order('created_at', { ascending: false }).limit(20);
+    // For main feed, fetch more posts than limit to allow for random selection
+    const { data: allPosts, error } = await query.eq('visibility', 'public').eq('status', 'published').limit(100);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    rows = data || [];
+    
+    // Randomize the order
+    const postsArray = allPosts || [];
+    for (let i = postsArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [postsArray[i], postsArray[j]] = [postsArray[j], postsArray[i]];
+    }
+    
+    rows = postsArray.slice(0, 20);
   }
 
   const postIds = rows.map((post) => post.id);

@@ -84,13 +84,20 @@ export default function ConnectionsPage() {
                   setRecipientId(person.user_id);
                   setSearchTerm(`${person.display_name || person.username} (@${person.username})`);
                   setSearchResults([]);
-                }} className="flex w-full items-start justify-between gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-ivory/5">
-                  <div>
-                    <p className="text-sm font-semibold text-ivory">{person.display_name || person.username}</p>
-                    <p className="text-xs text-slate">@{person.username}</p>
-                    {person.bio ? <p className="mt-1 text-xs text-slate">{person.bio}</p> : null}
+                }} className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-ivory/5">
+                  <div className="flex items-center gap-3">
+                    {person.avatar_url ? (
+                      <img src={person.avatar_url} alt={person.display_name || person.username} className="h-10 w-10 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="grid h-10 w-10 place-items-center rounded-full bg-panel-2 text-xs text-slate flex-shrink-0">{(person.display_name || person.username || 'U').charAt(0).toUpperCase()}</div>
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-ivory">{person.display_name || person.username}</p>
+                      <p className="text-xs text-slate">@{person.username}</p>
+                      {person.bio ? <p className="mt-1 text-xs text-slate">{person.bio}</p> : null}
+                    </div>
                   </div>
-                  <span className="rounded-full bg-gold/10 px-2 py-1 text-[11px] uppercase tracking-[0.2em] text-gold">Select</span>
+                  <span className="rounded-full bg-gold/10 px-2 py-1 text-[11px] uppercase tracking-[0.2em] text-gold flex-shrink-0">Select</span>
                 </button>
               ))}
             </div>

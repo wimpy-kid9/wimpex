@@ -452,12 +452,19 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                         messageRefs.current.delete(messageItem.id);
                       }
                     }}
-                    className={`flex ${incoming ? 'justify-start' : 'justify-end'}`}
+                    className={`flex items-end gap-2 ${incoming ? 'justify-start' : 'justify-end'}`}
                     onClick={(event) => handleMessageBubbleClick(messageItem.id, event)}
                     onTouchStart={(event) => handleMessageTouchStart(messageItem.id, event)}
                     onTouchMove={handleMessageTouchMove}
                     onTouchEnd={handleMessageTouchEnd}
                   >
+                    {incoming && conversation?.otherUser ? (
+                      conversation.otherUser.avatar_url ? (
+                        <img src={conversation.otherUser.avatar_url} alt={conversation.otherUser.display_name || conversation.otherUser.username} className="h-8 w-8 flex-shrink-0 rounded-full object-cover" />
+                      ) : (
+                        <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-panel-2 text-xs text-slate">{(conversation.otherUser.display_name || conversation.otherUser.username || 'U').charAt(0).toUpperCase()}</div>
+                      )
+                    ) : null}
                     <div
                       className={`relative max-w-[84%] rounded-3xl px-4 py-3 text-sm leading-7 ${incoming ? 'bg-panel/90 text-ivory' : 'bg-gold/10 text-obsidian'} ${isHighlighted ? 'ring-2 ring-gold/60' : ''}`}
                       style={{ transform: messageItem.id === touchStateRef.current.messageId ? `translateX(${replySwipeOffset}px)` : undefined }}
