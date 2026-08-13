@@ -3,6 +3,7 @@
 import { ChangeEvent, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { authedFetch } from '@/lib/api-client';
+import { usePaidUpgradeFlow } from '@/app/components/PaidUpgradeFlow';
 
 const WIMPEX_PLAN_NAME = 'Wimpex Pro';
 
@@ -24,12 +25,16 @@ export default function SettingsPage() {
   const [gender, setGender] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [subscription, setSubscription] = useState<any | null>(null);
-  const [price, setPrice] = useState<number | null>(null);
-  const [billingInterval, setBillingInterval] = useState('monthly');
-  const [walletShortfall, setWalletShortfall] = useState<number | null>(null);
-  const [redirectingAfterWalletTopup, setRedirectingAfterWalletTopup] = useState(false);
-  const [notice, setNotice] = useState('');
   const [message, setMessage] = useState('');
+
+  const upgrade = usePaidUpgradeFlow({
+    productName: 'wimpex',
+    planName: WIMPEX_PLAN_NAME,
+    onSuccess: (subscription) => setSubscription(subscription),
+    onError: () => {
+      // Error notice is shown by the hook
+    }
+  });
 
   const loadSubscription = async () => {
     try {
@@ -39,18 +44,6 @@ export default function SettingsPage() {
       setSubscription(payload.subscription || null);
     } catch {
       setSubscription(null);
-    }
-  };
-
-  const loadPlanPrice = async () => {
-    try {
-      const response = await authedFetch(`/api/wimpypay?product_name=wimpex&plan_name=${encodeURIComponent(WIMPEX_PLAN_NAME)}`);
-      if (!response.ok) return;
-      const payload = await response.json();
-      setPrice(Number(payload.price ?? 0));
-      setBillingInterval(payload.billing_interval || payload.billingInterval || 'monthly');
-    } catch {
-      setPrice(null);
     }
   };
 
@@ -74,7 +67,7 @@ export default function SettingsPage() {
       setBio(result.profile?.bio ?? '');
       setGender(result.profile?.gender ?? '');
       setAvatarUrl(result.profile?.avatar_url ?? '');
-      await Promise.all([loadSubscription(), loadPlanPrice()]);
+      await loadSubscription();
       setLoading(false);
     };
 
@@ -151,88 +144,7 @@ export default function SettingsPage() {
   };
 
   const runUpgradePurchase = async () => {
-    setNotice('');
-    try {
-      const response = await authedFetch('/api/wimpypay', {
-        method: 'POST',
-        body: JSON.stringify({ product_name: 'wimpex', plan_name: WIMPEX_PLAN_NAME })
-      });
-      const payload = await response.json();
-
-      if (!response.ok) {
-        if (payload.error === 'insufficient_funds') {
-          setWalletShortfall(Number(payload.requiredAmount || 0));
-          setNotice(`You need ${formatNaira(Number(payload.requiredAmount || 0))} more in your WimpyPay wallet`);
-          return;
-        }
-
-        setNotice(payload.error || 'Unable to purchase Gold.');
-        return;
-      }
-
-      setWalletShortfall(null);
-      setSubscription(payload.subscription || null);
-      setNotice('WIMPEX Gold is now active!');
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Unable to complete purchase.');
-    }
-  };
-
-  const fundWallet = async () => {
-    const requiredAmount = walletShortfall ?? (price ?? 0);
-    if (!requiredAmount || !window) {
-      return;
-    }
-
-    const paystackScript = 'https://js.paystack.co/v1/inline.js';
-    const script = document.createElement('script');
-    script.src = paystackScript;
-    script.async = true;
-
-    await new Promise<void>((resolve, reject) => {
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Unable to load Paystack.'));
-      document.body.appendChild(script);
-    }).catch((error) => {
-      setNotice(error instanceof Error ? error.message : 'Unable to open wallet funding flow.');
-      return;
-    });
-
-    const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-    if (!paystackKey || !(window as any).PaystackPop) {
-      setNotice('Paystack is not configured for wallet funding.');
-      return;
-    }
-
-    const { data } = await supabase.auth.getSession();
-    const email = data?.session?.user?.email || 'user@example.com';
-
-    const paystack = (window as any).PaystackPop.setup({
-      key: paystackKey,
-      email,
-      amount: Math.max(Math.ceil(requiredAmount), 1) * 100,
-      currency: 'NGN',
-      ref: `wimpex-wallet-${Date.now()}`,
-      onClose: () => {
-        setNotice('Wallet funding cancelled.');
-      },
-      callback: async (response: any) => {
-        setNotice('Wallet funded. Completing your upgrade…');
-        setRedirectingAfterWalletTopup(true);
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-        await runUpgradePurchase();
-        setRedirectingAfterWalletTopup(false);
-        if (!response || !response.reference) {
-          setNotice('Wallet funding did not complete.');
-        }
-      }
-    });
-
-    paystack.openIframe();
-  };
-
-  const purchaseGold = async () => {
-    await runUpgradePurchase();
+    await upgrade.attemptPurchase();
   };
 
   if (loading) {
@@ -258,18 +170,20 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              <p className="text-sm text-ivory">{price ? `Upgrade to WIMPEX Gold for ${formatNaira(price)} per ${billingInterval}.` : 'Upgrade to WIMPEX Gold for streak rewards, premium filters, and improved visibility.'}</p>
+              <p className="text-sm text-ivory">{upgrade.price ? `Upgrade to WIMPEX Gold for ${formatNaira(upgrade.price)} per ${upgrade.billingInterval}.` : 'Upgrade to WIMPEX Gold for streak rewards, premium filters, and improved visibility.'}</p>
               <div className="flex flex-wrap items-center gap-3">
-                <button onClick={purchaseGold} className="rounded-2xl bg-gold px-5 py-3 text-sm font-semibold text-obsidian transition hover:bg-gold-deep">Subscribe to Gold</button>
-                {walletShortfall ? (
-                  <button onClick={fundWallet} className="rounded-2xl border border-gold/60 bg-gold/10 px-5 py-3 text-sm font-semibold text-gold transition hover:bg-gold/20">
-                    {redirectingAfterWalletTopup ? 'Completing purchase…' : 'Fund Wallet'}
+                <button onClick={runUpgradePurchase} disabled={upgrade.loading} className="rounded-2xl bg-gold px-5 py-3 text-sm font-semibold text-obsidian transition hover:bg-gold-deep disabled:opacity-50">
+                  {upgrade.loading ? 'Processing…' : 'Subscribe to Gold'}
+                </button>
+                {upgrade.walletShortfall ? (
+                  <button onClick={() => upgrade.fundWallet()} disabled={upgrade.fundingInProgress} className="rounded-2xl border border-gold/60 bg-gold/10 px-5 py-3 text-sm font-semibold text-gold transition hover:bg-gold/20 disabled:opacity-50">
+                    {upgrade.fundingInProgress ? 'Funding…' : 'Fund Wallet'}
                   </button>
                 ) : null}
               </div>
             </div>
           )}
-          {notice ? <p className="mt-3 text-sm text-gold">{notice}</p> : null}
+          {upgrade.notice ? <p className="mt-3 text-sm text-gold">{upgrade.notice}</p> : null}
         </div>
 
         <div className="mt-8 space-y-6">
