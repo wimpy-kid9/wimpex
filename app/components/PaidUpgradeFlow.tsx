@@ -58,9 +58,14 @@ export function usePaidUpgradeFlow(props: PaidUpgradeFlowProps) {
       });
       const payload = await response.json();
 
+      console.log('[PaidUpgradeFlow] Response status:', response.status, 'payload:', payload);
+
       if (!response.ok) {
+        console.log('[PaidUpgradeFlow] Error response detected, payload.error:', payload.error);
+        
         if (payload.error === 'insufficient_funds') {
           const shortfall = Number(payload.requiredAmount || 0);
+          console.log('[PaidUpgradeFlow] Setting wallet shortfall to:', shortfall);
           setWalletShortfall(shortfall);
           setNotice(`You need ${formatNaira(shortfall)} more in your WimpyPay wallet`);
           setLoading(false);
@@ -69,6 +74,7 @@ export function usePaidUpgradeFlow(props: PaidUpgradeFlowProps) {
         }
 
         const errorMsg = payload.error || 'Unable to complete purchase.';
+        console.log('[PaidUpgradeFlow] Non-shortfall error:', errorMsg);
         setNotice(errorMsg);
         setLoading(false);
         onError?.(errorMsg);
@@ -82,6 +88,7 @@ export function usePaidUpgradeFlow(props: PaidUpgradeFlowProps) {
       return { success: true, subscription: payload.subscription };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unable to complete purchase.';
+      console.log('[PaidUpgradeFlow] Exception caught:', errorMsg);
       setNotice(errorMsg);
       setLoading(false);
       onError?.(errorMsg);

@@ -190,12 +190,13 @@ export default function SettingsPage() {
                 <button onClick={runUpgradePurchase} disabled={upgrade.loading} className="rounded-2xl bg-gold px-5 py-3 text-sm font-semibold text-obsidian transition hover:bg-gold-deep disabled:opacity-50">
                   {upgrade.loading ? 'Processing…' : 'Subscribe to Gold'}
                 </button>
-                {upgrade.walletShortfall && upgrade.walletShortfall > 0 ? (
+                {upgrade.walletShortfall ? (
                   <button onClick={() => upgrade.fundWallet()} disabled={upgrade.fundingInProgress} className="rounded-2xl border border-gold/60 bg-gold/10 px-5 py-3 text-sm font-semibold text-gold transition hover:bg-gold/20 disabled:opacity-50">
                     {upgrade.fundingInProgress ? 'Funding…' : `Fund Wallet (${formatNaira(upgrade.walletShortfall)})`}
                   </button>
                 ) : null}
               </div>
+              {upgrade.walletShortfall && <p className="text-xs text-slate">Debug: shortfall = {upgrade.walletShortfall}</p>}
             </div>
           )}
           {upgrade.notice ? <p className="mt-3 text-sm text-gold">{upgrade.notice}</p> : null}
