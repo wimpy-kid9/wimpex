@@ -2,6 +2,7 @@
 
 import FollowButton from './FollowButton';
 import BlockButton from './BlockButton';
+import GoldBadge from './GoldBadge';
 import { useEffect, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
 import { isGoldSubscription } from '@/lib/subscription';
@@ -57,7 +58,7 @@ export default function ProfileHeader({ profile, subscription }: { profile: any;
             <p className="text-sm uppercase tracking-[0.3em] text-gold">Profile</p>
             <div className="mt-3 flex items-center gap-2">
               <h1 className="text-display text-3xl text-ivory">{profile?.display_name ?? 'Profile'}</h1>
-              {isGold ? <span className="rounded-full border border-gold/40 bg-gold/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-gold">Gold</span> : null}
+              {isGold ? <GoldBadge size="md" inline /> : null}
             </div>
             <p className="mt-2 max-w-2xl text-sm text-slate">{profile?.bio ?? 'This user has not added a bio.'}</p>
           </div>
