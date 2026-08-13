@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { isSupabaseServerConfigured, supabaseServer } from './supabase-server';
 
 export interface AuthUserContext {
-  user: { id: string };
+  user: { id: string; email?: string | null };
   token: string;
 }
 

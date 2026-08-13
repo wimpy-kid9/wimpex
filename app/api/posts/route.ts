@@ -1,6 +1,8 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
+import { calculateDailyPostStreakState } from '@/lib/streak-utils';
+import { isGoldSubscription } from '@/lib/subscription';
 
 const VIDEO_BUCKET = 'wpx-videos';
 const IMAGE_BUCKET = 'wpx-images';
@@ -72,6 +74,57 @@ async function loadCounts(postIds: string[]) {
   });
 
   return { likeCounts, favoriteCounts };
+}
+
+async function getActiveSubscription(userId: string) {
+  const { data } = await supabaseServer
+    .from('wpx_subscriptions')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .order('active_until', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
+async function updateDailyPostStreak(userId: string, publishedAt: string) {
+  const { data: existingStreak, error: streakError } = await supabaseServer
+    .from('wpx_streaks')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('streak_type', 'daily_post')
+    .maybeSingle();
+
+  if (streakError) {
+    throw new Error(streakError.message);
+  }
+
+  const subscription = await getActiveSubscription(userId);
+  const nextState = calculateDailyPostStreakState(existingStreak, publishedAt, { isGold: isGoldSubscription(subscription) });
+
+  if (!existingStreak) {
+    const { data, error } = await supabaseServer.from('wpx_streaks').insert({
+      user_id: userId,
+      streak_type: 'daily_post',
+      ...nextState
+    }).select().maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data;
+  }
+
+  const { data, error } = await supabaseServer.from('wpx_streaks').update({
+    ...nextState
+  }).eq('id', existingStreak.id).select().maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
 }
 
 export async function GET(request: NextRequest) {
@@ -334,6 +387,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  let streakData = null;
+  try {
+    if (data.status === 'published') {
+      streakData = await updateDailyPostStreak(authContext.user.id, data.created_at);
+    }
+  } catch {
+    // ignore streak update failures for now
+  }
+
   const authorMap = await loadAuthors([authContext.user.id]);
   const enrichedAuthor = authorMap[authContext.user.id] || {};
 
@@ -358,6 +420,7 @@ export async function POST(request: NextRequest) {
       audioCoverArtUrl: data.audio_cover_art_url || null,
       filterPreset: data.filter_preset || 'none',
       status: data.status || 'published'
-    }
+    },
+    streak: streakData
   });
 }

@@ -19,7 +19,9 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
+  const [callLoading, setCallLoading] = useState(false);
   const [replySwipeOffset, setReplySwipeOffset] = useState(0);
+  const [pageSwipeOffset, setPageSwipeOffset] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [allowsFinePointer, setAllowsFinePointer] = useState(false);
@@ -38,6 +40,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     longPressTriggered: false,
     holding: false
   });
+  const pageTouchRef = useRef({ startX: 0, startY: 0, tracking: false });
   const longPressTimerRef = useRef<number | null>(null);
   const reactionOptions = useMemo(() => ['👍', '❤️', '😂', '👏', '🔥'], []);
   const messagesById = useMemo(() => new Map(messages.map((message) => [message.id, message])), [messages]);
@@ -144,6 +147,39 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     node.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setHighlightedMessageId(messageId);
   }, []);
+
+  const canStartCall = Boolean(conversation?.otherUser?.user_id && !conversation?.isGroup);
+
+  const handleStartCall = useCallback(
+    async (callType: 'voice' | 'video') => {
+      if (!conversation?.otherUser?.user_id) return;
+      setNotice('');
+      setCallLoading(true);
+
+      try {
+        const response = await authedFetch('/api/calls', {
+          method: 'POST',
+          body: JSON.stringify({ callee_id: conversation.otherUser.user_id, call_type: callType })
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          setNotice(payload.error || 'Unable to start call.');
+          return;
+        }
+        if (payload.call?.room_id) {
+          window.open(payload.call.room_id, '_blank');
+        } else {
+          setNotice('Call started. Check your call history.');
+          router.push('/calls');
+        }
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : 'Unable to start call.');
+      } finally {
+        setCallLoading(false);
+      }
+    },
+    [conversation?.otherUser?.user_id, conversation?.isGroup, router]
+  );
 
   const toggleReactionPicker = useCallback((messageId: string) => {
     setReactionPickerFor((current) => (current === messageId ? null : messageId));
@@ -284,6 +320,37 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     }
   };
 
+  const handlePageTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (touch.clientX > 36) return;
+    pageTouchRef.current = { startX: touch.clientX, startY: touch.clientY, tracking: true };
+    setPageSwipeOffset(0);
+  };
+
+  const handlePageTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    const pageTouch = pageTouchRef.current;
+    if (!pageTouch.tracking) return;
+    const deltaX = touch.clientX - pageTouch.startX;
+    const deltaY = touch.clientY - pageTouch.startY;
+    if (Math.abs(deltaY) > 40) {
+      pageTouch.tracking = false;
+      setPageSwipeOffset(0);
+      return;
+    }
+    if (deltaX > 0) {
+      setPageSwipeOffset(Math.min(deltaX, 120));
+    }
+  };
+
+  const handlePageTouchEnd = () => {
+    if (pageTouchRef.current.tracking && pageSwipeOffset > 80) {
+      router.back();
+    }
+    pageTouchRef.current.tracking = false;
+    setPageSwipeOffset(0);
+  };
+
   const handleMessageTouchEnd = () => {
     const current = touchStateRef.current;
     if (longPressTimerRef.current) {
@@ -315,7 +382,14 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   };
 
   return (
-    <main onClick={() => actionMenuFor && setActionMenuFor(null)} className="h-[100dvh] overflow-hidden flex flex-col px-4 py-6 sm:px-6 lg:px-8">
+    <main
+      onClick={() => actionMenuFor && setActionMenuFor(null)}
+      onTouchStart={handlePageTouchStart}
+      onTouchMove={handlePageTouchMove}
+      onTouchEnd={handlePageTouchEnd}
+      style={{ transform: pageSwipeOffset ? `translateX(${pageSwipeOffset}px)` : undefined }}
+      className="h-[100dvh] overflow-hidden flex flex-col px-4 py-6 sm:px-6 lg:px-8 transition-transform duration-200 ease-out"
+    >
       <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col space-y-6">
         <section className="rounded-3xl border border-hairline bg-panel-2/70 p-4 shadow-sm">
           <div className="flex items-center gap-3">
@@ -336,10 +410,22 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
               <h1 className="text-2xl font-semibold text-ivory">{otherUserName}</h1>
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <button type="button" className="rounded-full border border-hairline bg-panel p-2 text-ivory transition hover:bg-ivory/10" title="Voice call">
+              <button
+                type="button"
+                onClick={() => void handleStartCall('voice')}
+                disabled={!canStartCall || callLoading}
+                className="rounded-full border border-hairline bg-panel p-2 text-ivory transition hover:bg-ivory/10 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Voice call"
+              >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M22 16.92V21a1 1 0 0 1-1.11 1 19.86 19.86 0 0 1-8.63-3.07A19.38 19.38 0 0 1 3.07 9.74 19.86 19.86 0 0 1 0 1.11 1 1 0 0 1 1 0h4.09a1 1 0 0 1 1 .76c.12.83.33 1.64.63 2.42a1 1 0 0 1-.24 1.03L5.2 6.79a16 16 0 0 0 10.45 10.45l1.58-1.58a1 1 0 0 1 1.03-.24c.78.3 1.59.51 2.42.63a1 1 0 0 1 .76 1V22z" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
-              <button type="button" className="rounded-full border border-hairline bg-panel p-2 text-ivory transition hover:bg-ivory/10" title="Video call">
+              <button
+                type="button"
+                onClick={() => void handleStartCall('video')}
+                disabled={!canStartCall || callLoading}
+                className="rounded-full border border-hairline bg-panel p-2 text-ivory transition hover:bg-ivory/10 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Video call"
+              >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M15 7h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="6" width="12" height="12" rx="2" strokeWidth="1.4"/><path d="M9 10v4" strokeWidth="1.4" strokeLinecap="round"/></svg>
               </button>
             </div>

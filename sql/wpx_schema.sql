@@ -201,6 +201,18 @@ CREATE TABLE IF NOT EXISTS wpx_streaks (
   created_at timestamp with time zone DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS wpx_subscriptions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  plan text NOT NULL,
+  status text NOT NULL,
+  active_from timestamp with time zone NOT NULL DEFAULT now(),
+  active_until timestamp with time zone NOT NULL,
+  external_reference text,
+  metadata jsonb,
+  created_at timestamp with time zone DEFAULT now()
+);
+
 ALTER TABLE wpx_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wpx_privacy_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wpx_posts ENABLE ROW LEVEL SECURITY;

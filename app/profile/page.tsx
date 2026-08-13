@@ -11,6 +11,7 @@ import AuthActionPrompt from '@/app/components/AuthActionPrompt';
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [subscription, setSubscription] = useState<any>(null);
   const [session, setSession] = useState<any>(undefined);
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function ProfilePage() {
         }
         const payload = await response.json();
         setProfile(payload.profile || null);
+        setSubscription(payload.subscription || null);
       } catch (err) {
         setProfile(null);
       } finally {
@@ -61,7 +63,7 @@ export default function ProfilePage() {
 
   return (
     <main className="space-y-6">
-      <ProfileHeader profile={profile} />
+      <ProfileHeader profile={profile} subscription={subscription} />
       <ProfileTabs profile={profile} isOwn={true} />
 
       <section className="rounded-md border border-hairline bg-panel-2/80 p-6 text-sm text-slate">

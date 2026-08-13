@@ -16,17 +16,35 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: profile, error: profileError } = await supabaseServer
-    .from('wpx_profiles')
-    .select('*')
-    .eq('user_id', authContext.user.id)
-    .maybeSingle();
+  const [{ data: profile, error: profileError }, { data: streak, error: streakError }, { data: subscription, error: subscriptionError }] = await Promise.all([
+    supabaseServer.from('wpx_profiles').select('*').eq('user_id', authContext.user.id).maybeSingle(),
+    supabaseServer
+      .from('wpx_streaks')
+      .select('*')
+      .eq('user_id', authContext.user.id)
+      .eq('streak_type', 'daily_post')
+      .maybeSingle(),
+    supabaseServer
+      .from('wpx_subscriptions')
+      .select('*')
+      .eq('user_id', authContext.user.id)
+      .eq('status', 'active')
+      .order('active_until', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  ]);
 
   if (profileError) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
+  if (streakError) {
+    return NextResponse.json({ error: streakError.message }, { status: 500 });
+  }
+  if (subscriptionError) {
+    return NextResponse.json({ error: subscriptionError.message }, { status: 500 });
+  }
 
-  return NextResponse.json({ profile });
+  return NextResponse.json({ profile, streak: streak || null, subscription: subscription || null });
 }
 
 export async function POST(request: NextRequest) {

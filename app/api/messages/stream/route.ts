@@ -1,12 +1,10 @@
-import { NextRequest } from 'next/server';
+export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     start(controller) {
-      let ping = true;
-
       const send = (data: any) => {
         try {
           controller.enqueue(encoder.encode(`event: update\ndata: ${JSON.stringify(data)}\n\n`));
@@ -16,7 +14,6 @@ export async function GET(request: NextRequest) {
       };
 
       const interval = setInterval(() => {
-        // lightweight heartbeat/update event — clients should re-fetch state
         send({ ts: Date.now() });
       }, 3000);
 

@@ -18,4 +18,18 @@ CREATE INDEX IF NOT EXISTS wpx_message_reactions_message_idx ON wpx_message_reac
 
 ALTER TABLE wpx_message_reactions ENABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS wpx_subscriptions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  plan text NOT NULL,
+  status text NOT NULL,
+  active_from timestamptz NOT NULL DEFAULT now(),
+  active_until timestamptz NOT NULL,
+  external_reference text,
+  metadata jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE wpx_subscriptions ENABLE ROW LEVEL SECURITY;
+
 COMMIT;
