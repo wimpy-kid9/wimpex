@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
 import BottomNav from './BottomNav';
+import { InstallPrompt } from './InstallPrompt';
 
 interface AppShellProps {
   children: ReactNode;
@@ -153,6 +154,9 @@ export default function AppShell({ children }: AppShellProps) {
       <div className="md:hidden">
         <BottomNav />
       </div>
+
+      {/* Install prompt for PWA */}
+      <InstallPrompt />
     </div>
   );
 }

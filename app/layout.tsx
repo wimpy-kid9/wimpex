@@ -21,6 +21,8 @@ export const metadata: Metadata = {
   alternates: {
     canonical: siteUrl
   },
+  manifest: '/manifest.json',
+  themeColor: '#1a1a2e',
   openGraph: {
     title: 'Wimpex',
     description: 'Wimpex is a social platform for creators, connections, conversations, and live calling.',

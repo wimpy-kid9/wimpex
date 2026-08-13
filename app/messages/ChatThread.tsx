@@ -203,19 +203,21 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     []
   );
 
-  const sendMessage = async () => {
-    if (!draft.trim() && !attachment) {
+  const sendMessage = async (overrideAttachment?: File) => {
+    const effectiveAttachment = overrideAttachment ?? attachment;
+    const trimmedDraft = draft.trim();
+    if (!trimmedDraft && !effectiveAttachment) {
       setNotice('Type a message or attach a file.');
       return;
     }
 
     const form = new FormData();
-    form.append('body', draft.trim());
+    form.append('body', trimmedDraft);
     form.append('conversation_id', conversationId);
     if (replyingTo) {
       form.append('reply_to_message_id', replyingTo.id);
     }
-    if (attachment) form.append('media', attachment);
+    if (effectiveAttachment) form.append('media', effectiveAttachment);
 
     const resp = await authedFetch('/api/messages', { method: 'POST', body: form });
     const payload = await resp.json();
@@ -244,12 +246,12 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
       mr.onstop = async () => {
         const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
         const file = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
-        setAttachment(file);
         mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
         mediaStreamRef.current = null;
         mediaRecorderRef.current = null;
         setIsRecording(false);
-        await sendMessage();
+        setAttachment(file);
+        await sendMessage(file);
       };
       mediaRecorderRef.current = mr;
       mr.start();
@@ -558,9 +560,23 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M21 12.79V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7.21" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 10l5 5 5-5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 <input type="file" className="hidden" onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
               </label>
-              <button type="button" className="rounded-full p-2 text-slate transition hover:bg-panel-2" title="Camera">
+              <label className="rounded-full p-2 text-slate transition hover:bg-panel-2" title="Camera">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2v12z" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="13" r="3" strokeWidth="1.6"/></svg>
-              </button>
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  capture="environment"
+                  className="hidden"
+                  onClick={(event) => {
+                    const target = event.currentTarget as HTMLInputElement;
+                    if (!target.value) {
+                      target.value = '';
+                    }
+                  }}
+                  onChange={(event) => setAttachment(event.target.files?.[0] || null)}
+                />
+              </label>
+
               <input
                 ref={inputRef}
                 value={draft}
@@ -573,7 +589,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                 <button
                   type="button"
                   onClick={async () => {
-                    if (draft.trim()) {
+                    if (draft.trim() || attachment) {
                       await sendMessage();
                       return;
                     }
@@ -584,9 +600,10 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                     }
                   }}
                   className="rounded-full bg-gold p-3 text-ivory transition hover:brightness-105"
-                  title={draft.trim() ? 'Send message' : isRecording ? 'Stop recording' : 'Record voice note'}
+                  title={draft.trim() || attachment ? 'Send message' : isRecording ? 'Stop recording' : 'Record voice note'}
                 >
-                  {draft.trim() ? (
+                  {draft.trim() || attachment ? (
+
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M5 12h14" strokeWidth="1.6" strokeLinecap="round"/><path d="M12 5l7 7-7 7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   ) : (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 10a7 7 0 0 1-14 0" strokeWidth="1.6" strokeLinecap="round"/><path d="M12 19v4" strokeWidth="1.6" strokeLinecap="round"/></svg>

@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.112.2",
     "katex": "^0.16.0",
     "next": "14.2.4",
+    "next-pwa": "^5.6.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-markdown": "^10.1.0",

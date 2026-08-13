@@ -34,6 +34,14 @@ function normalizePlanName(value: unknown) {
   return normalized;
 }
 
+function normalizePaymentError(value: unknown) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  return value.toLowerCase().trim().replace(/[_\s]+/g, '-');
+}
+
 async function fetchPlanPrice(productName: string, planName: string) {
   const externalApiUrl = process.env.WIMPYPAY_API_URL;
   const internalApiKey = process.env.WIMPYPAY_INTERNAL_API_KEY;
@@ -171,11 +179,14 @@ export async function POST(request: NextRequest) {
             parsed = {};
           }
 
-          if (parsed.error === 'insufficient_funds' || parsed.code === 'insufficient_funds') {
+            const normalizedError = normalizePaymentError(parsed.error ?? parsed.code ?? '');
+          const isInsufficientFunds = normalizedError.includes('insufficient') && normalizedError.includes('fund');
+
+          if (isInsufficientFunds) {
             return NextResponse.json({
               error: 'insufficient_funds',
-              requiredAmount: Number(parsed.requiredAmount ?? parsed.required_amount ?? 0),
-              currentBalance: Number(parsed.currentBalance ?? parsed.current_balance ?? 0),
+              requiredAmount: Number(parsed.requiredAmount ?? parsed.required_amount ?? parsed.amount ?? 0),
+              currentBalance: Number(parsed.currentBalance ?? parsed.current_balance ?? parsed.balance ?? 0),
               product_name: productName,
               plan_name: planName
             }, { status: 402 });

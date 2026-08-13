@@ -1,0 +1,52 @@
+{
+  "name": "WIMPEX",
+  "short_name": "WIMPEX",
+  "description": "WIMPEX is a social platform for creators, connections, conversations, and live calling.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1a1a2e",
+  "background_color": "#0f0f23",
+  "icons": [
+    {
+      "src": "/wimpex-logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/wimpex-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/wimpex-logo-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/wimpex-logo-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["social"],
+  "screenshots": [
+    {
+      "src": "/wimpex-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/wimpex-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}

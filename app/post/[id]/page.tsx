@@ -42,7 +42,7 @@ export default async function PostPage({ params }: Props) {
   }
 
   return (
-    <main className="p-8">
+    <main className="h-[100dvh] w-full overflow-hidden">
       <PostDetailClient post={enrichedPost} />
     </main>
   );
