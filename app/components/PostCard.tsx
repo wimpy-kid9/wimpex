@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
 import ShareSheet from './ShareSheet';
+import GoldBadge from './GoldBadge';
 
 const FILTER_CLASSES: Record<string, string> = {
   none: '',
@@ -210,7 +211,10 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
             <div className="grid h-11 w-11 place-items-center rounded-full bg-panel-2 text-base text-slate">{(post.author || post.handle || 'W').charAt(0).toUpperCase()}</div>
           )}
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-ivory">{topText}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold text-ivory">{topText}</p>
+              {post.is_gold ? <GoldBadge size="sm" inline /> : null}
+            </div>
             <p className="text-xs text-slate">{post.handle || '@wimpex'}</p>
           </div>
         </Link>
@@ -279,6 +283,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
       <div className="absolute left-3 bottom-6 max-w-[75%] space-y-3 text-sm leading-6">
         <Link href={postLink} className="inline-flex items-center gap-2 text-sm font-semibold text-ivory transition hover:text-gold">
           <span>@{post.handle?.replace(/^@/, '') || 'wimpex'}</span>
+          {post.is_gold ? <GoldBadge size="sm" inline /> : null}
         </Link>
         <p className="line-clamp-2 text-ivory/90">{caption || 'No caption yet.'}</p>
         {post.audioTrackName ? (

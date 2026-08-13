@@ -16,6 +16,7 @@ function mapPost(post: any, likeCounts: Record<string, number>, favoriteCounts: 
     author: author.display_name || post.author_display_name || 'WIMPEX user',
     handle: author.username ? `@${author.username}` : post.author_handle || '@wimpex',
     avatar_url: author.avatar_url || null,
+    is_gold: Boolean(author.is_gold),
     caption: post.caption || '',
     visibility: post.visibility || 'public',
     createdAt: post.created_at,
@@ -49,10 +50,38 @@ async function loadAuthors(authorIds: string[]) {
     return {};
   }
 
-  return (authors || []).reduce((acc: Record<string, any>, author: any) => {
-    if (author?.user_id) acc[author.user_id] = author;
+  const subscriptions = await getActiveSubscriptions(authorIds);
+  const enriched = (authors || []).reduce((acc: Record<string, any>, author: any) => {
+    if (author?.user_id) {
+      acc[author.user_id] = {
+        ...author,
+        is_gold: isGoldSubscription(subscriptions[author.user_id])
+      };
+    }
     return acc;
   }, {} as Record<string, any>);
+
+  return enriched;
+}
+
+async function getActiveSubscriptions(userIds: string[]) {
+  if (userIds.length === 0) return {} as Record<string, any>;
+
+  const { data: subscriptions } = await supabaseServer
+    .from('wpx_subscriptions')
+    .select('user_id, plan, status, metadata, active_until')
+    .in('user_id', userIds)
+    .eq('status', 'active')
+    .order('active_until', { ascending: false });
+
+  const subscriptionMap: Record<string, any> = {};
+  (subscriptions || []).forEach((subscription: any) => {
+    if (subscription.user_id && !subscriptionMap[subscription.user_id]) {
+      subscriptionMap[subscription.user_id] = subscription;
+    }
+  });
+
+  return subscriptionMap;
 }
 
 async function loadCounts(postIds: string[]) {

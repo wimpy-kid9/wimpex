@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
+import { isGoldSubscription } from '@/lib/subscription';
 
 const CHAT_BUCKET = 'wpx-chat-media';
 const CHAT_MIME_TYPES = [
@@ -295,10 +296,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: profileError.message }, { status: 500 });
     }
 
+    const profilesWithGold = profiles || [];
+    if (otherUserIds.length > 0) {
+      const { data: subscriptions } = await supabaseServer
+        .from('wpx_subscriptions')
+        .select('user_id, plan, status, metadata, active_until')
+        .in('user_id', otherUserIds)
+        .eq('status', 'active')
+        .order('active_until', { ascending: false });
+
+      const subscriptionMap: Record<string, any> = {};
+      (subscriptions || []).forEach((subscription: any) => {
+        if (subscription.user_id && !subscriptionMap[subscription.user_id]) {
+          subscriptionMap[subscription.user_id] = subscription;
+        }
+      });
+
+      profilesWithGold.forEach((profile: any) => {
+        profile.is_gold = isGoldSubscription(subscriptionMap[profile.user_id]);
+      });
+    }
+
     const summary = getConversationSummary(
       { ...conversation, currentUserId: authContext.user.id },
       members || [],
-      profiles || [],
+      profilesWithGold,
       messages || []
     );
 
@@ -382,6 +404,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
 
+  const profilesWithGold = profiles || [];
+  if (otherUserIds.length > 0) {
+    const { data: subscriptions } = await supabaseServer
+      .from('wpx_subscriptions')
+      .select('user_id, plan, status, metadata, active_until')
+      .in('user_id', otherUserIds)
+      .eq('status', 'active')
+      .order('active_until', { ascending: false });
+
+    const subscriptionMap: Record<string, any> = {};
+    (subscriptions || []).forEach((subscription: any) => {
+      if (subscription.user_id && !subscriptionMap[subscription.user_id]) {
+        subscriptionMap[subscription.user_id] = subscription;
+      }
+    });
+
+    profilesWithGold.forEach((profile: any) => {
+      profile.is_gold = isGoldSubscription(subscriptionMap[profile.user_id]);
+    });
+  }
+
   const { data: messages, error: messagesError } = await supabaseServer
     .from('wpx_messages')
     .select('conversation_id, sender_id, body, media_type, created_at')
@@ -396,7 +439,7 @@ export async function GET(request: NextRequest) {
     getConversationSummary(
       { ...conversation, currentUserId: authContext.user.id },
       (members || []).filter((row: any) => row.conversation_id === conversation.id),
-      profiles || [],
+      profilesWithGold,
       messages || []
     )
   );

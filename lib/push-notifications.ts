@@ -75,7 +75,8 @@ export async function sendPushToUser(userId: string, options: PushNotificationOp
     // Log results and remove failed subscriptions
     for (let i = 0; i < results.length; i++) {
       if (results[i].status === 'rejected') {
-        const error = results[i].reason as Error;
+        const reason = results[i].reason;
+        const error = reason instanceof Error ? reason : new Error(String(reason));
         console.error(`Failed to send notification to ${subscriptions[i].endpoint}:`, error.message);
 
         // Remove expired/invalid subscriptions
@@ -88,13 +89,13 @@ export async function sendPushToUser(userId: string, options: PushNotificationOp
             .from('wpx_push_subscriptions')
             .delete()
             .eq('endpoint', subscriptions[i].endpoint)
-            .catch((err) => console.error('Error deleting subscription:', err));
+            .catch((err: unknown) => console.error('Error deleting subscription:', err));
         }
       }
     }
 
     return results;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error sending push notification:', error);
   }
 }

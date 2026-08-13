@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const authContext = await requireAuth(request);
-    const userId = authContext.userId;
+    const userId = authContext.user.id;
 
     const { endpoint, p256dh, auth } = await request.json();
 
@@ -58,7 +58,7 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const authContext = await requireAuth(request);
-    const userId = authContext.userId;
+    const userId = authContext.user.id;
 
     const { endpoint } = await request.json();
 

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
 import AuthActionPrompt from '@/app/components/AuthActionPrompt';
+import { useAudioMixer } from '@/lib/use-audio-mixer';
 
 const FILTER_PRESETS = [
   { key: 'none', label: 'None', description: 'Natural colors' },
@@ -168,6 +169,7 @@ export default function CreatePostPage() {
   }, [trackQuery]);
 
   const accent = useMemo(() => getUserAccent(session?.user?.id ?? 'post-creator'), [session?.user?.id]);
+  const { mixAudio, isProcessing: isMixing, error: mixError } = useAudioMixer();
   const characterCount = draft.length;
 
   const handleMediaChange = (file: File | null) => {
@@ -231,9 +233,26 @@ export default function CreatePostPage() {
     setBusy(true);
     setError('');
 
+    let mediaToUpload: File | Blob = mediaFile ?? new Blob();
+
+    try {
+      if (mediaFile && selectedTrack?.preview_url) {
+        setError('Processing audio…');
+        const mixedBlob = await mixAudio(mediaFile, selectedTrack.preview_url, 0.7);
+        mediaToUpload = new File([mixedBlob], mediaFile.name || 'mixed-audio.wav', {
+          type: mixedBlob.type || 'audio/wav'
+        });
+      }
+    } catch (mixErr) {
+      const message = mixErr instanceof Error ? mixErr.message : 'Unable to process the selected audio track.';
+      setError(message);
+      setBusy(false);
+      return;
+    }
+
     const formData = new FormData();
-    if (mediaFile) {
-      formData.append(mediaType === 'image' ? 'image' : 'video', mediaFile);
+    if (mediaToUpload && mediaToUpload.size > 0) {
+      formData.append(mediaType === 'image' ? 'image' : 'video', mediaToUpload, mediaType === 'image' ? 'image-upload' : 'video-upload');
       formData.append('media_type', mediaType);
     }
 
@@ -511,8 +530,8 @@ export default function CreatePostPage() {
                         </div>
                       )}
 
-                      {error ? (
-                        <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p>
+                      {error || mixError ? (
+                        <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error || mixError}</p>
                       ) : null}
 
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -529,9 +548,9 @@ export default function CreatePostPage() {
                             <button
                               type="submit"
                               className={`rounded-full bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
-                              disabled={busy}
+                              disabled={busy || isMixing}
                             >
-                              {busy ? 'Publishing…' : editingId ? 'Update post' : 'Publish post'}
+                              {busy || isMixing ? 'Processing audio…' : editingId ? 'Update post' : 'Publish post'}
                             </button>
                           </div>
                         ) : (

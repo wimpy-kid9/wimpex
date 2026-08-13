@@ -15,46 +15,9 @@ async function createNotification(userId: string, actorId: string | null, type: 
   });
 }
 
-async function createDailyRoom(name: string) {
-  const apiKey = process.env.CALLING_PLATFORM_API_KEY;
-  if (!apiKey) {
-    return {
-      roomUrl: `https://wimpex.daily.co/${name}`
-    };
-  }
-
-  const response = await fetch('https://api.daily.co/v1/rooms', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      name,
-      properties: {
-        enable_chat: false,
-        enable_recording: false,
-        start_audio_off: true,
-        start_video_off: true,
-        max_participants: 2
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const payload = await response.text();
-    throw new Error(payload || 'Unable to create a Daily room.');
-  }
-
-  const payload = await response.json();
-  return {
-    roomUrl: payload.url || payload.room_url || `https://wimpex.daily.co/${name}`
-  };
-}
-
 function normalizeStatus(value: string) {
-  if (value === 'active') return 'in_progress';
-  if (value === 'ended') return 'completed';
+  if (value === 'active') return 'active';
+  if (value === 'ended') return 'ended';
   return value;
 }
 
@@ -123,16 +86,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Calls are limited to accepted connections.' }, { status: 403 });
     }
 
-    const roomName = `wimpex-${crypto.randomUUID()}`;
-    const { roomUrl } = await createDailyRoom(roomName);
-
+    // WebRTC-based calling: no need to provision an external room
+    // The call ID is used as the signaling channel
     const { data, error } = await supabaseServer.from('wpx_calls').insert({
       caller_id: authContext.user.id,
       callee_id,
       connection_id: connection_id ?? null,
       call_type,
-      status: 'ringing',
-      room_id: roomUrl
+      status: 'ringing'
     }).select().maybeSingle();
 
     if (error) {
@@ -161,7 +122,7 @@ export async function PATCH(request: NextRequest) {
 
     const { data: existingCall, error: existingCallError } = await supabaseServer
       .from('wpx_calls')
-      .select('id, caller_id, callee_id, room_id')
+      .select('id, caller_id, callee_id')
       .eq('id', id)
       .maybeSingle();
 
@@ -183,13 +144,12 @@ export async function PATCH(request: NextRequest) {
       updated_at: new Date().toISOString()
     };
 
-    if (nextStatus === 'completed' || nextStatus === 'missed') {
-      updatePayload.ended_at = ended_at ?? new Date().toISOString();
-      updatePayload.is_missed = nextStatus === 'missed';
+    if (nextStatus === 'ended') {
+      updatePayload.ended_at = new Date().toISOString();
     }
 
-    if (nextStatus === 'in_progress') {
-      updatePayload.started_at = started_at ?? new Date().toISOString();
+    if (nextStatus === 'active') {
+      updatePayload.started_at = new Date().toISOString();
     }
 
     const { data, error } = await supabaseServer

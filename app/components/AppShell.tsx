@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
+import { usePushNotifications } from '@/lib/use-push-notifications';
 import BottomNav from './BottomNav';
 import { InstallPrompt } from './InstallPrompt';
 
@@ -15,6 +16,7 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const [accent, setAccent] = useState(() => getUserAccent('wimpex-shell'));
   const pathname = usePathname();
+  const { subscribe, permission } = usePushNotifications();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [indicatorStyle, setIndicatorStyle] = useState<{ top?: number; height?: number }>({});
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
@@ -58,6 +60,12 @@ export default function AppShell({ children }: AppShellProps) {
     };
     void loadProfileAccent();
   }, []);
+
+  useEffect(() => {
+    if (pathname === '/settings' && permission !== 'denied') {
+      void subscribe();
+    }
+  }, [pathname, permission, subscribe]);
 
   const isFeedRoute = pathname?.startsWith('/feed');
 

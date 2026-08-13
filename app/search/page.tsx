@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { authedFetch } from '@/lib/api-client';
 import AuthActionPrompt from '@/app/components/AuthActionPrompt';
+import GoldBadge from '@/app/components/GoldBadge';
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
@@ -151,7 +152,10 @@ export default function SearchPage() {
                       </div>
                     )}
                     <div>
-                      <p className="text-lg font-semibold text-ivory">{person.display_name || person.username}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-lg font-semibold text-ivory">{person.display_name || person.username}</p>
+                        {person.is_gold ? <GoldBadge size="sm" inline /> : null}
+                      </div>
                       <p className="text-sm text-slate">@{person.username}</p>
                       {person.bio ? <p className="mt-2 text-sm text-slate">{person.bio}</p> : null}
                     </div>

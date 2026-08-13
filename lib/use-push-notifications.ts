@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 
 export function usePushNotifications() {
-  const [permission, setPermission] = useState<NotificationPermission | null>(null);
+  const [permission, setPermission] = useState<'default' | 'granted' | 'denied' | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<'idle' | 'subscribing' | 'subscribed' | 'error'>('idle');
 
   // Check current permission status

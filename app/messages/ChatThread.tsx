@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type TouchEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { authedFetch } from '@/lib/api-client';
+import GoldBadge from '@/app/components/GoldBadge';
 
 interface ChatThreadProps {
   conversationId: string;
@@ -409,7 +410,10 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
             )}
             <div>
               <p className="text-xs uppercase tracking-[0.32em] text-gold">Chat</p>
-              <h1 className="text-2xl font-semibold text-ivory">{otherUserName}</h1>
+              <div className="mt-1 flex items-center gap-2">
+                <h1 className="text-2xl font-semibold text-ivory">{otherUserName}</h1>
+                {conversation?.otherUser?.is_gold ? <GoldBadge size="sm" inline /> : null}
+              </div>
             </div>
             <div className="ml-auto flex items-center gap-2">
               <button

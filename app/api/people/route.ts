@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
+import { isGoldSubscription } from '@/lib/subscription';
 
 export async function GET(request: NextRequest) {
   if (!isSupabaseServerConfigured) {
@@ -41,5 +42,29 @@ export async function GET(request: NextRequest) {
 
   const merged = [...(usernameMatches || []), ...(displayNameMatches || [])];
   const unique = merged.filter((person, index, self) => self.findIndex((candidate) => candidate.user_id === person.user_id) === index);
-  return NextResponse.json({ people: unique.slice(0, 10) });
+
+  const userIds = Array.from(new Set((unique || []).map((person) => person.user_id).filter(Boolean)));
+  const subscriptionMap: Record<string, any> = {};
+
+  if (userIds.length > 0) {
+    const { data: subscriptions } = await supabaseServer
+      .from('wpx_subscriptions')
+      .select('user_id, plan, status, metadata, active_until')
+      .in('user_id', userIds)
+      .eq('status', 'active')
+      .order('active_until', { ascending: false });
+
+    (subscriptions || []).forEach((subscription: any) => {
+      if (subscription.user_id && !subscriptionMap[subscription.user_id]) {
+        subscriptionMap[subscription.user_id] = subscription;
+      }
+    });
+  }
+
+  const people = unique.slice(0, 10).map((person) => ({
+    ...person,
+    is_gold: isGoldSubscription(subscriptionMap[person.user_id])
+  }));
+
+  return NextResponse.json({ people });
 }

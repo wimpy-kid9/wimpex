@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authedFetch } from '@/lib/api-client';
+import GoldBadge from '@/app/components/GoldBadge';
 
 interface ProfileMatch {
   user_id: string;
@@ -10,6 +11,7 @@ interface ProfileMatch {
   display_name: string;
   bio?: string;
   avatar_url?: string | null;
+  is_gold?: boolean;
 }
 
 interface ConversationSummary {
@@ -24,6 +26,7 @@ interface ConversationSummary {
     username: string;
     display_name: string;
     avatar_url?: string | null;
+    is_gold?: boolean;
   } | null;
   unreadCount?: number;
 }
@@ -272,7 +275,10 @@ export default function MessageList() {
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="truncate text-base font-semibold text-ivory">{person.display_name || person.username}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-base font-semibold text-ivory">{person.display_name || person.username}</p>
+                        {person.is_gold ? <GoldBadge size="sm" inline /> : null}
+                      </div>
                       <p className="mt-1 truncate text-sm text-slate">@{person.username}</p>
                       {person.bio ? <p className="mt-2 text-xs text-slate line-clamp-2">{person.bio}</p> : null}
                     </div>
@@ -406,7 +412,10 @@ export default function MessageList() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-lg font-semibold text-ivory">{conversation.title || other?.display_name || other?.username || 'Unknown chat'}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-lg font-semibold text-ivory">{conversation.title || other?.display_name || other?.username || 'Unknown chat'}</p>
+                        {other?.is_gold ? <GoldBadge size="sm" inline /> : null}
+                      </div>
                       <p className="mt-2 truncate text-sm text-slate">{conversation.previewSentByMe ? 'You: ' : ''}{conversation.preview}</p>
                     </div>
                     <p className="whitespace-nowrap text-xs uppercase tracking-[0.24em] text-slate">{timeLabel}</p>

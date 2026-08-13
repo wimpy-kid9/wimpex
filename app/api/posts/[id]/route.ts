@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { supabaseServer } from '@/lib/supabase-server';
+import { isGoldSubscription } from '@/lib/subscription';
 
 async function enrichPostWithAuthor(post: any) {
   if (!post?.author_id) return post;
@@ -13,11 +14,21 @@ async function enrichPostWithAuthor(post: any) {
 
   if (profileError) return post;
 
+  const { data: subscription } = await supabaseServer
+    .from('wpx_subscriptions')
+    .select('user_id, plan, status, metadata, active_until')
+    .eq('user_id', post.author_id)
+    .eq('status', 'active')
+    .order('active_until', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   return {
     ...post,
     author: profile?.display_name || post.author_display_name || 'WIMPEX user',
     handle: profile?.username ? `@${profile.username}` : post.author_handle || '@wimpex',
-    avatar_url: profile?.avatar_url || null
+    avatar_url: profile?.avatar_url || null,
+    is_gold: isGoldSubscription(subscription)
   };
 }
 

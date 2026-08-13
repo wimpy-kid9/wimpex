@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const authContext = await requireAuth(request);
-    const userId = authContext.userId;
+    const userId = authContext.user.id;
 
     const formData = await request.formData();
     const videoFile = formData.get('video') as File;

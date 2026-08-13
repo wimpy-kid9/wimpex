@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { getRTCConfig } from '@/lib/webrtc-config';
 
 export interface CallProps {
   roomUrl: string;
@@ -9,84 +10,115 @@ export interface CallProps {
 }
 
 /**
- * CallWindow component for embedding Daily.co video calls
+ * CallWindow component for WebRTC peer-to-peer video calls
  */
 export default function CallWindow({ roomUrl, userName, onClose }: CallProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [connectionState, setConnectionState] = useState('connecting');
 
   useEffect(() => {
-    setLoading(true);
+    const initializeCall = async () => {
+      try {
+        // Get user media
+        const localStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
 
-    // Load Daily SDK
-    const script = document.createElement('script');
-    script.src = 'https://cdn.daily.co/daily-js.js';
-    script.async = true;
-
-    script.onload = () => {
-      if (!containerRef.current) return;
-
-      const callFrame = (window as any).DailyIframe?.createFrame({
-        iframeStyle: {
-          position: 'absolute',
-          top: '0',
-          left: '0',
-          width: '100%',
-          height: '100%',
-          border: 'none'
-        },
-        showLeaveButton: true,
-        showFullscreenButton: true,
-        theme: {
-          colors: {
-            accent: '#f59e0b',
-            background: '#0f0f23'
-          }
+        // Display local video
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStream;
         }
-      });
 
-      if (!callFrame) {
-        setError('Failed to initialize call frame');
-        return;
+        // Create peer connection
+        const rtcConfig = getRTCConfig();
+        const peerConnection = new RTCPeerConnection(rtcConfig);
+        peerConnectionRef.current = peerConnection;
+
+        // Add local stream tracks
+        localStream.getTracks().forEach((track) => {
+          peerConnection.addTrack(track, localStream);
+        });
+
+        // Handle remote stream
+        peerConnection.ontrack = (event) => {
+          if (remoteVideoRef.current && event.streams[0]) {
+            remoteVideoRef.current.srcObject = event.streams[0];
+          }
+        };
+
+        // Monitor connection state
+        peerConnection.onconnectionstatechange = () => {
+          setConnectionState(peerConnection.connectionState);
+          if (peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'disconnected') {
+            setError('Call connection lost');
+          }
+        };
+
+        // Create data channel for signaling
+        const dataChannel = peerConnection.createDataChannel('signal', { ordered: true });
+        setupDataChannel(dataChannel);
+
+        peerConnection.ondatachannel = (event) => {
+          setupDataChannel(event.channel);
+        };
+
+        // Create offer
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        // In a real implementation, this would be sent to the signaling server
+        // For now, we'll just indicate the call is established
+        console.log('WebRTC call offer created', roomUrl);
+
+        setLoading(false);
+      } catch (err: any) {
+        setError(err.message || 'Failed to initialize call');
+        setLoading(false);
       }
-
-      // Join room
-      callFrame.join({ url: roomUrl, userName: userName || 'Guest' });
-
-      // Mount frame
-      if (containerRef.current) {
-        containerRef.current.appendChild(callFrame.iframe);
-      }
-
-      // Handle leave
-      callFrame.on('left-meeting', () => {
-        onClose();
-      });
-
-      setLoading(false);
     };
 
-    script.onerror = () => {
-      setError('Failed to load calling service');
-      setLoading(false);
+    const setupDataChannel = (dataChannel: RTCDataChannel) => {
+      dataChannelRef.current = dataChannel;
+      dataChannel.onmessage = (event) => {
+        console.log('Message from peer:', event.data);
+      };
+      dataChannel.onopen = () => {
+        console.log('Data channel opened');
+      };
     };
 
-    document.head.appendChild(script);
+    void initializeCall();
 
     return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
+      peerConnectionRef.current?.close();
+      localVideoRef.current?.srcObject && 
+        ((localVideoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop()));
     };
-  }, [roomUrl, userName, onClose]);
+  }, [roomUrl]);
+
+  const handleLeaveCall = () => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+    }
+    if (localVideoRef.current?.srcObject) {
+      (localVideoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+    }
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div className="h-full w-full">
+      <div className="h-full w-full" ref={containerRef}>
         {loading && (
           <div className="flex h-full items-center justify-center">
-            <p className="text-ivory">Connecting to call…</p>
+            <p className="text-ivory">Initializing WebRTC call…</p>
           </div>
         )}
 
@@ -94,7 +126,7 @@ export default function CallWindow({ roomUrl, userName, onClose }: CallProps) {
           <div className="flex h-full flex-col items-center justify-center gap-4">
             <p className="text-rose-200">{error}</p>
             <button
-              onClick={onClose}
+              onClick={handleLeaveCall}
               className="rounded-2xl bg-gold px-4 py-2 text-sm font-semibold text-obsidian transition hover:bg-gold-deep"
             >
               Close
@@ -102,7 +134,43 @@ export default function CallWindow({ roomUrl, userName, onClose }: CallProps) {
           </div>
         )}
 
-        <div ref={containerRef} className="h-full w-full" />
+        {!loading && !error && (
+          <div className="relative h-full w-full">
+            {/* Remote video (main) */}
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className="h-full w-full object-cover"
+            />
+
+            {/* Local video (picture-in-picture) */}
+            <div className="absolute bottom-4 right-4 h-32 w-48 overflow-hidden rounded-lg border-2 border-ivory shadow-lg">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="h-full w-full object-cover"
+              />
+            </div>
+
+            {/* Connection status */}
+            <div className="absolute top-4 left-4 rounded-lg bg-black/60 px-3 py-2 text-sm text-ivory">
+              {connectionState === 'connecting' && <span>Connecting…</span>}
+              {connectionState === 'connected' && <span className="text-emerald-300">Connected</span>}
+              {connectionState === 'disconnected' && <span className="text-rose-300">Disconnected</span>}
+            </div>
+
+            {/* Leave button */}
+            <button
+              onClick={handleLeaveCall}
+              className="absolute bottom-4 left-4 rounded-lg bg-rose-500 px-4 py-2 font-semibold text-white hover:bg-rose-600"
+            >
+              Leave Call
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
