@@ -88,6 +88,126 @@ async function getActiveSubscription(userId: string) {
   return data;
 }
 
+async function buildUserAffinity(userId: string) {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  // Load recent positive interactions
+  const { data: interactions } = await supabaseServer
+    .from('wpx_user_post_interactions')
+    .select('post_id, interaction_type')
+    .eq('user_id', userId)
+    .gte('created_at', thirtyDaysAgo.toISOString())
+    .in('interaction_type', ['watch_complete', 'like', 'comment', 'share']);
+
+  if (!interactions || interactions.length === 0) {
+    return { hashtags: {}, authors: {} };
+  }
+
+  const interactedPostIds = interactions.map((i: any) => i.post_id);
+
+  // Load hashtags for these posts
+  const { data: hashtags } = await supabaseServer
+    .from('wpx_post_hashtags')
+    .select('tag, post_id')
+    .in('post_id', interactedPostIds);
+
+  // Load author IDs for these posts
+  const { data: posts } = await supabaseServer
+    .from('wpx_posts')
+    .select('id, author_id')
+    .in('id', interactedPostIds);
+
+  const hashtagScores: Record<string, number> = {};
+  const authorScores: Record<string, number> = {};
+
+  (hashtags || []).forEach((row: any) => {
+    hashtagScores[row.tag] = (hashtagScores[row.tag] || 0) + 1;
+  });
+
+  (posts || []).forEach((post: any) => {
+    authorScores[post.author_id] = (authorScores[post.author_id] || 0) + 1;
+  });
+
+  return { hashtags: hashtagScores, authors: authorScores };
+}
+
+async function scorePostsForFYP(posts: any[], userId: string, authorMap: Record<string, any>, affinity: { hashtags: Record<string, number>; authors: Record<string, number> }) {
+  const postIds = posts.map((p) => p.id);
+
+  // Load hashtags for all posts
+  const { data: allHashtags } = await supabaseServer
+    .from('wpx_post_hashtags')
+    .select('post_id, tag')
+    .in('post_id', postIds);
+
+  const postHashtags: Record<string, string[]> = {};
+  (allHashtags || []).forEach((row: any) => {
+    if (!postHashtags[row.post_id]) postHashtags[row.post_id] = [];
+    postHashtags[row.post_id].push(row.tag);
+  });
+
+  const now = Date.now();
+  const maxAgeMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+  return posts.map((post) => {
+    let score = 0;
+
+    // Hashtag affinity (max +30)
+    const postTags = postHashtags[post.id] || [];
+    postTags.forEach((tag) => {
+      score += (affinity.hashtags[tag] || 0) * 5;
+    });
+
+    // Author affinity (max +20)
+    score += (affinity.authors[post.author_id] || 0) * 5;
+
+    // Recency boost (newer = higher score, max +15)
+    const ageMs = now - new Date(post.created_at).getTime();
+    const recencyScore = Math.max(0, 15 * (1 - ageMs / maxAgeMs));
+    score += recencyScore;
+
+    // Engagement as fallback (max +20)
+    const engagementScore = Math.min(20, ((post.like_count || 0) + (post.favorite_count || 0) + (post.share_count || 0)) * 2);
+    score += engagementScore * 0.5;
+
+    return { post, score };
+  });
+}
+
+async function buildPersonalizedFeed(candidatePosts: any[], userId: string, authorMap: Record<string, any>, likeCounts: Record<string, number>, favoriteCounts: Record<string, number>) {
+  // Add engagement counts
+  const postsWithCounts = candidatePosts.map((post) => ({
+    ...post,
+    like_count: likeCounts[post.id] ?? 0,
+    favorite_count: favoriteCounts[post.id] ?? 0
+  }));
+
+  const affinity = await buildUserAffinity(userId);
+  const scoredPosts = await scorePostsForFYP(postsWithCounts, userId, authorMap, affinity);
+
+  // Sort by score descending
+  scoredPosts.sort((a, b) => b.score - a.score);
+
+  // Split: 75% ranked by affinity, 25% exploration (random from rest)
+  const rankingIndex = Math.floor(scoredPosts.length * 0.75);
+  const rankedSet = new Set(scoredPosts.slice(0, rankingIndex).map((s) => s.post.id));
+  const explorationSet = scoredPosts.slice(rankingIndex);
+
+  // Shuffle exploration set
+  for (let i = explorationSet.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [explorationSet[i], explorationSet[j]] = [explorationSet[j], explorationSet[i]];
+  }
+
+  const finalOrder = [
+    ...scoredPosts.slice(0, rankingIndex).map((s) => s.post),
+    ...explorationSet.map((s) => s.post)
+  ];
+
+  return finalOrder.slice(0, 20);
+}
+
 async function updateDailyPostStreak(userId: string, publishedAt: string) {
   const { data: existingStreak, error: streakError } = await supabaseServer
     .from('wpx_streaks')
@@ -142,6 +262,13 @@ export async function GET(request: NextRequest) {
       authContext = await requireAuth(request);
     } catch {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  } else if (!authorId) {
+    // Try to auth for personalized feed, but don't fail if not authenticated
+    try {
+      authContext = await requireAuth(request);
+    } catch {
+      authContext = null;
     }
   }
 
@@ -231,20 +358,31 @@ export async function GET(request: NextRequest) {
       rows = data || [];
     }
   } else {
-    // For main feed, fetch more posts than limit to allow for random selection
+    // Main feed: use personalized FYP if authenticated, otherwise randomized chronological
     const { data: allPosts, error } = await query.eq('visibility', 'public').eq('status', 'published').limit(100);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
-    // Randomize the order
     const postsArray = allPosts || [];
-    for (let i = postsArray.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [postsArray[i], postsArray[j]] = [postsArray[j], postsArray[i]];
-    }
     
-    rows = postsArray.slice(0, 20);
+    if (authContext?.user?.id) {
+      // Load engagement counts for scoring
+      const postIds = postsArray.map((p: any) => p.id);
+      const { likeCounts, favoriteCounts } = await loadCounts(postIds);
+      const authorIds = Array.from(new Set(postsArray.map((p: any) => p.author_id).filter(Boolean))) as string[];
+      const authorMap = await loadAuthors(authorIds);
+
+      // Use personalized FYP ranking
+      rows = await buildPersonalizedFeed(postsArray, authContext.user.id, authorMap, likeCounts, favoriteCounts);
+    } else {
+      // Randomize for unauthenticated users
+      for (let i = postsArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [postsArray[i], postsArray[j]] = [postsArray[j], postsArray[i]];
+      }
+      rows = postsArray.slice(0, 20);
+    }
   }
 
   const postIds = rows.map((post) => post.id);
