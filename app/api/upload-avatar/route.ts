@@ -31,7 +31,21 @@ export async function POST(request: NextRequest) {
     }
 
     const { data } = supabaseServer.storage.from('wpx-avatars').getPublicUrl(path);
-    return NextResponse.json({ ok: true, avatarUrl: data.publicUrl });
+    const avatarUrl = data.publicUrl;
+
+    const { error: profileError } = await supabaseServer.from('wpx_profiles').upsert(
+      {
+        user_id: authContext.user.id,
+        avatar_url: avatarUrl
+      },
+      { onConflict: 'user_id' }
+    );
+
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, avatarUrl });
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

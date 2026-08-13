@@ -71,12 +71,6 @@ export default function ProfilePage() {
           Learn more about how WIMPEX works in the <Link href="/privacy-policy" className="text-gold hover:text-gold">Privacy Policy</Link> or read the <Link href="/terms-of-service" className="text-gold hover:text-gold">Terms of Service</Link>.
         </p>
       </section>
-
-      <section className="rounded-md border border-hairline bg-panel-2/80 p-6 text-sm text-slate">
-        <p>
-          Learn more about how WIMPEX works in the <Link href="/privacy-policy" className="text-gold hover:text-gold">Privacy Policy</Link> or read the <Link href="/terms-of-service" className="text-gold hover:text-gold">Terms of Service</Link>.
-        </p>
-      </section>
     </main>
   );
 }

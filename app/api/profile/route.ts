@@ -47,31 +47,20 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ profile, streak: streak || null, subscription: subscription || null });
 }
 
-export async function POST(request: NextRequest) {
-  if (!isSupabaseServerConfigured) {
-    return NextResponse.json({ ok: true, profile: null });
-  }
+async function updateProfileFromBody(body: any, authContext: any) {
+  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at, avatar_url, message_privacy, call_privacy } = body;
 
-  const body = await request.json();
+  const normalizedUsername = typeof username === 'string' ? username.trim() : username;
 
-  let authContext;
-  try {
-    authContext = await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at, message_privacy, call_privacy } = body;
-
-  if (username && !usernamePattern.test(username)) {
+  if (normalizedUsername && !usernamePattern.test(normalizedUsername)) {
     return NextResponse.json({ error: 'Username must be 3–20 letters, numbers, or underscores.' }, { status: 400 });
   }
 
-  if (username) {
+  if (normalizedUsername) {
     const { data: existing, error: existingError } = await supabaseServer
       .from('wpx_profiles')
       .select('user_id')
-      .eq('username', username)
+      .eq('username', normalizedUsername)
       .maybeSingle();
 
     if (existingError) {
@@ -84,12 +73,13 @@ export async function POST(request: NextRequest) {
   }
 
   const updates: Record<string, unknown> = {};
-  if (username) updates.username = username;
-  if (display_name) updates.display_name = display_name;
-  if (date_of_birth) updates.date_of_birth = date_of_birth;
+  if (normalizedUsername) updates.username = normalizedUsername;
+  if (display_name !== undefined) updates.display_name = display_name;
+  if (date_of_birth !== undefined) updates.date_of_birth = date_of_birth;
   if (bio !== undefined) updates.bio = bio;
   if (gender !== undefined) updates.gender = gender;
-  if (onboarding_completed_at) updates.onboarding_completed_at = onboarding_completed_at;
+  if (onboarding_completed_at !== undefined) updates.onboarding_completed_at = onboarding_completed_at;
+  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
   if (Object.keys(updates).length > 0) {
     const { error: upsertError } = await supabaseServer.from('wpx_profiles').upsert(
@@ -136,4 +126,38 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+export async function POST(request: NextRequest) {
+  if (!isSupabaseServerConfigured) {
+    return NextResponse.json({ ok: true, profile: null });
+  }
+
+  const body = await request.json();
+
+  let authContext;
+  try {
+    authContext = await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return updateProfileFromBody(body, authContext);
+}
+
+export async function PATCH(request: NextRequest) {
+  if (!isSupabaseServerConfigured) {
+    return NextResponse.json({ ok: true, profile: null });
+  }
+
+  const body = await request.json();
+
+  let authContext;
+  try {
+    authContext = await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return updateProfileFromBody(body, authContext);
 }

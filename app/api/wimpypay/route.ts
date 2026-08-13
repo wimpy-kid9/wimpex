@@ -11,6 +11,61 @@ function calculateExpiry(days = 30) {
   return expires.toISOString();
 }
 
+function normalizeProductName(value: unknown) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : WIMPEX_PRODUCT_NAME;
+}
+
+function normalizePlanName(value: unknown) {
+  if (typeof value !== 'string') {
+    return WIMPEX_PLAN_NAME;
+  }
+
+  const normalized = value.trim();
+  const lowered = normalized.toLowerCase();
+
+  if (!normalized) {
+    return WIMPEX_PLAN_NAME;
+  }
+
+  if (['gold_monthly', 'gold', 'wimpex_pro', 'wimpex pro', 'wimpex-pro'].includes(lowered)) {
+    return WIMPEX_PLAN_NAME;
+  }
+
+  return normalized;
+}
+
+async function fetchPlanPrice(productName: string, planName: string) {
+  const externalApiUrl = process.env.WIMPYPAY_API_URL;
+  const internalApiKey = process.env.WIMPYPAY_INTERNAL_API_KEY;
+
+  if (!externalApiUrl || !internalApiKey) {
+    throw new Error('WimpyPay is not configured on the server.');
+  }
+
+  const url = new URL(`${externalApiUrl.replace(/\/$/, '')}/api/external/plan`);
+  url.searchParams.set('product_name', productName);
+  url.searchParams.set('plan_name', planName);
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      'x-internal-api-key': internalApiKey
+    }
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Unable to fetch plan price.');
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  return {
+    product_name: productName,
+    plan_name: planName,
+    price: Number(payload.price ?? payload.amount ?? 0),
+    billing_interval: payload.billing_interval || payload.billingInterval || 'monthly'
+  };
+}
+
 export async function GET(request: NextRequest) {
   if (!isSupabaseServerConfigured) {
     return NextResponse.json({ subscription: null });
@@ -21,6 +76,22 @@ export async function GET(request: NextRequest) {
     authContext = await requireAuth(request);
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const requestedProductName = request.nextUrl.searchParams.get('product_name') || WIMPEX_PRODUCT_NAME;
+  const requestedPlanName = request.nextUrl.searchParams.get('plan_name');
+
+  if (requestedPlanName) {
+    try {
+      const plan = await fetchPlanPrice(
+        normalizeProductName(requestedProductName),
+        normalizePlanName(requestedPlanName)
+      );
+
+      return NextResponse.json(plan);
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to fetch plan price.' }, { status: 502 });
+    }
   }
 
   const { data, error } = await supabaseServer
@@ -52,22 +123,15 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const requestedProductName = typeof body.product_name === 'string' ? body.product_name.trim() : '';
-  const requestedPlanName = typeof (body.plan_name ?? body.plan) === 'string' ? String(body.plan_name ?? body.plan).trim() : '';
+  const requestedProductName = typeof body.product_name === 'string' ? body.product_name : WIMPEX_PRODUCT_NAME;
+  const requestedPlanName = body.plan_name ?? body.plan ?? WIMPEX_PLAN_NAME;
 
-  if (requestedProductName && requestedProductName.toLowerCase() !== WIMPEX_PRODUCT_NAME) {
+  if (normalizeProductName(requestedProductName) !== WIMPEX_PRODUCT_NAME) {
     return NextResponse.json({ error: 'Only WIMPEX product plans can be purchased here.' }, { status: 400 });
   }
 
   const productName = WIMPEX_PRODUCT_NAME;
-  const normalizedPlanName = requestedPlanName
-    ? requestedPlanName.toLowerCase() === 'gold_monthly' || requestedPlanName.toLowerCase() === 'gold'
-      ? WIMPEX_PLAN_NAME
-      : requestedPlanName.toLowerCase() === 'wimpex_pro' || requestedPlanName.toLowerCase() === 'wimpex pro'
-      ? WIMPEX_PLAN_NAME
-      : requestedPlanName
-    : WIMPEX_PLAN_NAME;
-  const planName = normalizedPlanName || WIMPEX_PLAN_NAME;
+  const planName = normalizePlanName(requestedPlanName);
 
   const externalApiUrl = process.env.WIMPYPAY_API_URL;
   const internalApiKey = process.env.WIMPYPAY_INTERNAL_API_KEY;
@@ -76,7 +140,7 @@ export async function POST(request: NextRequest) {
 
   if (externalApiUrl && internalApiKey) {
     try {
-      const response = await fetch(`${externalApiUrl}/api/external/subscribe`, {
+      const response = await fetch(`${externalApiUrl.replace(/\/$/, '')}/api/external/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,8 +155,29 @@ export async function POST(request: NextRequest) {
       });
 
       if (!response.ok) {
-        const errorBody = await response.text();
-        return NextResponse.json({ error: `WimpyPay error: ${errorBody}` }, { status: 502 });
+        const responseText = await response.text();
+        let parsed: any = {};
+        try {
+          parsed = JSON.parse(responseText);
+        } catch {
+          parsed = {};
+        }
+
+        if (parsed.error === 'insufficient_funds' || parsed.code === 'insufficient_funds') {
+          return NextResponse.json({
+            error: 'insufficient_funds',
+            requiredAmount: Number(parsed.requiredAmount ?? parsed.required_amount ?? 0),
+            currentBalance: Number(parsed.currentBalance ?? parsed.current_balance ?? 0),
+            product_name: productName,
+            plan_name: planName
+          }, { status: 402 });
+        }
+
+        return NextResponse.json({
+          error: parsed.error || responseText || 'WimpyPay purchase failed.',
+          product_name: productName,
+          plan_name: planName
+        }, { status: 502 });
       }
 
       const payload = await response.json().catch(() => ({}));
@@ -121,5 +206,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ subscription: data });
+  return NextResponse.json({ subscription: data, product_name: productName, plan_name: planName });
 }

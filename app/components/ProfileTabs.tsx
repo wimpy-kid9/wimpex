@@ -126,7 +126,7 @@ export default function ProfileTabs({ profile, isOwn }: { profile: any; isOwn: b
             {items.map((item) => {
               const preview = item.thumbnailUrl || item.imageUrl || item.videoUrl || item.previewUrl || '';
               return (
-                <div key={item.id} className="group relative overflow-hidden rounded-3xl border border-hairline bg-black/40">
+                <a key={item.id} href={`/post/${item.id}`} className="group relative block overflow-hidden rounded-3xl border border-hairline bg-black/40 transition hover:border-gold">
                   {preview ? (
                     <img src={preview} alt={item.caption || item.title || 'Post preview'} className="h-48 w-full object-cover transition duration-300 group-hover:scale-105" />
                   ) : (
@@ -136,7 +136,7 @@ export default function ProfileTabs({ profile, isOwn }: { profile: any; isOwn: b
                     <p className="truncate text-sm font-semibold text-ivory">{item.caption || item.title || 'Untitled'}</p>
                     <p className="text-xs text-slate">{item.handle || item.author || '@wimpex'}</p>
                   </div>
-                </div>
+                </a>
               );
             })}
           </div>
