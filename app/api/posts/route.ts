@@ -255,6 +255,7 @@ export async function GET(request: NextRequest) {
   const authorId = request.nextUrl.searchParams.get('author_id');
   const type = request.nextUrl.searchParams.get('type');
   const currentOnly = request.nextUrl.searchParams.get('current_only') === 'true';
+  const searchQuery = request.nextUrl.searchParams.get('search');
 
   let authContext: any = null;
   if (type === 'liked' || type === 'favorited' || type === 'drafts' || currentOnly) {
@@ -263,7 +264,7 @@ export async function GET(request: NextRequest) {
     } catch {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-  } else if (!authorId) {
+  } else if (!authorId && !searchQuery) {
     // Try to auth for personalized feed, but don't fail if not authenticated
     try {
       authContext = await requireAuth(request);
@@ -278,7 +279,71 @@ export async function GET(request: NextRequest) {
 
   let rows: any[] = [];
 
-  if (type === 'liked') {
+  // Search for posts by caption, hashtags, or author
+  if (searchQuery) {
+    const searchTerm = `%${searchQuery}%`;
+
+    // Search by caption first
+    const { data: captionPosts, error: captionError } = await supabaseServer
+      .from('wpx_posts')
+      .select(`id, author_id, visibility, caption, media_type, video_url, image_url, thumbnail_url, audio_track_id, audio_track_name, audio_artist_name, audio_preview_url, audio_cover_art_url, filter_preset, share_count, created_at, status`)
+      .eq('visibility', 'public')
+      .eq('status', 'published')
+      .ilike('caption', searchTerm);
+
+    // Search by hashtags
+    const { data: hashtags, error: hashtagError } = await supabaseServer
+      .from('wpx_post_hashtags')
+      .select('post_id')
+      .ilike('tag', searchTerm);
+
+    // Search by author username
+    const { data: authorProfiles, error: authorError } = await supabaseServer
+      .from('wpx_profiles')
+      .select('user_id')
+      .ilike('username', searchTerm);
+
+    const postIdSet = new Set<string>();
+
+    // Add caption posts
+    (captionPosts || []).forEach((post: any) => {
+      postIdSet.add(post.id);
+    });
+
+    // Add hashtag posts
+    (hashtags || []).forEach((row: any) => {
+      postIdSet.add(row.post_id);
+    });
+
+    // Add author posts
+    if ((authorProfiles || []).length > 0) {
+      const authorIds = authorProfiles.map((p: any) => p.user_id);
+      const { data: authorPosts } = await supabaseServer
+        .from('wpx_posts')
+        .select(`id, author_id, visibility, caption, media_type, video_url, image_url, thumbnail_url, audio_track_id, audio_track_name, audio_artist_name, audio_preview_url, audio_cover_art_url, filter_preset, share_count, created_at, status`)
+        .in('author_id', authorIds)
+        .eq('visibility', 'public')
+        .eq('status', 'published');
+
+      (authorPosts || []).forEach((post: any) => {
+        postIdSet.add(post.id);
+      });
+    }
+
+    const postIds = Array.from(postIdSet);
+    if (postIds.length > 0) {
+      const { data, error } = await supabaseServer
+        .from('wpx_posts')
+        .select(`id, author_id, visibility, caption, media_type, video_url, image_url, thumbnail_url, audio_track_id, audio_track_name, audio_artist_name, audio_preview_url, audio_cover_art_url, filter_preset, share_count, created_at, status`)
+        .in('id', postIds)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      rows = data || [];
+    }
+  } else if (type === 'liked') {
     const userId = authorId || authContext.user.id;
     if (userId !== authContext.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
