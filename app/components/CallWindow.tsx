@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { getRTCConfig } from '@/lib/webrtc-config';
 import { authedFetch } from '@/lib/api-client';
 
@@ -17,6 +17,16 @@ export interface CallProps {
   peerAvatar?: string;
   onClose: () => void;
 }
+
+// Plain structural alias for RTCIceCandidateInit — some ESLint/TS setups
+// don't resolve the ambient DOM lib type when it's only ever used as a
+// generic argument, so we spell out the shape locally instead.
+type IceCandidateInit = {
+  candidate?: string;
+  sdpMid?: string | null;
+  sdpMLineIndex?: number | null;
+  usernameFragment?: string | null;
+};
 
 interface CallSignal {
   id: string;
@@ -39,7 +49,7 @@ function IconButton({
   danger?: boolean;
   large?: boolean;
   label: string;
-  onClick: (e: React.MouseEvent) => void;
+  onClick: (_e: React.MouseEvent) => void;
   children: React.ReactNode;
 }) {
   const size = large ? 'h-14 w-14' : 'h-12 w-12';
@@ -96,7 +106,7 @@ export default function CallWindow({
   const signalPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSignalCursorRef = useRef<string | null>(null);
   const remoteDescriptionSetRef = useRef(false);
-  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const pendingCandidatesRef = useRef<IceCandidateInit[]>([]);
   const stoppedRef = useRef(false);
   const callSurfaceRef = useRef<HTMLDivElement>(null);
   const pipRef = useRef<HTMLDivElement>(null);
@@ -370,7 +380,7 @@ export default function CallWindow({
     setIsSpeakerOn(nextSpeakerOn);
     // setSinkId is only supported in some browsers — route audio output when available,
     // otherwise this just reflects the user's intended state in the UI.
-    const remoteEl = remoteVideoRef.current as (HTMLVideoElement & { setSinkId?: (id: string) => Promise<void> }) | null;
+    const remoteEl = remoteVideoRef.current as (HTMLVideoElement & { setSinkId?: (_id: string) => Promise<void> }) | null;
     if (remoteEl?.setSinkId) {
       remoteEl.setSinkId(nextSpeakerOn ? 'default' : 'communications').catch(() => {});
     }
