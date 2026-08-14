@@ -5,13 +5,14 @@ import { getRTCConfig } from '@/lib/webrtc-config';
 
 export interface CallProps {
   roomUrl: string;
+  userName?: string;
   onClose: () => void;
 }
 
 /**
  * CallWindow component for WebRTC peer-to-peer video calls
  */
-export default function CallWindow({ roomUrl, onClose }: CallProps) {
+export default function CallWindow({ roomUrl, userName, onClose }: CallProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -152,6 +153,11 @@ export default function CallWindow({ roomUrl, onClose }: CallProps) {
                 muted
                 className="h-full w-full object-cover"
               />
+              {userName && (
+                <span className="absolute bottom-1 left-1 rounded bg-black/60 px-2 py-0.5 text-xs text-ivory">
+                  {userName}
+                </span>
+              )}
             </div>
 
             {/* Connection status */}
