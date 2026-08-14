@@ -11,7 +11,7 @@ export default function PostDetailClient({ post }: { post: any }) {
   const router = useRouter();
   const edited = search?.get('edited') === '1';
   const fromCollection = search?.get('from');
-  const fromIndex = search?.get('index') ? parseInt(search.get('index')!) : undefined;
+  const currentIndex = search?.get('index') ? parseInt(search.get('index')!) : undefined;
   const [showToast, setShowToast] = useState<boolean>(edited);
   const [collectionPosts, setCollectionPosts] = useState<any[]>([]);
 
