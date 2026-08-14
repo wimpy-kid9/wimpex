@@ -88,6 +88,23 @@ export default function AppShell({ children }: AppShellProps) {
     }
   }, [calling]);
 
+  // The caller has no activeCall until the callee picks up, so this covers
+  // hanging up a still-ringing outgoing call from the CallWindow itself.
+  const cancelOutgoingCall = useCallback(async () => {
+    if (!calling.outgoingCall?.id) return;
+    try {
+      await calling.endCall(calling.outgoingCall.id);
+    } catch (err) {
+      console.error('Error cancelling call:', err);
+    }
+  }, [calling]);
+
+  // One call to show in CallWindow: prefer the active call, otherwise fall
+  // back to the caller's own still-ringing outgoing call so the UI has
+  // something to render (and cancel) while waiting for pickup.
+  const displayedCall = calling.activeCall || calling.outgoingCall;
+  const closeDisplayedCall = calling.activeCall ? endActiveCall : cancelOutgoingCall;
+
   useEffect(() => {
     const loadNotifications = async () => {
       try {
@@ -143,14 +160,14 @@ export default function AppShell({ children }: AppShellProps) {
           onDecline={declineIncomingCall}
         />
       )}
-      {calling.activeCall && (
+      {displayedCall && (
         <CallWindow
-          roomUrl={calling.activeCall.id}
+          roomUrl={displayedCall.id}
           userName={currentUserEmail || 'Guest'}
-          callType={calling.activeCall.call_type === 'voice' ? 'voice' : 'video'}
-          isCaller={calling.activeCall.caller_id === currentUserId}
-          peerId={calling.activeCall.caller_id === currentUserId ? calling.activeCall.callee_id : calling.activeCall.caller_id}
-          onClose={endActiveCall}
+          callType={displayedCall.call_type === 'voice' ? 'voice' : 'video'}
+          isCaller={displayedCall.caller_id === currentUserId}
+          peerId={displayedCall.caller_id === currentUserId ? displayedCall.callee_id : displayedCall.caller_id}
+          onClose={closeDisplayedCall}
         />
       )}
 
