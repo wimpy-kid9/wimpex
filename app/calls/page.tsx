@@ -8,8 +8,6 @@ import AuthActionPrompt from '@/app/components/AuthActionPrompt';
 import CallWindow from '@/app/components/CallWindow';
 import IncomingCallNotification from '@/app/components/IncomingCallNotification';
 import { useCalling } from '@/lib/use-calling';
-  ended_at?: string | null;
-};
 
 type ConnectionRecord = {
   id: string;
