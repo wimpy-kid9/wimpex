@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
+import { findOrCreateDirectConversation } from '@/lib/conversations';
 
 async function createNotification(userId: string, actorId: string | null, type: string, resourceId: string | null, metadata: Record<string, unknown> = {}) {
   if (!isSupabaseServerConfigured) return;
@@ -165,6 +166,17 @@ export async function POST(request: NextRequest) {
 
     if (action === 'accept') {
       await createNotification(current.requester_id, authContext.user.id, 'connection_accepted', data.id, { connection_id: data.id });
+
+      // Create the direct conversation up front so it shows up in both
+      // people's chat lists right away — previously a conversation only
+      // ever got created lazily, the first time someone opened or sent a
+      // message to the other person, so an accepted connection with no
+      // messages yet was invisible in the chat list on both sides.
+      try {
+        await findOrCreateDirectConversation(current.requester_id, authContext.user.id);
+      } catch {
+        // Non-fatal — the connection itself was already accepted either way.
+      }
     }
 
     return NextResponse.json({ connection: data });
