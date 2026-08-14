@@ -67,9 +67,10 @@ export default function WimpyAIChat() {
     setLoading(true);
 
     try {
-      // Call WimpyAI service or API endpoint
-      const wimpyaiUrl = process.env.NEXT_PUBLIC_WIMPYAI_URL || 'https://wimpyai.vercel.app';
-      const response = await fetch(`${wimpyaiUrl}/api/chat`, {
+      // Call WimpyAI via our own server-side proxy to avoid browser CORS
+      // restrictions (the WimpyAI service doesn't send an
+      // Access-Control-Allow-Origin header for this origin).
+      const response = await fetch('/api/wimpyai-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -115,7 +116,7 @@ export default function WimpyAIChat() {
   };
 
   return (
-    <main className="h-[100dvh] overflow-hidden flex flex-col px-4 py-6 sm:px-6 lg:px-8">
+    <main className="h-[100dvh] overflow-hidden flex flex-col px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8 md:pb-6">
       <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col space-y-6">
         <section className="rounded-3xl border border-hairline bg-panel-2/70 p-4 shadow-sm">
           <div className="flex items-center gap-3 justify-between">
