@@ -68,6 +68,8 @@ export default function AppShell({ children }: AppShellProps) {
   }, [pathname, permission, subscribe]);
 
   const isFeedRoute = pathname?.startsWith('/feed');
+  const isChatThreadRoute = pathname?.startsWith('/messages/') && pathname !== '/messages';
+  const isFullBleedRoute = isFeedRoute || isChatThreadRoute;
 
   return (
     <div className="min-h-screen text-ivory">
@@ -155,7 +157,7 @@ export default function AppShell({ children }: AppShellProps) {
       </div>
 
       <div className="md:pl-72">
-        {isFeedRoute ? children : <div className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 lg:px-8 md:pb-8">{children}</div>}
+        {isFullBleedRoute ? children : <div className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 lg:px-8 md:pb-8">{children}</div>}
       </div>
 
       {/* Bottom nav redesigned */}
