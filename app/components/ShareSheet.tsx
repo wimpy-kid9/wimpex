@@ -60,15 +60,21 @@ export default function ShareSheet({ postId, isOpen, onClose, onShared }: ShareS
     try {
       const recipients = Array.from(selectedConnections);
 
-      // Send share message to each connection
-      for (const recipientId of recipients) {
-        await authedFetch('/api/messages/share', {
-          method: 'POST',
-          body: JSON.stringify({
-            postId,
-            recipientId
-          })
-        });
+      // Send share message to each connection, and actually check the
+      // response — previously this loop never inspected response.ok, so a
+      // failed share (e.g. a missing recipientId, which was always the
+      // case before peer_id existed) still fell through to "Shared! ✓".
+      const results = await Promise.all(
+        recipients.map((recipientId) =>
+          authedFetch('/api/messages/share', {
+            method: 'POST',
+            body: JSON.stringify({ postId, recipientId })
+          }).then((res) => res.ok)
+        )
+      );
+
+      if (results.every((ok) => !ok)) {
+        throw new Error('Failed to share with any selected connection');
       }
 
       // Increment share count
@@ -171,24 +177,26 @@ export default function ShareSheet({ postId, isOpen, onClose, onShared }: ShareS
                 <div className="max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-hairline bg-panel-2/50 p-3">
                   {connections.map((connection) => (
                     <label
-                      key={connection.user_id}
+                      key={connection.id}
                       className="flex cursor-pointer items-center gap-3 rounded-2xl p-2 transition hover:bg-panel/50"
                     >
                       <input
                         type="checkbox"
-                        checked={selectedConnections.has(connection.user_id)}
+                        checked={selectedConnections.has(connection.peer_id)}
                         onChange={() =>
-                          handleConnectionToggle(connection.user_id)
+                          handleConnectionToggle(connection.peer_id)
                         }
                         className="rounded border-hairline"
                       />
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-ivory">
-                          {connection.display_name || connection.username}
+                          {connection.peer_display_name || connection.peer_username || 'WIMPEX user'}
                         </p>
-                        <p className="text-xs text-slate">
-                          @{connection.username}
-                        </p>
+                        {connection.peer_username ? (
+                          <p className="text-xs text-slate">
+                            @{connection.peer_username}
+                          </p>
+                        ) : null}
                       </div>
                     </label>
                   ))}
