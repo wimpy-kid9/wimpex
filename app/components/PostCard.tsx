@@ -24,7 +24,6 @@ function renderCaptionWithTags(caption: string, taggedUsers: { user_id: string; 
 
   return parts.map((part, index) => {
     if (part.startsWith('#')) {
-      const tag = part.slice(1);
       return (
         <Link key={index} href={`/search?q=${encodeURIComponent(part)}`} className="text-gold hover:underline" onClick={(e) => e.stopPropagation()}>
           {part}
