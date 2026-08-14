@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import FollowButton from './FollowButton';
 import BlockButton from './BlockButton';
@@ -65,7 +65,7 @@ export default function ProfileHeader({ profile, subscription }: { profile: any;
         </div>
 
         {summary ? (
-          <div className="grid gap-3 sm:flex sm:items-center sm:gap-6">
+          <div className="flex items-center gap-3 sm:gap-6">
             <div className="rounded-3xl bg-panel/80 px-4 py-3 text-center">
               <p className="text-2xl font-semibold text-ivory">{summary.followerCount ?? 0}</p>
               <p className="text-xs uppercase tracking-[0.24em] text-slate">Followers</p>
