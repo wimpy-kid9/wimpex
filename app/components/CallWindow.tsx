@@ -486,16 +486,25 @@ export default function CallWindow({
 
         {!loading && !error && (
           <div ref={callSurfaceRef} className="relative h-full w-full" onClick={handleScreenTap}>
+            {/*
+              Remote media element — always mounted, regardless of layout or
+              whether the video track is on. Previously this <video> only
+              existed inside the showVideoFeed branch, so on a voice call (or
+              any time video was toggled off) there was nowhere for the
+              incoming audio track to play: ontrack fired but
+              remoteVideoRef.current was null, so remote audio was silently
+              dropped. Keeping this element mounted at all times and only
+              toggling its visibility fixes that.
+            */}
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className={showVideoFeed ? 'h-full w-full bg-obsidian object-cover' : 'hidden'}
+            />
+
             {showVideoFeed ? (
               <>
-                {/* Fullscreen remote feed */}
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  className="h-full w-full bg-obsidian object-cover"
-                />
-
                 {/* Local video — draggable floating thumbnail, default top-right */}
                 <div
                   ref={pipRef}
