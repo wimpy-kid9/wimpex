@@ -1,7 +1,10 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
-export async function GET() {
+export async function GET(request: Request) {
   const encoder = new TextEncoder();
+
+  let interval: ReturnType<typeof setInterval>;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -13,15 +16,25 @@ export async function GET() {
         }
       };
 
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         send({ ts: Date.now() });
       }, 3000);
 
       controller.enqueue(encoder.encode(`event: connected\ndata: {"ok":true}\n\n`));
 
-      return () => {
+      // Stop pushing and close the stream as soon as the client disconnects,
+      // instead of leaving the interval running until the platform kills it.
+      request.signal.addEventListener('abort', () => {
         clearInterval(interval);
-      };
+        try {
+          controller.close();
+        } catch (e) {
+          // already closed
+        }
+      });
+    },
+    cancel() {
+      clearInterval(interval);
     }
   });
 
