@@ -122,7 +122,7 @@ async function loadHashtagsAndTags(postIds: string[]) {
     hashtagsByPost[row.post_id].push(row.tag);
   });
 
-  const taggedUserIds = Array.from(new Set((tagRows || []).map((row: any) => row.tagged_user_id).filter(Boolean)));
+  const taggedUserIds = Array.from(new Set((tagRows || []).map((row: any) => row.tagged_user_id).filter(Boolean))) as string[];
   const taggedProfiles = taggedUserIds.length > 0 ? await loadAuthors(taggedUserIds) : {};
 
   const taggedUsersByPost: Record<string, { user_id: string; username: string | null; display_name: string | null }[]> = {};
@@ -537,7 +537,7 @@ export async function GET(request: NextRequest) {
   }
 
   const postIds = rows.map((post) => post.id);
-  const authorIds = Array.from(new Set(rows.map((post) => post.author_id).filter(Boolean)));
+  const authorIds = Array.from(new Set(rows.map((post) => post.author_id).filter(Boolean))) as string[];
   const authorMap = await loadAuthors(authorIds);
   const { likeCounts, favoriteCounts } = await loadCounts(postIds);
   const { hashtagsByPost, taggedUsersByPost } = await loadHashtagsAndTags(postIds);
