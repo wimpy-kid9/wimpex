@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface WimpyAIMessage {
@@ -11,7 +11,7 @@ interface WimpyAIMessage {
 }
 
 export default function WimpyAIChat() {
-  const router = useRouter(); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const router = useRouter();
   const [messages, setMessages] = useState<WimpyAIMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(false);
@@ -100,7 +100,7 @@ export default function WimpyAIChat() {
     }
   }, [draft, loading]);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       void sendMessage();
