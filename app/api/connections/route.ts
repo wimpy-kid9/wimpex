@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   );
 
   const profileMap = new Map<string, any>();
-  const idsNeedingProfiles = Array.from(new Set([...requesterIds, ...peerIds].filter(Boolean)));
+  const idsNeedingProfiles = Array.from(new Set([...requesterIds, ...peerIds].filter(Boolean))) as string[];
 
   if (idsNeedingProfiles.length > 0) {
     const { data: profiles, error: profileError } = await supabaseServer
