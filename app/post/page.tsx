@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
 import AuthActionPrompt from '@/app/components/AuthActionPrompt';
-import { useAudioMixer } from '@/lib/use-audio-mixer';
 
 const FILTER_PRESETS = [
   { key: 'none', label: 'None', description: 'Natural colors' },
@@ -169,7 +168,6 @@ export default function CreatePostPage() {
   }, [trackQuery]);
 
   const accent = useMemo(() => getUserAccent(session?.user?.id ?? 'post-creator'), [session?.user?.id]);
-  const { mixAudio, isProcessing: isMixing, error: mixError } = useAudioMixer();
   const characterCount = draft.length;
 
   const handleMediaChange = (file: File | null) => {
@@ -233,22 +231,17 @@ export default function CreatePostPage() {
     setBusy(true);
     setError('');
 
-    let mediaToUpload: File | Blob = mediaFile ?? new Blob();
-
-    try {
-      if (mediaFile && selectedTrack?.preview_url) {
-        setError('Processing audio…');
-        const mixedBlob = await mixAudio(mediaFile, selectedTrack.preview_url, 0.7);
-        mediaToUpload = new File([mixedBlob], mediaFile.name || 'mixed-audio.wav', {
-          type: mixedBlob.type || 'audio/wav'
-        });
-      }
-    } catch (mixErr) {
-      const message = mixErr instanceof Error ? mixErr.message : 'Unable to process the selected audio track.';
-      setError(message);
-      setBusy(false);
-      return;
-    }
+    // The selected audio track rides along as metadata on the post (title,
+    // artist, preview URL, cover art — all appended below) rather than
+    // being baked into the media file. Trying to physically mix it into
+    // the upload previously ran the raw video blob through
+    // AudioContext.decodeAudioData, which only accepts audio-only files
+    // and rejects on real video containers — every post with an attached
+    // track failed here with "Unable to process the selected audio
+    // track." The upload below stays a straight passthrough of the
+    // original file; PostCard already renders the track name/artist as a
+    // badge rather than expecting it mixed into the audio.
+    const mediaToUpload: File | Blob = mediaFile ?? new Blob();
 
     const formData = new FormData();
     if (mediaToUpload && mediaToUpload.size > 0) {
@@ -530,8 +523,8 @@ export default function CreatePostPage() {
                         </div>
                       )}
 
-                      {error || mixError ? (
-                        <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error || mixError}</p>
+                      {error ? (
+                        <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p>
                       ) : null}
 
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -548,9 +541,9 @@ export default function CreatePostPage() {
                             <button
                               type="submit"
                               className={`rounded-full bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
-                              disabled={busy || isMixing}
+                              disabled={busy}
                             >
-                              {busy || isMixing ? 'Processing audio…' : editingId ? 'Update post' : 'Publish post'}
+                              {busy ? 'Publishing…' : editingId ? 'Update post' : 'Publish post'}
                             </button>
                           </div>
                         ) : (
