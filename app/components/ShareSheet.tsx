@@ -7,9 +7,10 @@ export interface ShareSheetProps {
   postId: string;
   isOpen: boolean;
   onClose: () => void;
+  onShared?: () => void;
 }
 
-export default function ShareSheet({ postId, isOpen, onClose }: ShareSheetProps) {
+export default function ShareSheet({ postId, isOpen, onClose, onShared }: ShareSheetProps) {
   const [connections, setConnections] = useState<any[]>([]);
   const [selectedConnections, setSelectedConnections] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
@@ -77,6 +78,7 @@ export default function ShareSheet({ postId, isOpen, onClose }: ShareSheetProps)
       });
 
       setShareStatus('sent');
+      onShared?.();
       setTimeout(() => {
         onClose();
         setShareStatus('idle');
@@ -102,6 +104,7 @@ export default function ShareSheet({ postId, isOpen, onClose }: ShareSheetProps)
         method: 'POST',
         body: JSON.stringify({ postId })
       });
+      onShared?.();
 
       setTimeout(() => {
         onClose();
