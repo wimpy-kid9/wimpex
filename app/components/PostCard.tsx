@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -28,6 +28,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
   const [likeCount, setLikeCount] = useState<number | null>(post?.like_count ?? null);
   const [favorited, setFavorited] = useState<boolean>(post?.favorited_by_me ?? false);
   const [favoriteCount, setFavoriteCount] = useState<number | null>(post?.favorite_count ?? null);
+  const [shareCount, setShareCount] = useState<number | null>(post?.share_count ?? null);
   const [showComments, setShowComments] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [comments, setComments] = useState<any[] | null>(null);
@@ -403,7 +404,12 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
       ) : null}
     </article>
 
-    <ShareSheet postId={post.id} isOpen={showShareSheet} onClose={() => setShowShareSheet(false)} />
+    <ShareSheet
+      postId={post.id}
+      isOpen={showShareSheet}
+      onClose={() => setShowShareSheet(false)}
+      onShared={() => setShareCount((c) => (c ?? 0) + 1)}
+    />
     </>
   );
 }
