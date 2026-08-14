@@ -6,7 +6,9 @@ export interface AudioMixerProps {
   videoFile: File;
   audioTrackUrl?: string;
   audioTrackName?: string;
+  // eslint-disable-next-line no-unused-vars
   onMixed?: (mixedFile: Blob) => void;
+  // eslint-disable-next-line no-unused-vars
   onError?: (error: string) => void;
 }
 
