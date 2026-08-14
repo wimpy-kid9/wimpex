@@ -114,8 +114,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: 'Call not found.' }, { status: 404 });
     }
 
-    if (nextStatus === 'missed' || nextStatus === 'declined') {
-      await createNotification(data.caller_id, data.callee_id, nextStatus === 'declined' ? 'declined_call' : 'missed_call', data.id, { call_id: data.id, room_id: data.room_id });
+    if (nextStatus === 'missed') {
+      await createNotification(data.caller_id, data.callee_id, 'missed_call', data.id, { call_id: data.id, room_id: data.room_id });
     }
 
     return NextResponse.json({ call: data });
