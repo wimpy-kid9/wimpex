@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { authedFetch } from '@/lib/api-client';
 import { getUserAccent } from '@/lib/ui-theme';
@@ -12,6 +12,10 @@ type ConnectionRecord = {
   requester_id: string;
   recipient_id: string;
   status: string;
+  peer_id?: string;
+  peer_username?: string | null;
+  peer_display_name?: string | null;
+  peer_avatar_url?: string | null;
 };
 
 const statusStyles: Record<string, string> = {
@@ -31,6 +35,21 @@ export default function CallsPage() {
   // Use calling hook for WebRTC state management
   const calling = useCalling(session?.user?.id);
   const accent = getUserAccent(session?.user?.id ?? 'wimpex');
+
+  // Peer name lookup built from accepted connections, reused to resolve
+  // "who was this call with" in Recent calls below (which previously
+  // showed no identity for the other party at all).
+  const peerProfileById = useMemo(() => {
+    const map = new Map<string, { name: string; username: string | null }>();
+    connections.forEach((connection) => {
+      if (!connection.peer_id) return;
+      map.set(connection.peer_id, {
+        name: connection.peer_display_name || connection.peer_username || 'WIMPEX user',
+        username: connection.peer_username || null
+      });
+    });
+    return map;
+  }, [connections]);
 
   useEffect(() => {
     const init = async () => {
@@ -76,7 +95,7 @@ export default function CallsPage() {
 
       try {
         await requestMediaPermissions();
-        const recipientId = connection.requester_id === session.user.id ? connection.recipient_id : connection.requester_id;
+        const recipientId = connection.peer_id || (connection.requester_id === session.user.id ? connection.recipient_id : connection.requester_id);
         await calling.initiateCall(recipientId, 'video');
       } catch (err) {
         console.error('Error starting call:', err);
@@ -156,12 +175,12 @@ export default function CallsPage() {
             ) : (
               <ul className="mt-4 space-y-3">
                 {connections.map((connection) => {
-                  const recipientId = connection.requester_id === session?.user?.id ? connection.recipient_id : connection.requester_id;
+                  const peerName = connection.peer_display_name || connection.peer_username || 'WIMPEX user';
                   return (
                     <li key={connection.id} className="flex items-center justify-between rounded-2xl border border-hairline bg-panel-2/70 px-4 py-3">
                       <div>
-                        <p className="font-medium text-ivory">{recipientId.slice(0, 8)}…</p>
-                        <p className="text-xs text-slate">Connected via WIMPEX</p>
+                        <p className="font-medium text-ivory">{peerName}</p>
+                        <p className="text-xs text-slate">{connection.peer_username ? `@${connection.peer_username}` : 'Connected via WIMPEX'}</p>
                       </div>
                       <button
                         type="button"
@@ -235,24 +254,30 @@ export default function CallsPage() {
             <p className="mt-3 text-sm text-slate">No calls recorded yet.</p>
           ) : (
             <ul className="mt-4 space-y-3">
-              {calling.callHistory.map((call) => (
-                <li key={call.id} className="flex flex-col gap-3 rounded-2xl border border-hairline bg-panel-2/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-medium text-ivory">{call.call_type} call • {call.status}</p>
-                    <p className="mt-1 text-sm text-slate">
-                      {new Date(call.created_at).toLocaleDateString([], {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[call.status] || 'bg-slate/15 text-slate'}`}>
-                    {call.status}
-                  </span>
-                </li>
-              ))}
+              {calling.callHistory.map((call) => {
+                const peerId = call.caller_id === session?.user?.id ? call.callee_id : call.caller_id;
+                const peer = peerProfileById.get(peerId);
+                return (
+                  <li key={call.id} className="flex flex-col gap-3 rounded-2xl border border-hairline bg-panel-2/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium text-ivory">
+                        {peer ? peer.name : `${peerId.slice(0, 8)}…`} — {call.call_type} call
+                      </p>
+                      <p className="mt-1 text-sm text-slate">
+                        {new Date(call.created_at).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[call.status] || 'bg-slate/15 text-slate'}`}>
+                      {call.status}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
