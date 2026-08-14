@@ -28,7 +28,7 @@ export function usePushNotifications() {
       const registration = await navigator.serviceWorker.ready;
 
       // Request notification permission if not already granted
-      let permissionGranted: NotificationPermission = Notification.permission;
+      let permissionGranted: typeof Notification.permission = Notification.permission;
       if (permissionGranted === 'default') {
         permissionGranted = await Notification.requestPermission();
       }
