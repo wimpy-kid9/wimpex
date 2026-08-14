@@ -33,14 +33,23 @@ export async function GET(request: NextRequest) {
 
   const rows = (data || []).filter((row: any) => row.requester_id === authContext.user.id || row.recipient_id === authContext.user.id);
   const pendingRequests = rows.filter((row: any) => row.status === 'pending');
+  const acceptedConnections = rows.filter((row: any) => row.status === 'accepted');
   const requesterIds = pendingRequests.map((row: any) => row.requester_id).filter(Boolean);
-  const profileMap = new Map<string, any>();
 
-  if (requesterIds.length > 0) {
+  // The "other side" of each accepted connection, relative to the caller —
+  // this is who a share sheet / connections list should actually show.
+  const peerIds = acceptedConnections.map((row: any) =>
+    row.requester_id === authContext.user.id ? row.recipient_id : row.requester_id
+  );
+
+  const profileMap = new Map<string, any>();
+  const idsNeedingProfiles = Array.from(new Set([...requesterIds, ...peerIds].filter(Boolean)));
+
+  if (idsNeedingProfiles.length > 0) {
     const { data: profiles, error: profileError } = await supabaseServer
       .from('wpx_profiles')
-      .select('user_id,username,display_name')
-      .in('user_id', requesterIds);
+      .select('user_id,username,display_name,avatar_url')
+      .in('user_id', idsNeedingProfiles);
 
     if (!profileError) {
       for (const profile of profiles || []) {
@@ -60,8 +69,25 @@ export async function GET(request: NextRequest) {
     };
   });
 
+  // Previously "connections" was just the raw wpx_connections rows — no
+  // usable id or name for "the other person" on this connection, only
+  // requester_id/recipient_id. Anything trying to show or message that
+  // person (e.g. the share sheet) had nothing to key off. peer_id/
+  // peer_username/peer_display_name/peer_avatar_url below are that.
+  const connections = acceptedConnections.map((row: any) => {
+    const peerId = row.requester_id === authContext.user.id ? row.recipient_id : row.requester_id;
+    const profile = profileMap.get(peerId);
+    return {
+      ...row,
+      peer_id: peerId,
+      peer_username: profile?.username || null,
+      peer_display_name: profile?.display_name || null,
+      peer_avatar_url: profile?.avatar_url || null
+    };
+  });
+
   return NextResponse.json({
-    connections: rows.filter((row: any) => row.status === 'accepted'),
+    connections,
     requests,
     current_user_id: authContext.user.id
   });
