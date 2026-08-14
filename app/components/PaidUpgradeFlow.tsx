@@ -64,7 +64,8 @@ export function usePaidUpgradeFlow(props: PaidUpgradeFlowProps) {
         const isInsufficientFunds = normalizedError.includes('insufficient') && normalizedError.includes('fund');
 
         if (isInsufficientFunds) {
-          const shortfall = Number(payload.requiredAmount ?? payload.required_amount ?? payload.amount ?? 0);
+          const rawShortfall = Number(payload.requiredAmount ?? payload.required_amount ?? payload.amount ?? 0);
+          const shortfall = rawShortfall > 0 ? rawShortfall : (price ?? 0);
           setWalletShortfall(shortfall);
           setNotice(`You need ${formatNaira(shortfall)} more in your WimpyPay wallet`);
           setLoading(false);
@@ -94,7 +95,7 @@ export function usePaidUpgradeFlow(props: PaidUpgradeFlowProps) {
   };
 
   const fundWallet = async (amount?: number) => {
-    const fundingAmount = amount ?? walletShortfall ?? (price ?? 0);
+    const fundingAmount = amount || walletShortfall || price || 0;
     if (!fundingAmount || !window) {
       return;
     }
