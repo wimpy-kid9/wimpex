@@ -52,7 +52,7 @@ export async function syncPostHashtagsAndMentions(postId: string, caption: strin
       .select('user_id')
       .or(orFilter);
 
-    const taggedUserIds = Array.from(new Set((mentionedProfiles || []).map((p: any) => p.user_id).filter(Boolean)));
+    const taggedUserIds = Array.from(new Set((mentionedProfiles || []).map((p: any) => p.user_id).filter(Boolean))) as string[];
     if (taggedUserIds.length > 0) {
       await supabaseServer
         .from('wpx_post_user_tags')
