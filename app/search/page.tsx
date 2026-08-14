@@ -1,15 +1,28 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { authedFetch } from '@/lib/api-client';
 import AuthActionPrompt from '@/app/components/AuthActionPrompt';
 import GoldBadge from '@/app/components/GoldBadge';
 
+// useSearchParams() requires a Suspense boundary in the App Router, so the
+// real page body lives in SearchPageInner and this default export just
+// wraps it.
 export default function SearchPage() {
-  const [query, setQuery] = useState('');
-  const [tab, setTab] = useState<'people' | 'videos'>('people');
+  return (
+    <Suspense fallback={<main className="space-y-6"><p className="text-sm text-slate">Loading search…</p></main>}>
+      <SearchPageInner />
+    </Suspense>
+  );
+}
+
+function SearchPageInner() {
+  const urlParams = useSearchParams();
+  const [query, setQuery] = useState(() => urlParams.get('q') || '');
+  const [tab, setTab] = useState<'people' | 'videos'>(() => (urlParams.get('q')?.startsWith('#') ? 'videos' : 'people'));
   const [peopleResults, setPeopleResults] = useState<any[]>([]);
   const [videoResults, setVideoResults] = useState<any[]>([]);
   const [status, setStatus] = useState('');
