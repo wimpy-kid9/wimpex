@@ -2,12 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
 import { usePushNotifications } from '@/lib/use-push-notifications';
+import { useCalling } from '@/lib/use-calling';
+import { supabase } from '@/lib/supabase';
 import BottomNav from './BottomNav';
 import { InstallPrompt } from './InstallPrompt';
+import IncomingCallNotification from './IncomingCallNotification';
+import CallWindow from './CallWindow';
 
 interface AppShellProps {
   children: ReactNode;
@@ -19,6 +23,8 @@ export default function AppShell({ children }: AppShellProps) {
   const { subscribe, permission } = usePushNotifications();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [indicatorStyle, setIndicatorStyle] = useState<{ top?: number; height?: number }>({});
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | undefined>(undefined);
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const navItems = [
     { label: 'Feed', href: '/feed' },
@@ -30,6 +36,57 @@ export default function AppShell({ children }: AppShellProps) {
   // mobileNavItems was removed in redesign; keep navItems for desktop and mobile BottomNav
 
   const isActive = (href: string) => pathname === href || (href !== '/feed' && pathname?.startsWith(href));
+
+  // Track the signed-in user's id app-wide so incoming calls can be heard
+  // on every page, not just while the user happens to be on /calls.
+  useEffect(() => {
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      setCurrentUserId(data.session?.user?.id);
+      setCurrentUserEmail(data.session?.user?.email);
+    };
+    void init();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
+      setCurrentUserId(session?.user?.id);
+      setCurrentUserEmail(session?.user?.email);
+    });
+
+    return () => {
+      listener?.subscription?.unsubscribe?.();
+    };
+  }, []);
+
+  // Global calling state: this makes incoming-call ringing and the active
+  // call window work from anywhere in the app, not just on the /calls page.
+  const calling = useCalling(currentUserId);
+
+  const acceptIncomingCall = useCallback(async () => {
+    if (!calling.incomingCall?.id) return;
+    try {
+      await calling.acceptCall(calling.incomingCall.id);
+    } catch (err) {
+      console.error('Error accepting call:', err);
+    }
+  }, [calling]);
+
+  const declineIncomingCall = useCallback(async () => {
+    if (!calling.incomingCall?.id) return;
+    try {
+      await calling.declineCall(calling.incomingCall.id);
+    } catch (err) {
+      console.error('Error declining call:', err);
+    }
+  }, [calling]);
+
+  const endActiveCall = useCallback(async () => {
+    if (!calling.activeCall?.id) return;
+    try {
+      await calling.endCall(calling.activeCall.id);
+    } catch (err) {
+      console.error('Error ending call:', err);
+    }
+  }, [calling]);
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -73,6 +130,27 @@ export default function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden text-ivory">
+      {/*
+        Global call UI: rendered here (not just on /calls) so a ring is
+        actually heard/seen no matter what page the callee is on.
+      */}
+      {calling.incomingCall && (
+        <IncomingCallNotification
+          callId={calling.incomingCall.id}
+          callerId={calling.incomingCall.caller_id}
+          callType={calling.incomingCall.call_type as 'voice' | 'video'}
+          onAccept={acceptIncomingCall}
+          onDecline={declineIncomingCall}
+        />
+      )}
+      {calling.activeCall && (
+        <CallWindow
+          roomUrl={calling.activeCall.id}
+          userName={currentUserEmail || 'Guest'}
+          onClose={endActiveCall}
+        />
+      )}
+
       <div className="hidden md:block md:fixed md:inset-y-0 md:w-64 md:border-r md:border-hairline md:bg-panel/70 md:px-4 md:py-8 md:backdrop-blur-xl">
         <div className="relative space-y-8">
           <div className="thread-line">
