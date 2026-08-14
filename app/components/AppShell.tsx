@@ -72,7 +72,7 @@ export default function AppShell({ children }: AppShellProps) {
   const isFullBleedRoute = isFeedRoute || isChatThreadRoute;
 
   return (
-    <div className="min-h-screen text-ivory">
+    <div className="flex h-[100dvh] flex-col overflow-hidden text-ivory">
       <div className="hidden md:block md:fixed md:inset-y-0 md:w-64 md:border-r md:border-hairline md:bg-panel/70 md:px-4 md:py-8 md:backdrop-blur-xl">
         <div className="relative space-y-8">
           <div className="thread-line">
@@ -156,13 +156,21 @@ export default function AppShell({ children }: AppShellProps) {
         </div>
       </div>
 
-      <div className="md:pl-72">
-        {isFullBleedRoute ? children : <div className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 lg:px-8 md:pb-8">{children}</div>}
-      </div>
+      {/*
+        Content + bottom nav share this flex column. The content area is the
+        only thing that scrolls (flex-1 min-h-0); BottomNav is a normal,
+        non-overlay flex item pinned to the bottom of the column, so it can
+        never sit on top of / hide content beneath it.
+      */}
+      <div className="flex min-h-0 flex-1 flex-col md:pl-72">
+        <div className={isFullBleedRoute ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'min-h-0 flex-1 overflow-y-auto'}>
+          {isFullBleedRoute ? children : <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">{children}</div>}
+        </div>
 
-      {/* Bottom nav redesigned */}
-      <div className="md:hidden">
-        <BottomNav />
+        {/* Bottom nav redesigned */}
+        <div className="flex-shrink-0 md:hidden">
+          <BottomNav />
+        </div>
       </div>
 
       {/* Install prompt for PWA */}
