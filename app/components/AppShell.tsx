@@ -147,6 +147,8 @@ export default function AppShell({ children }: AppShellProps) {
         <CallWindow
           roomUrl={calling.activeCall.id}
           userName={currentUserEmail || 'Guest'}
+          callType={calling.activeCall.call_type === 'voice' ? 'voice' : 'video'}
+          peerId={calling.activeCall.caller_id === currentUserId ? calling.activeCall.callee_id : calling.activeCall.caller_id}
           onClose={endActiveCall}
         />
       )}
