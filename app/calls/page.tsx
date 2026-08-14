@@ -5,8 +5,6 @@ import { supabase } from '@/lib/supabase';
 import { authedFetch } from '@/lib/api-client';
 import { getUserAccent } from '@/lib/ui-theme';
 import AuthActionPrompt from '@/app/components/AuthActionPrompt';
-import CallWindow from '@/app/components/CallWindow';
-import IncomingCallNotification from '@/app/components/IncomingCallNotification';
 import { useCalling } from '@/lib/use-calling';
 
 type ConnectionRecord = {
@@ -89,24 +87,6 @@ export default function CallsPage() {
     [session?.user?.id, busy, calling]
   );
 
-  const acceptIncomingCall = useCallback(async () => {
-    if (!calling.incomingCall?.id) return;
-    try {
-      await calling.acceptCall(calling.incomingCall.id);
-    } catch (err) {
-      console.error('Error accepting call:', err);
-    }
-  }, [calling]);
-
-  const declineIncomingCall = useCallback(async () => {
-    if (!calling.incomingCall?.id) return;
-    try {
-      await calling.declineCall(calling.incomingCall.id);
-    } catch (err) {
-      console.error('Error declining call:', err);
-    }
-  }, [calling]);
-
   const endActiveCall = useCallback(async () => {
     if (!calling.activeCall?.id) return;
     try {
@@ -135,26 +115,6 @@ export default function CallsPage() {
 
   return (
     <>
-      {/* Incoming call notification */}
-      {calling.incomingCall && (
-        <IncomingCallNotification
-          callId={calling.incomingCall.id}
-          callerId={calling.incomingCall.caller_id}
-          callType={calling.incomingCall.call_type as 'voice' | 'video'}
-          onAccept={acceptIncomingCall}
-          onDecline={declineIncomingCall}
-        />
-      )}
-
-      {/* Active call window */}
-      {calling.activeCall && (
-        <CallWindow
-          roomUrl={calling.activeCall.id}
-          userName={session.user?.email || 'Guest'}
-          onClose={endActiveCall}
-        />
-      )}
-
       {/* Calls page UI */}
       <main className="space-y-6 p-4 sm:p-8">
         <section className={`rounded-md border border-hairline bg-panel-2/80 p-6 text-ivory shadow-2xl ${accent.glow}`}>
