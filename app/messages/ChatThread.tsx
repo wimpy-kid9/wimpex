@@ -391,7 +391,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
       onTouchMove={handlePageTouchMove}
       onTouchEnd={handlePageTouchEnd}
       style={{ transform: pageSwipeOffset ? `translateX(${pageSwipeOffset}px)` : undefined }}
-      className="h-[100dvh] overflow-hidden flex flex-col px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8 md:pb-6 transition-transform duration-200 ease-out"
+      className="fixed inset-x-0 top-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:left-72 md:bottom-0 overflow-hidden flex flex-col px-4 pt-6 pb-3 sm:px-6 lg:px-8 md:pb-6 transition-transform duration-200 ease-out"
     >
       <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col space-y-6">
         <section className="rounded-3xl border border-hairline bg-panel-2/70 p-4 shadow-sm">
