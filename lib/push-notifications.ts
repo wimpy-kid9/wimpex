@@ -74,8 +74,9 @@ export async function sendPushToUser(userId: string, options: PushNotificationOp
 
     // Log results and remove failed subscriptions
     for (let i = 0; i < results.length; i++) {
-      if (results[i].status === 'rejected') {
-        const reason = results[i].reason;
+      const result = results[i];
+      if (result.status === 'rejected') {
+        const reason = result.reason;
         const error = reason instanceof Error ? reason : new Error(String(reason));
         console.error(`Failed to send notification to ${subscriptions[i].endpoint}:`, error.message);
 
