@@ -96,6 +96,16 @@ export default function CallsPage() {
     }
   }, [calling]);
 
+  // Lets the caller back out of a call the callee hasn't answered yet.
+  const cancelOutgoingCall = useCallback(async () => {
+    if (!calling.outgoingCall?.id) return;
+    try {
+      await calling.endCall(calling.outgoingCall.id);
+    } catch (err) {
+      console.error('Error cancelling call:', err);
+    }
+  }, [calling]);
+
   if (session === undefined) {
     return (
       <main className="min-h-[70vh] px-4 py-8 sm:px-6 lg:px-8">
@@ -185,6 +195,20 @@ export default function CallsPage() {
                     className={`rounded-2xl border border-hairline bg-gradient-to-r ${accent.gradient} px-3 py-2 text-sm font-semibold text-obsidian transition hover:brightness-110`}
                   >
                     Leave call
+                  </button>
+                </div>
+              ) : calling.outgoingCall ? (
+                <div className="flex h-full flex-col gap-2">
+                  <div className="flex flex-1 flex-col items-center justify-center rounded-md border border-dashed border-hairline text-center">
+                    <p className="text-sm text-slate">Ringing…</p>
+                    <p className="mt-2 text-xs text-slate">{calling.outgoingCall.call_type} • waiting for pickup</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void cancelOutgoingCall()}
+                    className="rounded-2xl border border-hairline bg-panel-2/70 px-3 py-2 text-sm font-semibold text-ivory transition hover:bg-panel-2"
+                  >
+                    Cancel call
                   </button>
                 </div>
               ) : calling.incomingCall ? (
