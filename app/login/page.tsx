@@ -2,13 +2,20 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 export default function LoginPage() {
   const [redirectUrl, setRedirectUrl] = useState('');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const redirect = window.location.origin;
+    // Inside the native app, a plain https redirect just lands in Chrome
+    // with nothing to hand control back to the app. The custom scheme is
+    // claimed by an intent-filter in AndroidManifest.xml, so Android routes
+    // it straight back into WIMPEX instead.
+    const redirect = Capacitor.isNativePlatform()
+      ? 'com.wimpex.app://auth-callback'
+      : window.location.origin;
     const nextUrl = `https://id.wimpy-corp.com.ng/login?redirect=${encodeURIComponent(redirect)}`;
     setRedirectUrl(nextUrl);
     window.location.href = nextUrl;
