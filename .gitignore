@@ -5,3 +5,5 @@ dev-server.log
 node_modules
 .next
 out
+android/keystore/
+android/keystore.properties
