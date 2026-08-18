@@ -22,23 +22,27 @@ export default function AuthBootstrap() {
     // After setSession succeeds (from either the web hash flow or the
     // native deep-link callback), check onboarding status the same way
     // in both cases.
-    const checkOnboarding = async () => {
-      const { data } = await supabase.auth.getSession();
-      const session = data?.session;
-      if (!session || pathname === '/onboarding') return;
+   const checkOnboarding = async () => {
+  const { data } = await supabase.auth.getSession();
+  const session = data?.session;
+  if (!session || pathname === '/onboarding') return;
 
-      const profileResponse = await fetch('/api/profile', {
-        headers: { Authorization: `Bearer ${session.access_token}` }
-      });
+  const profileResponse = await fetch('/api/profile', {
+    headers: { Authorization: `Bearer ${session.access_token}` }
+  });
 
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json();
-        if (!profileData?.profile || profileData?.profile?.onboarding_completed_at === null) {
-          router.replace('/onboarding');
-        }
-      }
-    };
-
+  if (profileResponse.ok) {
+    const profileData = await profileResponse.json();
+    if (!profileData?.profile || profileData?.profile?.onboarding_completed_at === null) {
+      router.replace('/onboarding');
+    } else if (pathname === '/login' || pathname === '/signup') {
+      // Onboarding's already done — if we're still sitting on the
+      // login/signup screen (e.g. just came back from the native
+      // WimpyID deep-link callback), move on into the app.
+      router.replace('/');
+    }
+  }
+};
     const initAuth = async () => {
       if (typeof window === 'undefined') return;
 
