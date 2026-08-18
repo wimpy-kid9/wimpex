@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authedFetch } from '@/lib/api-client';
 import GoldBadge from '@/app/components/GoldBadge';
+import { getConversationUnreadCount, markConversationRead, syncTotalUnreadCount } from '@/lib/chat-unread';
 
 interface ProfileMatch {
   user_id: string;
@@ -52,10 +53,27 @@ export default function MessageList() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
 
+  const conversationsWithUnread = useMemo(() => {
+    let totalUnread = 0;
+    const next = conversations.map((conversation) => {
+      const computedUnread = typeof conversation.unreadCount === 'number' && conversation.unreadCount > 0
+        ? conversation.unreadCount
+        : getConversationUnreadCount(conversation.id, conversation.previewAt, conversation.previewSentByMe);
+
+      if (computedUnread > 0) totalUnread += computedUnread;
+      return { ...conversation, unreadCount: computedUnread };
+    });
+
+    syncTotalUnreadCount(totalUnread);
+    return next;
+  }, [conversations]);
+
   const sortedConversations = useMemo(
-    () => [...conversations].sort((a, b) => new Date(b.previewAt).getTime() - new Date(a.previewAt).getTime()),
-    [conversations]
+    () => [...conversationsWithUnread].sort((a, b) => new Date(b.previewAt).getTime() - new Date(a.previewAt).getTime()),
+    [conversationsWithUnread]
   );
+
+  const unreadConversationCount = sortedConversations.filter((conversation) => (conversation.unreadCount || 0) > 0).length;
 
   const loadState = useCallback(async () => {
     const [messagesResponse, connectionsResponse] = await Promise.all([
@@ -126,6 +144,7 @@ export default function MessageList() {
   }, [searchTerm]);
 
   const openConversation = (conversationId: string) => {
+    markConversationRead(conversationId);
     router.push(`/messages/${conversationId}`);
   };
 
@@ -233,7 +252,12 @@ export default function MessageList() {
             <p className="text-xs uppercase tracking-[0.32em] text-gold">Messages</p>
             <h1 className="mt-3 text-3xl font-semibold text-ivory">Inbox</h1>
           </div>
-          <span className="rounded-full bg-gold/10 px-3 py-1 text-xs uppercase tracking-[0.24em] text-gold">{sortedConversations.length} chats</span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-gold/10 px-3 py-1 text-xs uppercase tracking-[0.24em] text-gold">{sortedConversations.length} chats</span>
+            {unreadConversationCount > 0 ? (
+              <span className="rounded-full bg-rose-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-200">{unreadConversationCount} unread</span>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-6">

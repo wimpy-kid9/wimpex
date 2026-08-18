@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { authedFetch } from '@/lib/api-client';
 import { renderRichText } from '@/lib/rich-text';
 import GoldBadge from '@/app/components/GoldBadge';
+import { markConversationRead } from '@/lib/chat-unread';
 
 interface ChatThreadProps {
   conversationId: string;
@@ -71,6 +72,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   useEffect(() => {
     if (!conversationId) return;
     void loadThread();
+    markConversationRead(conversationId);
   }, [conversationId, loadThread]);
 
   useEffect(() => {
