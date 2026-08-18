@@ -17,8 +17,14 @@ const config: CapacitorConfig = {
     // signaling, uploads) that `next export` can't produce statically.
     url: PRODUCTION_URL,
     cleartext: false,
-    androidScheme: 'https',
-    allowNavigation: ['id.wimpy-corp.com.ng']
+    androidScheme: 'https'
+    // Deliberately NOT whitelisting id.wimpy-corp.com.ng here. Letting it
+    // load inside our own WebView replaces the WIMPEX app (and tears down
+    // AuthBootstrap's appUrlOpen listener) while WimpyID is on screen, so
+    // when login finishes and Android hands auth-callback back to us,
+    // there's nothing left listening. Leaving this off makes Capacitor
+    // open WimpyID externally (system browser / Custom Tab) instead — our
+    // own WebView, and its listener, stay alive the whole time.
   },
   ios: {
     contentInset: 'automatic'
