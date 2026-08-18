@@ -4,6 +4,7 @@ import Script from 'next/script';
 import type { ReactNode } from 'react';
 import AppShell from './components/AppShell';
 import AuthBootstrap from './components/AuthBootstrap';
+import NativePushBootstrap from './components/NativePushBootstrap';
 import AuthPromptProvider from './components/AuthPromptProvider';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://wimpex.app';
@@ -67,6 +68,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <AuthPromptProvider>
           <AppShell>
             <AuthBootstrap />
+            <NativePushBootstrap />
             {children}
           </AppShell>
         </AuthPromptProvider>

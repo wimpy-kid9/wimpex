@@ -1,5 +1,6 @@
 import webpush, { WebPushError } from 'web-push';
 import { supabaseServer, isSupabaseServerConfigured } from '@/lib/supabase-server';
+import { messaging, isFirebaseConfigured } from '@/lib/firebase-admin';
 
 // Configure web-push
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
@@ -21,9 +22,70 @@ export interface PushNotificationOptions {
 }
 
 /**
+ * Send a push notification to a user's native (Android/iOS) app instances
+ * via Firebase Cloud Messaging. This is what actually reaches the device
+ * when the app isn't open — web-push through a wrapped WebView can't do
+ * that reliably, which is the whole reason this exists alongside it.
+ */
+async function sendFcmToUser(userId: string, options: PushNotificationOptions) {
+  if (!isFirebaseConfigured || !messaging) {
+    return; // Native push not configured yet — silently skip, web-push still runs.
+  }
+
+  const { data: devices, error } = await supabaseServer
+    .from('wpx_device_push_tokens')
+    .select('token')
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error fetching device tokens:', error);
+    return;
+  }
+
+  if (!devices || devices.length === 0) return;
+
+  const results = await Promise.allSettled(
+    devices.map((device: any) =>
+      messaging!.send({
+        token: device.token,
+        notification: {
+          title: options.title,
+          body: options.body
+        },
+        data: options.url ? { url: options.url } : undefined,
+        android: { priority: 'high' as const },
+        apns: { headers: { 'apns-priority': '10' } }
+      })
+    )
+  );
+
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === 'rejected') {
+      const reason = result.reason;
+      const code = reason?.errorInfo?.code;
+      console.error(`FCM send failed for ${devices[i].token}:`, code || reason?.message || reason);
+
+      // Token no longer valid (uninstalled, app data cleared, etc.) — clean it up.
+      if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token') {
+        await supabaseServer
+          .from('wpx_device_push_tokens')
+          .delete()
+          .eq('token', devices[i].token)
+          .catch((err: unknown) => console.error('Error deleting device token:', err));
+      }
+    }
+  }
+}
+
+/**
  * Send push notification to a specific user
  */
 export async function sendPushToUser(userId: string, options: PushNotificationOptions) {
+  // Native FCM delivery runs independently of web-push/Supabase config so
+  // one being unconfigured doesn't block the other.
+  await sendFcmToUser(userId, options);
+
   if (!isSupabaseServerConfigured) {
     console.error('Supabase not configured');
     return;
