@@ -71,11 +71,11 @@ async function getActiveSubscriptions(userIds: string[]) {
   if (userIds.length === 0) return {} as Record<string, any>;
 
   const { data: subscriptions } = await supabaseServer
-    .from('wpx_subscriptions')
-    .select('user_id, plan, status, metadata, active_until')
+    .from('subscriptions')
+    .select('user_id, status, current_period_end, plan_id, plans!plan_id(id, product_name, name, price, billing_interval)')
     .in('user_id', userIds)
     .eq('status', 'active')
-    .order('active_until', { ascending: false });
+    .order('current_period_end', { ascending: false });
 
   const subscriptionMap: Record<string, any> = {};
   (subscriptions || []).forEach((subscription: any) => {
@@ -141,11 +141,11 @@ async function loadHashtagsAndTags(postIds: string[]) {
 
 async function getActiveSubscription(userId: string) {
   const { data } = await supabaseServer
-    .from('wpx_subscriptions')
-    .select('*')
+    .from('subscriptions')
+    .select('id, user_id, status, current_period_end, plan_id, plans!plan_id(id, product_name, name, price, billing_interval)')
     .eq('user_id', userId)
     .eq('status', 'active')
-    .order('active_until', { ascending: false })
+    .order('current_period_end', { ascending: false })
     .limit(1)
     .maybeSingle();
   return data;

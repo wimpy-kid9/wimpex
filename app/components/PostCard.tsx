@@ -2,47 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { App } from '@capacitor/app';
 import { authedFetch } from '@/lib/api-client';
+import { renderRichText } from '@/lib/rich-text';
 import ShareSheet from './ShareSheet';
 import GoldBadge from './GoldBadge';
-
-// Splits a caption on #hashtag and @mention tokens and renders each as a
-// link — hashtags go to search (there's no dedicated hashtag page), and
-// mentions link to the tagged user's profile when the backend resolved
-// that handle to a real account (post.taggedUsers), otherwise render as
-// plain text rather than link somewhere that may not exist.
-function renderCaptionWithTags(caption: string, taggedUsers: { user_id: string; username: string | null }[] = []) {
-  if (!caption) return null;
-
-  const usernameToId = new Map<string, string>();
-  taggedUsers.forEach((u) => {
-    if (u.username) usernameToId.set(u.username.toLowerCase(), u.user_id);
-  });
-
-  const tokenPattern = /(#[a-z0-9_]+|@[a-z0-9_]{3,20})/gi;
-  const parts = caption.split(tokenPattern);
-
-  return parts.map((part, index) => {
-    if (part.startsWith('#')) {
-      return (
-        <Link key={index} href={`/search?q=${encodeURIComponent(part)}`} className="text-gold hover:underline" onClick={(e) => e.stopPropagation()}>
-          {part}
-        </Link>
-      );
-    }
-    if (part.startsWith('@')) {
-      const userId = usernameToId.get(part.slice(1).toLowerCase());
-      if (userId) {
-        return (
-          <Link key={index} href={`/user/${userId}`} className="text-gold hover:underline" onClick={(e) => e.stopPropagation()}>
-            {part}
-          </Link>
-        );
-      }
-    }
-    return <span key={index}>{part}</span>;
-  });
-}
 
 const FILTER_CLASSES: Record<string, string> = {
   none: '',
@@ -73,11 +37,14 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
   const [commentBody, setCommentBody] = useState('');
   const [replyTo, setReplyTo] = useState<any | null>(null);
   const [repliesOpen, setRepliesOpen] = useState<Record<string, boolean>>({});
+  const [mediaFlash, setMediaFlash] = useState<{ type: 'play' | 'pause'; id: number } | null>(null);
+  const [heartBurst, setHeartBurst] = useState<{ x: number; y: number; id: number } | null>(null);
   // Default to unmuted per UX request
   const [muted, setMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
   const hasRecordedViewRef = useRef(false);
+  const doubleTapRef = useRef<{ timer: number | null; lastTapAt: number }>({ timer: null, lastTapAt: 0 });
 
   const commentsById = useMemo(() => {
     const map = new Map<string, any>();
@@ -161,6 +128,29 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
     return () => observer.disconnect();
   }, [isFeedItem, post?.id]);
 
+  useEffect(() => {
+    const handleBackgroundPause = () => {
+      const video = videoRef.current;
+      if (!video || video.paused) return;
+      video.pause();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) handleBackgroundPause();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const appListener = App.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
+      if (!isActive) handleBackgroundPause();
+    });
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      void appListener.then((listener) => listener.remove());
+    };
+  }, []);
+
   const toggleLike = async () => {
     const prevLiked = liked;
     const prevCount = likeCount ?? 0;
@@ -176,6 +166,55 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
     const json = await resp.json();
     setLiked(json.liked);
     setLikeCount(json.count ?? prevCount);
+  };
+
+  const toggleVideoPlayback = async () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      const flashId = Date.now();
+      await v.play().catch(() => undefined);
+      setMediaFlash({ type: 'play', id: flashId });
+      window.setTimeout(() => setMediaFlash((current) => (current?.id === flashId ? null : current)), 420);
+    } else {
+      const flashId = Date.now();
+      v.pause();
+      setMediaFlash({ type: 'pause', id: flashId });
+      window.setTimeout(() => setMediaFlash((current) => (current?.id === flashId ? null : current)), 420);
+    }
+  };
+
+  const handleVideoTap = (event: any) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const rect = video.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const now = Date.now();
+
+    if (doubleTapRef.current.timer) {
+      window.clearTimeout(doubleTapRef.current.timer);
+      doubleTapRef.current.timer = null;
+    }
+
+    if (now - doubleTapRef.current.lastTapAt < 280) {
+      if (!liked) {
+        const burstId = Date.now();
+        setHeartBurst({ x, y, id: burstId });
+        window.setTimeout(() => setHeartBurst((current) => (current?.id === burstId ? null : current)), 650);
+        void toggleLike();
+      }
+      doubleTapRef.current.lastTapAt = 0;
+      return;
+    }
+
+    doubleTapRef.current.lastTapAt = now;
+    doubleTapRef.current.timer = window.setTimeout(() => {
+      void toggleVideoPlayback();
+      doubleTapRef.current.lastTapAt = 0;
+      doubleTapRef.current.timer = null;
+    }, 260);
   };
 
   const toggleFavorite = async () => {
@@ -233,20 +272,8 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
           muted={muted}
           playsInline
           loop
-            className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`}
-            onClick={async () => {
-              try {
-                const v = videoRef.current;
-                if (!v) return;
-                if (v.paused) {
-                  await v.play().catch(() => undefined);
-                } else {
-                  v.pause();
-                }
-              } catch (e) {
-                // ignore
-              }
-            }}
+          className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`}
+          onClick={handleVideoTap}
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-panel-900 text-slate">No media available.</div>
@@ -331,12 +358,27 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
         </div>
       ) : null}
 
+      {mediaFlash ? (
+        <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center">
+          <span className={`text-4xl drop-shadow-lg ${mediaFlash.type === 'play' ? 'text-sky-300' : 'text-amber-200'}`}>
+            {mediaFlash.type === 'play' ? '▶' : '⏸'}
+          </span>
+        </div>
+      ) : null}
+      {heartBurst ? (
+        <div
+          className="pointer-events-none absolute z-30 text-4xl drop-shadow-[0_0_18px_rgba(244,114,182,0.8)] animate-pulse"
+          style={{ left: `${heartBurst.x}px`, top: `${heartBurst.y}px`, transform: 'translate(-50%, -50%)' }}
+        >
+          ❤️
+        </div>
+      ) : null}
       <div className="absolute left-3 bottom-6 max-w-[75%] space-y-3 text-sm leading-6">
         <Link href={postLink} className="inline-flex items-center gap-2 text-sm font-semibold text-ivory transition hover:text-gold">
           <span>@{post.handle?.replace(/^@/, '') || 'wimpex'}</span>
           {post.is_gold ? <GoldBadge size="sm" inline /> : null}
         </Link>
-        <p className="line-clamp-2 text-ivory/90">{caption ? renderCaptionWithTags(caption, post.taggedUsers) : 'No caption yet.'}</p>
+        <p className="line-clamp-2 text-ivory/90">{caption ? renderRichText(caption, { className: 'break-words', linkClassName: 'text-sky-400 underline decoration-sky-400/80 underline-offset-2 hover:text-sky-300' }) : 'No caption yet.'}</p>
         {post.audioTrackName ? (
           <div className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-xs text-slate backdrop-blur-sm">
             <span>🎵</span>
@@ -385,7 +427,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
                               </div>
                               <button onClick={() => setReplyTo(getCommentReplyTarget(c))} className="text-xs text-gold transition hover:text-amber-100">Reply</button>
                             </div>
-                            <p className="mt-3 text-sm text-slate">{c.body}</p>
+                            <div className="mt-3 text-sm text-slate">{renderRichText(c.body || '', { className: 'break-words', linkClassName: 'text-sky-400 underline decoration-sky-400/80 underline-offset-2 hover:text-sky-300' })}</div>
                           </div>
                         </div>
                         {replies.length > 0 ? (
@@ -418,7 +460,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
                                     </div>
                                     <button onClick={() => setReplyTo(getCommentReplyTarget(reply))} className="text-xs text-gold transition hover:text-amber-100">Reply</button>
                                   </div>
-                                  <p className="mt-3 text-sm text-slate">{reply.body}</p>
+                                  <div className="mt-3 text-sm text-slate">{renderRichText(reply.body || '', { className: 'break-words', linkClassName: 'text-sky-400 underline decoration-sky-400/80 underline-offset-2 hover:text-sky-300' })}</div>
                                 </div>
                               </div>
                             </div>

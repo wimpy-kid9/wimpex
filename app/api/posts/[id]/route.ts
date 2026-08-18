@@ -16,11 +16,11 @@ async function enrichPostWithAuthor(post: any) {
   if (profileError) return post;
 
   const { data: subscription } = await supabaseServer
-    .from('wpx_subscriptions')
-    .select('user_id, plan, status, metadata, active_until')
+    .from('subscriptions')
+    .select('user_id, status, current_period_end, plan_id, plans!plan_id(id, product_name, name, price, billing_interval)')
     .eq('user_id', post.author_id)
     .eq('status', 'active')
-    .order('active_until', { ascending: false })
+    .order('current_period_end', { ascending: false })
     .limit(1)
     .maybeSingle();
 

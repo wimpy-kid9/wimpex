@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
+import { extractPlanPrice } from '@/lib/plan-pricing';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 
 const WIMPEX_PRODUCT_NAME = 'wimpex';
@@ -66,11 +67,13 @@ async function fetchPlanPrice(productName: string, planName: string) {
   }
 
   const payload = await response.json().catch(() => ({}));
+  const price = extractPlanPrice(payload);
+
   return {
     product_name: productName,
     plan_name: planName,
-    price: Number(payload.price ?? payload.amount ?? 0),
-    billing_interval: payload.billing_interval || payload.billingInterval || 'monthly'
+    price: price.price,
+    billing_interval: price.billing_interval
   };
 }
 
@@ -103,11 +106,11 @@ export async function GET(request: NextRequest) {
   }
 
   const { data, error } = await supabaseServer
-    .from('wpx_subscriptions')
-    .select('*')
+    .from('subscriptions')
+    .select('id, user_id, status, current_period_end, plan_id, plans!plan_id(id, product_name, name, price, billing_interval)')
     .eq('user_id', authContext.user.id)
     .eq('status', 'active')
-    .order('active_until', { ascending: false })
+    .order('current_period_end', { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -135,7 +138,6 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch {
-      // If body parsing fails, continue with empty object
       body = {};
     }
 
@@ -152,7 +154,7 @@ export async function POST(request: NextRequest) {
     const externalApiUrl = process.env.WIMPYPAY_API_URL;
     const internalApiKey = process.env.WIMPYPAY_INTERNAL_API_KEY;
     let externalReference: string | null = null;
-    let activeUntil = calculateExpiry(30);
+    let currentPeriodEnd = calculateExpiry(30);
 
     if (externalApiUrl && internalApiKey) {
       try {
@@ -179,7 +181,7 @@ export async function POST(request: NextRequest) {
             parsed = {};
           }
 
-            const normalizedError = normalizePaymentError(parsed.error ?? parsed.code ?? '');
+          const normalizedError = normalizePaymentError(parsed.error ?? parsed.code ?? '');
           const isInsufficientFunds = normalizedError.includes('insufficient') && normalizedError.includes('fund');
 
           if (isInsufficientFunds) {
@@ -201,24 +203,32 @@ export async function POST(request: NextRequest) {
 
         const payload = await response.json().catch(() => ({}));
         externalReference = payload.subscriptionId || payload.subscription_id || payload.id || null;
-        activeUntil = payload.current_period_end || payload.active_until || activeUntil;
+        currentPeriodEnd = payload.current_period_end || payload.active_until || currentPeriodEnd;
       } catch (error: any) {
         return NextResponse.json({ error: error?.message || 'WimpyPay service unavailable.' }, { status: 502 });
       }
     }
 
-    const { data, error } = await supabaseServer.from('wpx_subscriptions').insert({
+    const { data: planRow, error: planError } = await supabaseServer
+      .from('plans')
+      .select('id')
+      .eq('product_name', productName)
+      .eq('name', planName)
+      .maybeSingle();
+
+    if (planError) {
+      return NextResponse.json({ error: planError.message }, { status: 500 });
+    }
+
+    if (!planRow?.id) {
+      return NextResponse.json({ error: `No WimpyPay plan named "${planName}" was found for ${productName}.` }, { status: 404 });
+    }
+
+    const { data, error } = await supabaseServer.from('subscriptions').insert({
       user_id: authContext.user.id,
-      plan: planName,
+      plan_id: planRow.id,
       status: 'active',
-      active_from: new Date().toISOString(),
-      active_until: activeUntil,
-      external_reference: externalReference,
-      metadata: {
-        source: 'wimpypay_router',
-        product_name: productName,
-        plan_name: planName
-      }
+      current_period_end: currentPeriodEnd
     }).select().maybeSingle();
 
     if (error) {
@@ -227,10 +237,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ subscription: data, product_name: productName, plan_name: planName });
   } catch (error: any) {
-    // Catch any uncaught errors to prevent 502
     console.error('POST /api/wimpypay error:', error);
-    return NextResponse.json({ 
-      error: error?.message || 'Internal server error processing purchase.' 
+    return NextResponse.json({
+      error: error?.message || 'Internal server error processing purchase.'
     }, { status: 500 });
   }
 }

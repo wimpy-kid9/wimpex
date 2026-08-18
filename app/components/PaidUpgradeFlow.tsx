@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { authedFetch } from '@/lib/api-client';
+import { extractPlanPrice } from '@/lib/plan-pricing';
 
 export interface PaidUpgradeFlowProps {
   productName: string;
@@ -37,8 +38,9 @@ export function usePaidUpgradeFlow(props: PaidUpgradeFlowProps) {
       );
       if (!response.ok) return;
       const payload = await response.json();
-      setPrice(Number(payload.price ?? 0));
-      setBillingInterval(payload.billing_interval || payload.billingInterval || 'monthly');
+      const normalized = extractPlanPrice(payload);
+      setPrice(normalized.price);
+      setBillingInterval(normalized.billing_interval || 'monthly');
     } catch {
       setPrice(null);
     }

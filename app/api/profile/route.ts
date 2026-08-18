@@ -25,11 +25,11 @@ export async function GET(request: NextRequest) {
       .eq('streak_type', 'daily_post')
       .maybeSingle(),
     supabaseServer
-      .from('wpx_subscriptions')
-      .select('*')
+      .from('subscriptions')
+      .select('id, user_id, status, current_period_end, plan_id, plans!plan_id(id, product_name, name, price, billing_interval)')
       .eq('user_id', authContext.user.id)
       .eq('status', 'active')
-      .order('active_until', { ascending: false })
+      .order('current_period_end', { ascending: false })
       .limit(1)
       .maybeSingle()
   ]);

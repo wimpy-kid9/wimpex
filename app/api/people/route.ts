@@ -48,11 +48,11 @@ export async function GET(request: NextRequest) {
 
   if (userIds.length > 0) {
     const { data: subscriptions } = await supabaseServer
-      .from('wpx_subscriptions')
-      .select('user_id, plan, status, metadata, active_until')
+      .from('subscriptions')
+      .select('user_id, status, current_period_end, plan_id, plans!plan_id(id, product_name, name, price, billing_interval)')
       .in('user_id', userIds)
       .eq('status', 'active')
-      .order('active_until', { ascending: false });
+      .order('current_period_end', { ascending: false });
 
     (subscriptions || []).forEach((subscription: any) => {
       if (subscription.user_id && !subscriptionMap[subscription.user_id]) {

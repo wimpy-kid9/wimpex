@@ -2,12 +2,13 @@ import { supabaseServer } from '@/lib/supabase-server';
 
 // #tag — letters, numbers, underscore, matching the same shape hashtags
 // take everywhere else in the product (search, hashtag pages).
-const HASHTAG_PATTERN = /#([a-z0-9_]+)/gi;
+export const HASHTAG_PATTERN = /#([a-z0-9_]+)/gi;
 
 // @handle — usernames are 3–20 letters/numbers/underscores (see
 // usernamePattern in app/api/profile/route.ts), so mentions follow the
 // same shape.
-const MENTION_PATTERN = /@([a-z0-9_]{3,20})/gi;
+export const MENTION_PATTERN = /@([a-z0-9_]{3,20})/gi;
+export const TOKEN_PATTERN = /(#[a-z0-9_]+|@[a-z0-9_]{3,20})/gi;
 
 export function extractHashtags(caption: string): string[] {
   const matches = caption.match(HASHTAG_PATTERN) || [];

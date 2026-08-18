@@ -1,8 +1,10 @@
 "use client";
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type TouchEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { authedFetch } from '@/lib/api-client';
+import { renderRichText } from '@/lib/rich-text';
 import GoldBadge from '@/app/components/GoldBadge';
 
 interface ChatThreadProps {
@@ -348,7 +350,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
 
   const handlePageTouchEnd = () => {
     if (pageTouchRef.current.tracking && pageSwipeOffset > 80) {
-      router.back();
+      router.push('/messages');
     }
     pageTouchRef.current.tracking = false;
     setPageSwipeOffset(0);
@@ -391,7 +393,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
       onTouchMove={handlePageTouchMove}
       onTouchEnd={handlePageTouchEnd}
       style={{ transform: pageSwipeOffset ? `translateX(${pageSwipeOffset}px)` : undefined }}
-      className="h-full min-h-0 overflow-hidden flex flex-col px-4 pt-6 pb-3 sm:px-6 lg:px-8 md:pb-6 transition-transform duration-200 ease-out"
+      className="h-full min-h-0 overflow-hidden flex flex-col px-4 pt-6 pb-3 sm:px-6 lg:px-8 md:pb-6 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
     >
       <div className="mx-auto w-full max-w-3xl flex-1 min-h-0 flex flex-col space-y-6">
         <section className="rounded-3xl border border-hairline bg-panel-2/70 p-4 shadow-sm">
@@ -401,20 +403,41 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M15 18l-6-6 6-6" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
             ) : null}
-            {conversation?.otherUser?.avatar_url ? (
-              <img src={conversation.otherUser.avatar_url} alt={conversation.otherUser.display_name || conversation.otherUser.username} className="h-12 w-12 rounded-full object-cover" />
+            {conversation?.otherUser?.user_id ? (
+              <Link href={`/user/${conversation.otherUser.user_id}`} className="flex items-center gap-3">
+                {conversation.otherUser.avatar_url ? (
+                  <img src={conversation.otherUser.avatar_url} alt={conversation.otherUser.display_name || conversation.otherUser.username} className="h-12 w-12 rounded-full object-cover" />
+                ) : (
+                  <div className="grid h-12 w-12 place-items-center rounded-full bg-panel text-lg text-slate">
+                    {conversation?.otherUser?.display_name?.charAt(0)?.toUpperCase() || conversation?.otherUser?.username?.charAt(0)?.toUpperCase() || 'C'}
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs uppercase tracking-[0.32em] text-gold">Chat</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <h1 className="text-2xl font-semibold text-ivory">{otherUserName}</h1>
+                    {conversation?.otherUser?.is_gold ? <GoldBadge size="sm" inline /> : null}
+                  </div>
+                </div>
+              </Link>
             ) : (
-              <div className="grid h-12 w-12 place-items-center rounded-full bg-panel text-lg text-slate">
-                {conversation?.otherUser?.display_name?.charAt(0)?.toUpperCase() || conversation?.otherUser?.username?.charAt(0)?.toUpperCase() || 'C'}
-              </div>
+              <>
+                {conversation?.otherUser?.avatar_url ? (
+                  <img src={conversation.otherUser.avatar_url} alt={conversation.otherUser.display_name || conversation.otherUser.username} className="h-12 w-12 rounded-full object-cover" />
+                ) : (
+                  <div className="grid h-12 w-12 place-items-center rounded-full bg-panel text-lg text-slate">
+                    {conversation?.otherUser?.display_name?.charAt(0)?.toUpperCase() || conversation?.otherUser?.username?.charAt(0)?.toUpperCase() || 'C'}
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs uppercase tracking-[0.32em] text-gold">Chat</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <h1 className="text-2xl font-semibold text-ivory">{otherUserName}</h1>
+                    {conversation?.otherUser?.is_gold ? <GoldBadge size="sm" inline /> : null}
+                  </div>
+                </div>
+              </>
             )}
-            <div>
-              <p className="text-xs uppercase tracking-[0.32em] text-gold">Chat</p>
-              <div className="mt-1 flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-ivory">{otherUserName}</h1>
-                {conversation?.otherUser?.is_gold ? <GoldBadge size="sm" inline /> : null}
-              </div>
-            </div>
             <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
@@ -484,7 +507,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                           Replying to: {replyPreview.body ? `${replyPreview.body.slice(0, 80)}${replyPreview.body.length > 80 ? '…' : ''}` : 'Media message'}
                         </button>
                       ) : null}
-                      {messageItem.body ? <p>{messageItem.body}</p> : null}
+                      {messageItem.body ? <div>{renderRichText(messageItem.body || '', { className: 'break-words', linkClassName: 'text-sky-400 underline decoration-sky-400/80 underline-offset-2 hover:text-sky-300' })}</div> : null}
                       {messageItem.media_url ? (
                         <div className="mt-3 overflow-hidden rounded-3xl border border-hairline bg-panel/80">
                           {messageItem.media_type?.startsWith('image') ? (
