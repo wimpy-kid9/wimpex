@@ -31,9 +31,15 @@ export default function SignupPage() {
           <p className="text-lg font-semibold text-ivory">Continue with WimpyID</p>
           <p className="mt-2 text-sm text-slate">Use the same trusted sign-in flow to create your account and come back here to complete onboarding.</p>
           <div className="mt-5 flex flex-wrap gap-3">
-            <a href={signupUrl || 'https://id.wimpy-corp.com.ng/signup'} className="rounded-md bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110">
-              Continue to WimpyID
-            </a>
+            {signupUrl ? (
+              <a href={signupUrl} className="rounded-md bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110">
+                Continue to WimpyID
+              </a>
+            ) : (
+              <span className="rounded-md bg-gold/30 px-5 py-3 text-sm font-semibold text-obsidian/50">
+                Continue to WimpyID
+              </span>
+            )}
             <Link href="/login" className="rounded-md border border-hairline px-5 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/10">
               I already have an account
             </Link>
