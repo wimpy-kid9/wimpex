@@ -25,9 +25,22 @@ export default async function UserPage({ params }: Props) {
     );
   }
 
+  // Fetch this user's active subscription so visitors can see their gold badge too.
+  // Previously only /app/profile (the owner's own view) loaded subscription data
+  // and passed it to ProfileHeader, so anyone visiting someone else's profile
+  // never saw the gold badge even if that user was subscribed.
+  const { data: subscription } = await supabaseServer
+    .from('wpx_subscriptions')
+    .select('*')
+    .eq('user_id', id)
+    .eq('status', 'active')
+    .order('active_until', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   return (
     <main className="p-8 space-y-6">
-      <ProfileHeader profile={profile} />
+      <ProfileHeader profile={profile} subscription={subscription} />
       <ProfileTabs profile={profile} isOwn={false} />
     </main>
   );

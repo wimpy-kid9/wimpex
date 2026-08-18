@@ -1,10 +1,48 @@
-﻿"use client";
+"use client";
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
 import ShareSheet from './ShareSheet';
 import GoldBadge from './GoldBadge';
+
+// Splits a caption on #hashtag and @mention tokens and renders each as a
+// link — hashtags go to search (there's no dedicated hashtag page), and
+// mentions link to the tagged user's profile when the backend resolved
+// that handle to a real account (post.taggedUsers), otherwise render as
+// plain text rather than link somewhere that may not exist.
+function renderCaptionWithTags(caption: string, taggedUsers: { user_id: string; username: string | null }[] = []) {
+  if (!caption) return null;
+
+  const usernameToId = new Map<string, string>();
+  taggedUsers.forEach((u) => {
+    if (u.username) usernameToId.set(u.username.toLowerCase(), u.user_id);
+  });
+
+  const tokenPattern = /(#[a-z0-9_]+|@[a-z0-9_]{3,20})/gi;
+  const parts = caption.split(tokenPattern);
+
+  return parts.map((part, index) => {
+    if (part.startsWith('#')) {
+      return (
+        <Link key={index} href={`/search?q=${encodeURIComponent(part)}`} className="text-gold hover:underline" onClick={(e) => e.stopPropagation()}>
+          {part}
+        </Link>
+      );
+    }
+    if (part.startsWith('@')) {
+      const userId = usernameToId.get(part.slice(1).toLowerCase());
+      if (userId) {
+        return (
+          <Link key={index} href={`/user/${userId}`} className="text-gold hover:underline" onClick={(e) => e.stopPropagation()}>
+            {part}
+          </Link>
+        );
+      }
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
 
 const FILTER_CLASSES: Record<string, string> = {
   none: '',
@@ -28,6 +66,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
   const [likeCount, setLikeCount] = useState<number | null>(post?.like_count ?? null);
   const [favorited, setFavorited] = useState<boolean>(post?.favorited_by_me ?? false);
   const [favoriteCount, setFavoriteCount] = useState<number | null>(post?.favorite_count ?? null);
+  const [shareCount, setShareCount] = useState<number | null>(post?.share_count ?? null);
   const [showComments, setShowComments] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [comments, setComments] = useState<any[] | null>(null);
@@ -38,6 +77,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
   const [muted, setMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
+  const hasRecordedViewRef = useRef(false);
 
   const commentsById = useMemo(() => {
     const map = new Map<string, any>();
@@ -95,10 +135,22 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
     const observer = new IntersectionObserver(
       ([entry]) => {
         const video = videoRef.current;
-        if (!video) return;
         if (entry.isIntersecting) {
-          void video.play().catch(() => undefined);
-        } else {
+          if (video) void video.play().catch(() => undefined);
+
+          // Record a "view" once per card the first time it's actually
+          // scrolled into the feed. This is what lets the feed exclude
+          // clips someone has already scrolled past — without it, the
+          // backend has no signal at all and the same posts kept
+          // resurfacing every time the app opened.
+          if (isFeedItem && post?.id && !hasRecordedViewRef.current) {
+            hasRecordedViewRef.current = true;
+            void authedFetch('/api/interactions', {
+              method: 'POST',
+              body: JSON.stringify({ post_id: post.id, interaction_type: 'view' })
+            }).catch(() => undefined);
+          }
+        } else if (video) {
           video.pause();
         }
       },
@@ -107,7 +159,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
 
     if (cardRef.current) observer.observe(cardRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [isFeedItem, post?.id]);
 
   const toggleLike = async () => {
     const prevLiked = liked;
@@ -284,7 +336,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
           <span>@{post.handle?.replace(/^@/, '') || 'wimpex'}</span>
           {post.is_gold ? <GoldBadge size="sm" inline /> : null}
         </Link>
-        <p className="line-clamp-2 text-ivory/90">{caption || 'No caption yet.'}</p>
+        <p className="line-clamp-2 text-ivory/90">{caption ? renderCaptionWithTags(caption, post.taggedUsers) : 'No caption yet.'}</p>
         {post.audioTrackName ? (
           <div className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-xs text-slate backdrop-blur-sm">
             <span>🎵</span>
@@ -403,7 +455,12 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
       ) : null}
     </article>
 
-    <ShareSheet postId={post.id} isOpen={showShareSheet} onClose={() => setShowShareSheet(false)} />
+    <ShareSheet
+      postId={post.id}
+      isOpen={showShareSheet}
+      onClose={() => setShowShareSheet(false)}
+      onShared={() => setShareCount((c) => (c ?? 0) + 1)}
+    />
     </>
   );
 }

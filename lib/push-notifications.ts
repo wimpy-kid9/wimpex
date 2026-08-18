@@ -1,4 +1,4 @@
-import webpush from 'web-push';
+import webpush, { WebPushError } from 'web-push';
 import { supabaseServer, isSupabaseServerConfigured } from '@/lib/supabase-server';
 
 // Configure web-push
@@ -74,22 +74,33 @@ export async function sendPushToUser(userId: string, options: PushNotificationOp
 
     // Log results and remove failed subscriptions
     for (let i = 0; i < results.length; i++) {
-      if (results[i].status === 'rejected') {
-        const reason = results[i].reason;
-        const error = reason instanceof Error ? reason : new Error(String(reason));
-        console.error(`Failed to send notification to ${subscriptions[i].endpoint}:`, error.message);
+      const result = results[i];
+      if (result.status === 'rejected') {
+        const reason = result.reason;
 
-        // Remove expired/invalid subscriptions
-        if (
-          error.message.includes('410') ||
-          error.message.includes('gone') ||
-          error.message.includes('invalid')
-        ) {
-          await supabaseServer
-            .from('wpx_push_subscriptions')
-            .delete()
-            .eq('endpoint', subscriptions[i].endpoint)
-            .catch((err: unknown) => console.error('Error deleting subscription:', err));
+        // web-push throws a WebPushError with a real `statusCode` property.
+        // Relying on string-matching `error.message` (e.g. .includes('410'))
+        // is unreliable because the message text doesn't consistently contain
+        // the status code, so expired/invalid subscriptions were never
+        // getting cleaned up. Check statusCode directly instead.
+        if (reason instanceof WebPushError) {
+          console.error(
+            `Failed to send notification to ${subscriptions[i].endpoint} (status ${reason.statusCode}):`,
+            reason.body || reason.message
+          );
+
+          // 404 = subscription not found, 410 = subscription expired/gone.
+          // Both mean the endpoint is permanently invalid and should be removed.
+          if (reason.statusCode === 404 || reason.statusCode === 410) {
+            await supabaseServer
+              .from('wpx_push_subscriptions')
+              .delete()
+              .eq('endpoint', subscriptions[i].endpoint)
+              .catch((err: unknown) => console.error('Error deleting subscription:', err));
+          }
+        } else {
+          const error = reason instanceof Error ? reason : new Error(String(reason));
+          console.error(`Failed to send notification to ${subscriptions[i].endpoint}:`, error.message);
         }
       }
     }

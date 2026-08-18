@@ -9,7 +9,9 @@ export interface IncomingCallNotificationProps {
   callerName?: string;
   callerAvatar?: string;
   callType: 'voice' | 'video';
+  // eslint-disable-next-line no-unused-vars
   onAccept: (callId: string) => Promise<void>;
+  // eslint-disable-next-line no-unused-vars
   onDecline: (callId: string) => Promise<void>;
 }
 

@@ -1,13 +1,14 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 import { calculateDailyPostStreakState } from '@/lib/streak-utils';
 import { isGoldSubscription } from '@/lib/subscription';
+import { syncPostHashtagsAndMentions } from '@/lib/post-tags';
 
 const VIDEO_BUCKET = 'wpx-videos';
 const IMAGE_BUCKET = 'wpx-images';
 
-function mapPost(post: any, likeCounts: Record<string, number>, favoriteCounts: Record<string, number>, authorMap: Record<string, any>) {
+function mapPost(post: any, likeCounts: Record<string, number>, favoriteCounts: Record<string, number>, authorMap: Record<string, any>, hashtagsByPost: Record<string, string[]> = {}, taggedUsersByPost: Record<string, { user_id: string; username: string | null; display_name: string | null }[]> = {}) {
   const author = authorMap[post.author_id] || {};
 
   return {
@@ -18,6 +19,8 @@ function mapPost(post: any, likeCounts: Record<string, number>, favoriteCounts: 
     avatar_url: author.avatar_url || null,
     is_gold: Boolean(author.is_gold),
     caption: post.caption || '',
+    hashtags: hashtagsByPost[post.id] || [],
+    taggedUsers: taggedUsersByPost[post.id] || [],
     visibility: post.visibility || 'public',
     createdAt: post.created_at,
     accent: post.accent || 'from-gold to-gold-deep',
@@ -103,6 +106,37 @@ async function loadCounts(postIds: string[]) {
   });
 
   return { likeCounts, favoriteCounts };
+}
+
+async function loadHashtagsAndTags(postIds: string[]) {
+  if (postIds.length === 0) return { hashtagsByPost: {}, taggedUsersByPost: {} };
+
+  const [{ data: hashtagRows }, { data: tagRows }] = await Promise.all([
+    supabaseServer.from('wpx_post_hashtags').select('post_id, tag').in('post_id', postIds),
+    supabaseServer.from('wpx_post_user_tags').select('post_id, tagged_user_id').in('post_id', postIds)
+  ]);
+
+  const hashtagsByPost: Record<string, string[]> = {};
+  (hashtagRows || []).forEach((row: any) => {
+    if (!hashtagsByPost[row.post_id]) hashtagsByPost[row.post_id] = [];
+    hashtagsByPost[row.post_id].push(row.tag);
+  });
+
+  const taggedUserIds = Array.from(new Set((tagRows || []).map((row: any) => row.tagged_user_id).filter(Boolean))) as string[];
+  const taggedProfiles = taggedUserIds.length > 0 ? await loadAuthors(taggedUserIds) : {};
+
+  const taggedUsersByPost: Record<string, { user_id: string; username: string | null; display_name: string | null }[]> = {};
+  (tagRows || []).forEach((row: any) => {
+    if (!taggedUsersByPost[row.post_id]) taggedUsersByPost[row.post_id] = [];
+    const profile = taggedProfiles[row.tagged_user_id] || {};
+    taggedUsersByPost[row.post_id].push({
+      user_id: row.tagged_user_id,
+      username: profile.username || null,
+      display_name: profile.display_name || null
+    });
+  });
+
+  return { hashtagsByPost, taggedUsersByPost };
 }
 
 async function getActiveSubscription(userId: string) {
@@ -204,6 +238,20 @@ async function scorePostsForFYP(posts: any[], userId: string, authorMap: Record<
   });
 }
 
+async function loadRecentlyViewedPostIds(userId: string) {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const { data } = await supabaseServer
+    .from('wpx_user_post_interactions')
+    .select('post_id')
+    .eq('user_id', userId)
+    .in('interaction_type', ['view', 'watch_complete'])
+    .gte('created_at', sevenDaysAgo.toISOString());
+
+  return new Set((data || []).map((row: any) => row.post_id));
+}
+
 async function buildPersonalizedFeed(candidatePosts: any[], userId: string, authorMap: Record<string, any>, likeCounts: Record<string, number>, favoriteCounts: Record<string, number>) {
   // Add engagement counts
   const postsWithCounts = candidatePosts.map((post) => ({
@@ -212,28 +260,33 @@ async function buildPersonalizedFeed(candidatePosts: any[], userId: string, auth
     favorite_count: favoriteCounts[post.id] ?? 0
   }));
 
+  // Keep the feed from resurfacing clips this person already scrolled past
+  // in the last week. If filtering would leave almost nothing to show
+  // (e.g. they've watched the whole catalog), fall back to the full pool
+  // rather than showing an empty/tiny feed.
+  const seenIds = await loadRecentlyViewedPostIds(userId);
+  const unseen = postsWithCounts.filter((post) => !seenIds.has(post.id));
+  const pool = unseen.length >= 8 ? unseen : postsWithCounts;
+
   const affinity = await buildUserAffinity(userId);
-  const scoredPosts = await scorePostsForFYP(postsWithCounts, userId, authorMap, affinity);
+  const scoredPosts = await scorePostsForFYP(pool, userId, authorMap, affinity);
 
-  // Sort by score descending
+  // Sort by score descending to get a "quality" candidate pool, then widen
+  // it beyond just the top 20 and shuffle. Previously the same top-scored
+  // posts were returned in the same order on every single request (only
+  // the bottom 25% "exploration" slice was ever reshuffled), which is why
+  // the feed looked frozen. Shuffling a wider top slice keeps genuinely
+  // relevant content in the mix while making the order (and which of the
+  // near-ties get in) different every time the feed loads.
   scoredPosts.sort((a, b) => b.score - a.score);
+  const candidateWindow = scoredPosts.slice(0, Math.max(20, Math.floor(scoredPosts.length * 0.6)));
 
-  // Split: 75% ranked by affinity, 25% exploration (random from rest)
-  const rankingIndex = Math.floor(scoredPosts.length * 0.75);
-  const explorationSet = scoredPosts.slice(rankingIndex);
-
-  // Shuffle exploration set
-  for (let i = explorationSet.length - 1; i > 0; i--) {
+  for (let i = candidateWindow.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [explorationSet[i], explorationSet[j]] = [explorationSet[j], explorationSet[i]];
+    [candidateWindow[i], candidateWindow[j]] = [candidateWindow[j], candidateWindow[i]];
   }
 
-  const finalOrder = [
-    ...scoredPosts.slice(0, rankingIndex).map((s) => s.post),
-    ...explorationSet.map((s) => s.post)
-  ];
-
-  return finalOrder.slice(0, 20);
+  return candidateWindow.slice(0, 20).map((s) => s.post);
 }
 
 async function updateDailyPostStreak(userId: string, publishedAt: string) {
@@ -310,6 +363,11 @@ export async function GET(request: NextRequest) {
   // Search for posts by caption, hashtags, or author
   if (searchQuery) {
     const searchTerm = `%${searchQuery}%`;
+    // Hashtag rows store the tag without its leading '#' (e.g. "sunset"),
+    // but clicking a hashtag in a caption passes the query through with
+    // the '#' still attached — strip it here so that lookup actually
+    // matches instead of silently returning nothing.
+    const tagTerm = `%${searchQuery.replace(/^#/, '')}%`;
 
     // Search by caption first
     const { data: captionPosts } = await supabaseServer
@@ -323,7 +381,7 @@ export async function GET(request: NextRequest) {
     const { data: hashtags } = await supabaseServer
       .from('wpx_post_hashtags')
       .select('post_id')
-      .ilike('tag', searchTerm);
+      .ilike('tag', tagTerm);
 
     // Search by author username
     const { data: authorProfiles } = await supabaseServer
@@ -479,12 +537,13 @@ export async function GET(request: NextRequest) {
   }
 
   const postIds = rows.map((post) => post.id);
-  const authorIds = Array.from(new Set(rows.map((post) => post.author_id).filter(Boolean)));
+  const authorIds = Array.from(new Set(rows.map((post) => post.author_id).filter(Boolean))) as string[];
   const authorMap = await loadAuthors(authorIds);
   const { likeCounts, favoriteCounts } = await loadCounts(postIds);
+  const { hashtagsByPost, taggedUsersByPost } = await loadHashtagsAndTags(postIds);
 
   return NextResponse.json({
-    posts: rows.map((post) => mapPost(post, likeCounts, favoriteCounts, authorMap))
+    posts: rows.map((post) => mapPost(post, likeCounts, favoriteCounts, authorMap, hashtagsByPost, taggedUsersByPost))
   });
 }
 
@@ -625,6 +684,18 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Populate wpx_post_hashtags / wpx_post_user_tags from the caption so
+  // hashtag search, hashtag-based FYP scoring, and user tagging actually
+  // have data to work with. Only meaningful for published posts with a
+  // real caption — drafts can go stale before ever being seen.
+  if (data.status === 'published' && caption) {
+    try {
+      await syncPostHashtagsAndMentions(data.id, caption);
+    } catch {
+      // Non-fatal — the post itself was created successfully either way.
+    }
   }
 
   let streakData = null;

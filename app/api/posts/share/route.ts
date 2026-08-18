@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const authContext = await requireAuth(request);
+    await requireAuth(request);
 
     const { postId } = await request.json();
 

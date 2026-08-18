@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type TouchEvent } from 'react';
 import { useRouter } from 'next/navigation';
@@ -391,9 +391,9 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
       onTouchMove={handlePageTouchMove}
       onTouchEnd={handlePageTouchEnd}
       style={{ transform: pageSwipeOffset ? `translateX(${pageSwipeOffset}px)` : undefined }}
-      className="h-[100dvh] overflow-hidden flex flex-col px-4 py-6 sm:px-6 lg:px-8 transition-transform duration-200 ease-out"
+      className="h-full min-h-0 overflow-hidden flex flex-col px-4 pt-6 pb-3 sm:px-6 lg:px-8 md:pb-6 transition-transform duration-200 ease-out"
     >
-      <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col space-y-6">
+      <div className="mx-auto w-full max-w-3xl flex-1 min-h-0 flex flex-col space-y-6">
         <section className="rounded-3xl border border-hairline bg-panel-2/70 p-4 shadow-sm">
           <div className="flex items-center gap-3">
             {showBackButton ? (

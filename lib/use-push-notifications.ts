@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 
+type PushPermissionState = 'default' | 'granted' | 'denied';
+
 export function usePushNotifications() {
   const [permission, setPermission] = useState<'default' | 'granted' | 'denied' | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<'idle' | 'subscribing' | 'subscribed' | 'error'>('idle');
@@ -28,7 +30,7 @@ export function usePushNotifications() {
       const registration = await navigator.serviceWorker.ready;
 
       // Request notification permission if not already granted
-      let permissionGranted = Notification.permission;
+      let permissionGranted: PushPermissionState = Notification.permission;
       if (permissionGranted === 'default') {
         permissionGranted = await Notification.requestPermission();
       }

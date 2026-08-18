@@ -21,11 +21,22 @@ export function GoldBadge({ size = 'md', inline = false }: GoldBadgeProps) {
     <div className={`${container} text-gold`} title="Verified subscriber">
       <svg
         viewBox="0 0 24 24"
-        fill="currentColor"
         className={`${sizeClasses[size]} drop-shadow-lg`}
       >
-        {/* Star icon representing gold/verified status */}
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+        {/* Scalloped seal shape, in the style of TikTok/Twitter verification badges */}
+        <path
+          fill="currentColor"
+          d="M 12 1.7 Q 15.12 4.47 19.28 4.72 Q 19.53 8.88 22.3 12 Q 19.53 15.12 19.28 19.28 Q 15.12 19.53 12 22.3 Q 8.88 19.53 4.72 19.28 Q 4.47 15.12 1.7 12 Q 4.47 8.88 4.72 4.72 Q 8.88 4.47 12 1.7 Z"
+        />
+        {/* Checkmark in white, matching standard verification badge styling */}
+        <path
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="2.1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M7.5 12.3l3 3 6-6.1"
+        />
       </svg>
     </div>
   );

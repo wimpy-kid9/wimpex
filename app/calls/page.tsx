@@ -1,21 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { authedFetch } from '@/lib/api-client';
 import { getUserAccent } from '@/lib/ui-theme';
 import AuthActionPrompt from '@/app/components/AuthActionPrompt';
-import CallWindow from '@/app/components/CallWindow';
-import IncomingCallNotification from '@/app/components/IncomingCallNotification';
 import { useCalling } from '@/lib/use-calling';
-  ended_at?: string | null;
-};
 
 type ConnectionRecord = {
   id: string;
   requester_id: string;
   recipient_id: string;
   status: string;
+  peer_id?: string;
+  peer_username?: string | null;
+  peer_display_name?: string | null;
+  peer_avatar_url?: string | null;
 };
 
 const statusStyles: Record<string, string> = {
@@ -35,6 +35,21 @@ export default function CallsPage() {
   // Use calling hook for WebRTC state management
   const calling = useCalling(session?.user?.id);
   const accent = getUserAccent(session?.user?.id ?? 'wimpex');
+
+  // Peer name lookup built from accepted connections, reused to resolve
+  // "who was this call with" in Recent calls below (which previously
+  // showed no identity for the other party at all).
+  const peerProfileById = useMemo(() => {
+    const map = new Map<string, { name: string; username: string | null }>();
+    connections.forEach((connection) => {
+      if (!connection.peer_id) return;
+      map.set(connection.peer_id, {
+        name: connection.peer_display_name || connection.peer_username || 'WIMPEX user',
+        username: connection.peer_username || null
+      });
+    });
+    return map;
+  }, [connections]);
 
   useEffect(() => {
     const init = async () => {
@@ -80,7 +95,7 @@ export default function CallsPage() {
 
       try {
         await requestMediaPermissions();
-        const recipientId = connection.requester_id === session.user.id ? connection.recipient_id : connection.requester_id;
+        const recipientId = connection.peer_id || (connection.requester_id === session.user.id ? connection.recipient_id : connection.requester_id);
         await calling.initiateCall(recipientId, 'video');
       } catch (err) {
         console.error('Error starting call:', err);
@@ -91,30 +106,22 @@ export default function CallsPage() {
     [session?.user?.id, busy, calling]
   );
 
-  const acceptIncomingCall = useCallback(async () => {
-    if (!calling.incomingCall?.id) return;
-    try {
-      await calling.acceptCall(calling.incomingCall.id);
-    } catch (err) {
-      console.error('Error accepting call:', err);
-    }
-  }, [calling]);
-
-  const declineIncomingCall = useCallback(async () => {
-    if (!calling.incomingCall?.id) return;
-    try {
-      await calling.declineCall(calling.incomingCall.id);
-    } catch (err) {
-      console.error('Error declining call:', err);
-    }
-  }, [calling]);
-
   const endActiveCall = useCallback(async () => {
     if (!calling.activeCall?.id) return;
     try {
       await calling.endCall(calling.activeCall.id);
     } catch (err) {
       console.error('Error ending call:', err);
+    }
+  }, [calling]);
+
+  // Lets the caller back out of a call the callee hasn't answered yet.
+  const cancelOutgoingCall = useCallback(async () => {
+    if (!calling.outgoingCall?.id) return;
+    try {
+      await calling.endCall(calling.outgoingCall.id);
+    } catch (err) {
+      console.error('Error cancelling call:', err);
     }
   }, [calling]);
 
@@ -137,26 +144,6 @@ export default function CallsPage() {
 
   return (
     <>
-      {/* Incoming call notification */}
-      {calling.incomingCall && (
-        <IncomingCallNotification
-          callId={calling.incomingCall.id}
-          callerId={calling.incomingCall.caller_id}
-          callType={calling.incomingCall.call_type as 'voice' | 'video'}
-          onAccept={acceptIncomingCall}
-          onDecline={declineIncomingCall}
-        />
-      )}
-
-      {/* Active call window */}
-      {calling.activeCall && (
-        <CallWindow
-          roomUrl={calling.activeCall.id}
-          userName={session.user?.email || 'Guest'}
-          onClose={endActiveCall}
-        />
-      )}
-
       {/* Calls page UI */}
       <main className="space-y-6 p-4 sm:p-8">
         <section className={`rounded-md border border-hairline bg-panel-2/80 p-6 text-ivory shadow-2xl ${accent.glow}`}>
@@ -188,12 +175,12 @@ export default function CallsPage() {
             ) : (
               <ul className="mt-4 space-y-3">
                 {connections.map((connection) => {
-                  const recipientId = connection.requester_id === session?.user?.id ? connection.recipient_id : connection.requester_id;
+                  const peerName = connection.peer_display_name || connection.peer_username || 'WIMPEX user';
                   return (
                     <li key={connection.id} className="flex items-center justify-between rounded-2xl border border-hairline bg-panel-2/70 px-4 py-3">
                       <div>
-                        <p className="font-medium text-ivory">{recipientId.slice(0, 8)}…</p>
-                        <p className="text-xs text-slate">Connected via WIMPEX</p>
+                        <p className="font-medium text-ivory">{peerName}</p>
+                        <p className="text-xs text-slate">{connection.peer_username ? `@${connection.peer_username}` : 'Connected via WIMPEX'}</p>
                       </div>
                       <button
                         type="button"
@@ -229,6 +216,20 @@ export default function CallsPage() {
                     Leave call
                   </button>
                 </div>
+              ) : calling.outgoingCall ? (
+                <div className="flex h-full flex-col gap-2">
+                  <div className="flex flex-1 flex-col items-center justify-center rounded-md border border-dashed border-hairline text-center">
+                    <p className="text-sm text-slate">Ringing…</p>
+                    <p className="mt-2 text-xs text-slate">{calling.outgoingCall.call_type} • waiting for pickup</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void cancelOutgoingCall()}
+                    className="rounded-2xl border border-hairline bg-panel-2/70 px-3 py-2 text-sm font-semibold text-ivory transition hover:bg-panel-2"
+                  >
+                    Cancel call
+                  </button>
+                </div>
               ) : calling.incomingCall ? (
                 <div className="flex h-full items-center justify-center rounded-md border border-dashed border-hairline text-center text-sm text-slate">
                   <div>
@@ -253,24 +254,30 @@ export default function CallsPage() {
             <p className="mt-3 text-sm text-slate">No calls recorded yet.</p>
           ) : (
             <ul className="mt-4 space-y-3">
-              {calling.callHistory.map((call) => (
-                <li key={call.id} className="flex flex-col gap-3 rounded-2xl border border-hairline bg-panel-2/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-medium text-ivory">{call.call_type} call • {call.status}</p>
-                    <p className="mt-1 text-sm text-slate">
-                      {new Date(call.created_at).toLocaleDateString([], {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[call.status] || 'bg-slate/15 text-slate'}`}>
-                    {call.status}
-                  </span>
-                </li>
-              ))}
+              {calling.callHistory.map((call) => {
+                const peerId = call.caller_id === session?.user?.id ? call.callee_id : call.caller_id;
+                const peer = peerProfileById.get(peerId);
+                return (
+                  <li key={call.id} className="flex flex-col gap-3 rounded-2xl border border-hairline bg-panel-2/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium text-ivory">
+                        {peer ? peer.name : `${peerId.slice(0, 8)}…`} — {call.call_type} call
+                      </p>
+                      <p className="mt-1 text-sm text-slate">
+                        {new Date(call.created_at).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[call.status] || 'bg-slate/15 text-slate'}`}>
+                      {call.status}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

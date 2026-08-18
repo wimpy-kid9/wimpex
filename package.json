@@ -6,9 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cap:add:ios": "npx cap add ios",
+    "cap:add:android": "npx cap add android",
+    "cap:sync": "npx cap sync",
+    "cap:open:ios": "npx cap open ios",
+    "cap:open:android": "npx cap open android",
+    "cap:assets": "npx @capacitor/assets generate"
   },
   "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor/push-notifications": "^6.0.2",
     "@supabase/supabase-js": "^2.112.2",
     "katex": "^0.16.0",
     "next": "14.2.4",
@@ -20,13 +30,17 @@
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "@capacitor/app": "^6.0.1"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.1.2",
     "@types/node": "^20.11.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.4",

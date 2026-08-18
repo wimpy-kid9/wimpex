@@ -2,12 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
 import { usePushNotifications } from '@/lib/use-push-notifications';
+import { useCalling } from '@/lib/use-calling';
+import { supabase } from '@/lib/supabase';
 import BottomNav from './BottomNav';
 import { InstallPrompt } from './InstallPrompt';
+import IncomingCallNotification from './IncomingCallNotification';
+import CallWindow from './CallWindow';
 
 interface AppShellProps {
   children: ReactNode;
@@ -19,6 +23,8 @@ export default function AppShell({ children }: AppShellProps) {
   const { subscribe, permission } = usePushNotifications();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [indicatorStyle, setIndicatorStyle] = useState<{ top?: number; height?: number }>({});
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | undefined>(undefined);
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const navItems = [
     { label: 'Feed', href: '/feed' },
@@ -30,6 +36,74 @@ export default function AppShell({ children }: AppShellProps) {
   // mobileNavItems was removed in redesign; keep navItems for desktop and mobile BottomNav
 
   const isActive = (href: string) => pathname === href || (href !== '/feed' && pathname?.startsWith(href));
+
+  // Track the signed-in user's id app-wide so incoming calls can be heard
+  // on every page, not just while the user happens to be on /calls.
+  useEffect(() => {
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      setCurrentUserId(data.session?.user?.id);
+      setCurrentUserEmail(data.session?.user?.email);
+    };
+    void init();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
+      setCurrentUserId(session?.user?.id);
+      setCurrentUserEmail(session?.user?.email);
+    });
+
+    return () => {
+      listener?.subscription?.unsubscribe?.();
+    };
+  }, []);
+
+  // Global calling state: this makes incoming-call ringing and the active
+  // call window work from anywhere in the app, not just on the /calls page.
+  const calling = useCalling(currentUserId);
+
+  const acceptIncomingCall = useCallback(async () => {
+    if (!calling.incomingCall?.id) return;
+    try {
+      await calling.acceptCall(calling.incomingCall.id);
+    } catch (err) {
+      console.error('Error accepting call:', err);
+    }
+  }, [calling]);
+
+  const declineIncomingCall = useCallback(async () => {
+    if (!calling.incomingCall?.id) return;
+    try {
+      await calling.declineCall(calling.incomingCall.id);
+    } catch (err) {
+      console.error('Error declining call:', err);
+    }
+  }, [calling]);
+
+  const endActiveCall = useCallback(async () => {
+    if (!calling.activeCall?.id) return;
+    try {
+      await calling.endCall(calling.activeCall.id);
+    } catch (err) {
+      console.error('Error ending call:', err);
+    }
+  }, [calling]);
+
+  // The caller has no activeCall until the callee picks up, so this covers
+  // hanging up a still-ringing outgoing call from the CallWindow itself.
+  const cancelOutgoingCall = useCallback(async () => {
+    if (!calling.outgoingCall?.id) return;
+    try {
+      await calling.endCall(calling.outgoingCall.id);
+    } catch (err) {
+      console.error('Error cancelling call:', err);
+    }
+  }, [calling]);
+
+  // One call to show in CallWindow: prefer the active call, otherwise fall
+  // back to the caller's own still-ringing outgoing call so the UI has
+  // something to render (and cancel) while waiting for pickup.
+  const displayedCall = calling.activeCall || calling.outgoingCall;
+  const closeDisplayedCall = calling.activeCall ? endActiveCall : cancelOutgoingCall;
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -68,9 +142,35 @@ export default function AppShell({ children }: AppShellProps) {
   }, [pathname, permission, subscribe]);
 
   const isFeedRoute = pathname?.startsWith('/feed');
+  const isChatThreadRoute = pathname?.startsWith('/messages/') && pathname !== '/messages';
+  const isFullBleedRoute = isFeedRoute || isChatThreadRoute;
 
   return (
-    <div className="min-h-screen text-ivory">
+    <div className="flex h-[100dvh] flex-col overflow-hidden text-ivory">
+      {/*
+        Global call UI: rendered here (not just on /calls) so a ring is
+        actually heard/seen no matter what page the callee is on.
+      */}
+      {calling.incomingCall && (
+        <IncomingCallNotification
+          callId={calling.incomingCall.id}
+          callerId={calling.incomingCall.caller_id}
+          callType={calling.incomingCall.call_type as 'voice' | 'video'}
+          onAccept={acceptIncomingCall}
+          onDecline={declineIncomingCall}
+        />
+      )}
+      {displayedCall && (
+        <CallWindow
+          roomUrl={displayedCall.id}
+          userName={currentUserEmail || 'Guest'}
+          callType={displayedCall.call_type === 'voice' ? 'voice' : 'video'}
+          isCaller={displayedCall.caller_id === currentUserId}
+          peerId={displayedCall.caller_id === currentUserId ? displayedCall.callee_id : displayedCall.caller_id}
+          onClose={closeDisplayedCall}
+        />
+      )}
+
       <div className="hidden md:block md:fixed md:inset-y-0 md:w-64 md:border-r md:border-hairline md:bg-panel/70 md:px-4 md:py-8 md:backdrop-blur-xl">
         <div className="relative space-y-8">
           <div className="thread-line">
@@ -154,13 +254,21 @@ export default function AppShell({ children }: AppShellProps) {
         </div>
       </div>
 
-      <div className="md:pl-72">
-        {isFeedRoute ? children : <div className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 lg:px-8 md:pb-8">{children}</div>}
-      </div>
+      {/*
+        Content + bottom nav share this flex column. The content area is the
+        only thing that scrolls (flex-1 min-h-0); BottomNav is a normal,
+        non-overlay flex item pinned to the bottom of the column, so it can
+        never sit on top of / hide content beneath it.
+      */}
+      <div className="flex min-h-0 flex-1 flex-col md:pl-72">
+        <div className={isFullBleedRoute ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'min-h-0 flex-1 overflow-y-auto'}>
+          {isFullBleedRoute ? children : <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">{children}</div>}
+        </div>
 
-      {/* Bottom nav redesigned */}
-      <div className="md:hidden">
-        <BottomNav />
+        {/* Bottom nav redesigned */}
+        <div className="flex-shrink-0 md:hidden">
+          <BottomNav />
+        </div>
       </div>
 
       {/* Install prompt for PWA */}

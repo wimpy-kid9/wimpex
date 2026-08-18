@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 import { isGoldSubscription } from '@/lib/subscription';
+import { findOrCreateDirectConversation } from '@/lib/conversations';
 
 const CHAT_BUCKET = 'wpx-chat-media';
 const CHAT_MIME_TYPES = [
@@ -113,49 +114,6 @@ async function uploadChatMedia(mediaFile: File, userId: string) {
       ? 'voice_note'
       : 'text'
   };
-}
-
-async function findOrCreateDirectConversation(authUserId: string, recipientId: string) {
-  const { data: existingMemberships, error: membershipError } = await supabaseServer
-    .from('wpx_conversation_members')
-    .select('conversation_id, user_id')
-    .in('user_id', [authUserId, recipientId]);
-
-  if (membershipError) {
-    throw new Error(membershipError.message);
-  }
-
-  const counts = (existingMemberships || []).reduce((acc: Record<string, number>, row: any) => {
-    acc[row.conversation_id] = (acc[row.conversation_id] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const existingConversationId = Object.keys(counts).find((conversationId) => counts[conversationId] === 2);
-  if (existingConversationId) {
-    const { data, error } = await supabaseServer.from('wpx_conversations').select('*').eq('id', existingConversationId).maybeSingle();
-    if (error) throw new Error(error.message);
-    return data;
-  }
-
-  const { data: dataConversation, error: conversationError } = await supabaseServer
-    .from('wpx_conversations')
-    .insert({ type: 'direct', title: null })
-    .select()
-    .single();
-
-  if (conversationError) {
-    throw new Error(conversationError.message);
-  }
-
-  const { error: membersError } = await supabaseServer.from('wpx_conversation_members').insert([
-    { conversation_id: dataConversation.id, user_id: authUserId },
-    { conversation_id: dataConversation.id, user_id: recipientId }
-  ]);
-  if (membersError) {
-    throw new Error(membersError.message);
-  }
-
-  return dataConversation;
 }
 
 async function createGroupConversation(authUserId: string, recipientIds: string[], title: string) {

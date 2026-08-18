@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
+import { findOrCreateDirectConversation } from '@/lib/conversations';
 
 async function createNotification(userId: string, actorId: string | null, type: string, resourceId: string | null, metadata: Record<string, unknown> = {}) {
   if (!isSupabaseServerConfigured) return;
@@ -33,14 +34,23 @@ export async function GET(request: NextRequest) {
 
   const rows = (data || []).filter((row: any) => row.requester_id === authContext.user.id || row.recipient_id === authContext.user.id);
   const pendingRequests = rows.filter((row: any) => row.status === 'pending');
+  const acceptedConnections = rows.filter((row: any) => row.status === 'accepted');
   const requesterIds = pendingRequests.map((row: any) => row.requester_id).filter(Boolean);
-  const profileMap = new Map<string, any>();
 
-  if (requesterIds.length > 0) {
+  // The "other side" of each accepted connection, relative to the caller —
+  // this is who a share sheet / connections list should actually show.
+  const peerIds = acceptedConnections.map((row: any) =>
+    row.requester_id === authContext.user.id ? row.recipient_id : row.requester_id
+  );
+
+  const profileMap = new Map<string, any>();
+  const idsNeedingProfiles = Array.from(new Set([...requesterIds, ...peerIds].filter(Boolean))) as string[];
+
+  if (idsNeedingProfiles.length > 0) {
     const { data: profiles, error: profileError } = await supabaseServer
       .from('wpx_profiles')
-      .select('user_id,username,display_name')
-      .in('user_id', requesterIds);
+      .select('user_id,username,display_name,avatar_url')
+      .in('user_id', idsNeedingProfiles);
 
     if (!profileError) {
       for (const profile of profiles || []) {
@@ -60,8 +70,25 @@ export async function GET(request: NextRequest) {
     };
   });
 
+  // Previously "connections" was just the raw wpx_connections rows — no
+  // usable id or name for "the other person" on this connection, only
+  // requester_id/recipient_id. Anything trying to show or message that
+  // person (e.g. the share sheet) had nothing to key off. peer_id/
+  // peer_username/peer_display_name/peer_avatar_url below are that.
+  const connections = acceptedConnections.map((row: any) => {
+    const peerId = row.requester_id === authContext.user.id ? row.recipient_id : row.requester_id;
+    const profile = profileMap.get(peerId);
+    return {
+      ...row,
+      peer_id: peerId,
+      peer_username: profile?.username || null,
+      peer_display_name: profile?.display_name || null,
+      peer_avatar_url: profile?.avatar_url || null
+    };
+  });
+
   return NextResponse.json({
-    connections: rows.filter((row: any) => row.status === 'accepted'),
+    connections,
     requests,
     current_user_id: authContext.user.id
   });
@@ -139,6 +166,17 @@ export async function POST(request: NextRequest) {
 
     if (action === 'accept') {
       await createNotification(current.requester_id, authContext.user.id, 'connection_accepted', data.id, { connection_id: data.id });
+
+      // Create the direct conversation up front so it shows up in both
+      // people's chat lists right away — previously a conversation only
+      // ever got created lazily, the first time someone opened or sent a
+      // message to the other person, so an accepted connection with no
+      // messages yet was invisible in the chat list on both sides.
+      try {
+        await findOrCreateDirectConversation(current.requester_id, authContext.user.id);
+      } catch {
+        // Non-fatal — the connection itself was already accepted either way.
+      }
     }
 
     return NextResponse.json({ connection: data });

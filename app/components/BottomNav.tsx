@@ -17,8 +17,8 @@ export default function BottomNav() {
   const activeIndex = items.findIndex((it) => isActive(it.href));
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 md:hidden">
-      <nav className="relative mx-auto flex max-w-3xl items-center justify-between gap-2 border-t border-hairline bg-panel/90 p-3 text-sm text-ivory backdrop-blur-xl">
+    <div className="md:hidden">
+      <nav className="relative mx-auto flex max-w-3xl items-center justify-between gap-2 border-t border-hairline bg-panel/90 px-3 pt-3 text-sm text-ivory backdrop-blur-xl" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
         <div className="absolute left-0 right-0 top-0 flex h-full items-center justify-start">
           <div className="mx-auto w-full max-w-3xl relative">
             <div

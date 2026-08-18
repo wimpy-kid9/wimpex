@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { supabaseServer } from '@/lib/supabase-server';
 import { isGoldSubscription } from '@/lib/subscription';
+import { syncPostHashtagsAndMentions } from '@/lib/post-tags';
 
 async function enrichPostWithAuthor(post: any) {
   if (!post?.author_id) return post;
@@ -61,6 +62,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   const updates: Record<string, any> = {};
   if (body.caption !== undefined) updates.caption = body.caption;
   if (body.visibility !== undefined) updates.visibility = body.visibility;
+  if (body.filter_preset !== undefined) updates.filter_preset = body.filter_preset;
+  if (body.status !== undefined) updates.status = body.status === 'draft' ? 'draft' : 'published';
 
   const { data: existing, error: existingError } = await supabaseServer.from('wpx_posts').select('author_id').eq('id', postId).maybeSingle();
   if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
@@ -69,5 +72,16 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
   const { data, error } = await supabaseServer.from('wpx_posts').update(updates).eq('id', postId).select().maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Re-sync hashtags/mentions whenever the caption changes, or when a
+  // draft (which was never synced on create) gets published.
+  if (data && data.status === 'published' && (body.caption !== undefined || body.status !== undefined)) {
+    try {
+      await syncPostHashtagsAndMentions(postId, data.caption || '');
+    } catch {
+      // Non-fatal — the post update itself already succeeded.
+    }
+  }
+
   return NextResponse.json({ post: data });
 }

@@ -16,6 +16,7 @@ export interface Call {
 export interface UseCallingState {
   activeCall: Call | null;
   incomingCall: Call | null;
+  outgoingCall: Call | null;
   callHistory: Call[];
   isLoading: boolean;
   error: string | null;
@@ -25,6 +26,7 @@ export function useCalling(userId?: string) {
   const [state, setState] = useState<UseCallingState>({
     activeCall: null,
     incomingCall: null,
+    outgoingCall: null,
     callHistory: [],
     isLoading: false,
     error: null
@@ -39,14 +41,20 @@ export function useCalling(userId?: string) {
       const data = await response.json();
       const calls = data.calls || [];
 
-      // Separate active and incoming calls
+      // Separate active, incoming, and outgoing (caller still waiting for
+      // pickup) calls. Without outgoingCall the caller had no call state at
+      // all until the callee answered — no CallWindow, no way to cancel.
       const activeCall = calls.find((c: Call) => c.status === 'active');
       const incomingCall = calls.find((c: Call) => c.status === 'ringing' && c.callee_id === userId);
+      const outgoingCall = calls.find(
+        (c: Call) => (c.status === 'pending' || c.status === 'ringing') && c.caller_id === userId
+      );
 
       setState((prev) => ({
         ...prev,
         activeCall: activeCall || null,
         incomingCall: incomingCall || null,
+        outgoingCall: outgoingCall || null,
         callHistory: calls
       }));
     } catch (err) {
@@ -146,7 +154,10 @@ export function useCalling(userId?: string) {
           body: JSON.stringify({ status: 'ended' })
         });
 
-        setState((prev) => ({ ...prev, activeCall: null }));
+        // Clear both locally so the UI (CallWindow / ringing indicator) drops
+        // immediately instead of waiting for the next 3s poll — this matters
+        // whether the call being ended was already active or still ringing.
+        setState((prev) => ({ ...prev, activeCall: null, outgoingCall: null }));
         await fetchCalls();
       } catch (err) {
         console.error('Error ending call:', err);
