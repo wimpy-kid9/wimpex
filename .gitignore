@@ -1,5 +1,6 @@
 .env
 .env.local
+wimpex-firebase-adminsdk-fbsvc-5959ff730f.json
 *.tsbuildinfo
 dev-server.log
 node_modules
