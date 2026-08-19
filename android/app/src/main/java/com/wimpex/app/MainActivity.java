@@ -6,13 +6,13 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.content.Intent;
 import android.webkit.PermissionRequest;
-import android.webkit.WebChromeClient;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebChromeClient;
 
 public class MainActivity extends BridgeActivity {
 	private static final int INCOMING_CALL_NOTIFICATION_ID = 7401;
@@ -23,7 +23,7 @@ public class MainActivity extends BridgeActivity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		getBridge().getWebView().setWebChromeClient(new WebChromeClient() {
+		getBridge().getWebView().setWebChromeClient(new BridgeWebChromeClient(getBridge()) {
 			@Override
 			public void onPermissionRequest(final PermissionRequest request) {
 				runOnUiThread(() -> handleWebViewPermissionRequest(request));
