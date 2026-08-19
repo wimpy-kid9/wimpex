@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
         .from('wpx_calls')
         .update({ status: 'missed', ended_at: endedAt, updated_at: endedAt })
         .eq('id', staleCall.id)
+        .in('status', ['ringing', 'pending'])
         .select()
         .single();
       if (missedCall) {
