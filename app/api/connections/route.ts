@@ -2,18 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 import { findOrCreateDirectConversation } from '@/lib/conversations';
-
-async function createNotification(userId: string, actorId: string | null, type: string, resourceId: string | null, metadata: Record<string, unknown> = {}) {
-  if (!isSupabaseServerConfigured) return;
-  await supabaseServer.from('wpx_notifications').insert({
-    user_id: userId,
-    actor_id: actorId,
-    type,
-    resource_type: 'connection',
-    resource_id: resourceId,
-    metadata
-  });
-}
+import { createNotification } from '@/lib/notifications';
 
 export async function GET(request: NextRequest) {
   if (!isSupabaseServerConfigured) {
@@ -138,7 +127,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    await createNotification(body.recipient_id, authContext.user.id, 'connection_request', data.id, { connection_id: data.id });
+    await createNotification({
+      userId: body.recipient_id,
+      actorId: authContext.user.id,
+      type: 'connection_request',
+      resourceType: 'connection',
+      resourceId: data.id,
+      metadata: { connection_id: data.id },
+      push: { title: 'Connection request', body: 'You received a new connection request.', url: '/connections', tag: `connection-request-${data.id}` }
+    });
     return NextResponse.json({ connection: data });
   }
 
@@ -165,7 +162,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'accept') {
-      await createNotification(current.requester_id, authContext.user.id, 'connection_accepted', data.id, { connection_id: data.id });
+      await createNotification({
+        userId: current.requester_id,
+        actorId: authContext.user.id,
+        type: 'connection_accepted',
+        resourceType: 'connection',
+        resourceId: data.id,
+        metadata: { connection_id: data.id },
+        push: { title: 'Connection accepted', body: 'Your connection request was accepted.', url: '/connections', tag: `connection-accepted-${data.id}` }
+      });
 
       // Create the direct conversation up front so it shows up in both
       // people's chat lists right away — previously a conversation only

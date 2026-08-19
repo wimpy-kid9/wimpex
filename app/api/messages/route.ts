@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 import { isGoldSubscription } from '@/lib/subscription';
 import { findOrCreateDirectConversation } from '@/lib/conversations';
+import { createNotification } from '@/lib/notifications';
 
 const CHAT_BUCKET = 'wpx-chat-media';
 const CHAT_MIME_TYPES = [
@@ -22,18 +23,6 @@ const CHAT_MIME_TYPES = [
   'audio/webm',
   'audio/ogg'
 ];
-
-async function createNotification(userId: string, actorId: string | null, type: string, resourceId: string | null, metadata: Record<string, unknown> = {}) {
-  if (!isSupabaseServerConfigured) return;
-  await supabaseServer.from('wpx_notifications').insert({
-    user_id: userId,
-    actor_id: actorId,
-    type,
-    resource_type: 'message',
-    resource_id: resourceId,
-    metadata
-  });
-}
 
 function getConversationTitle(conversation: any, members: any[], profiles: any[], currentUserId: string) {
   const otherMemberIds = members.map((member) => member.user_id).filter((id: string) => id !== currentUserId);
@@ -532,7 +521,20 @@ export async function POST(request: NextRequest) {
 
   const notifyIds = recipients.length > 0 ? recipients : [body.recipient_id];
   for (const recipientId of notifyIds.filter((id: string) => id && id !== authContext.user.id)) {
-    await createNotification(recipientId, authContext.user.id, 'message', conversationData.id, { conversation_id: conversationData.id });
+    await createNotification({
+      userId: recipientId,
+      actorId: authContext.user.id,
+      type: 'message',
+      resourceType: 'message',
+      resourceId: messageData.id,
+      metadata: { conversation_id: conversationData.id },
+      push: {
+        title: 'New message',
+        body: textBody || 'You received a new message.',
+        url: `/messages?conversation_id=${conversationData.id}`,
+        tag: `message-${conversationData.id}`
+      }
+    });
   }
 
   return NextResponse.json({ conversation: conversationData, message: messageData });

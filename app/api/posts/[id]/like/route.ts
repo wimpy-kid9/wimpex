@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { supabaseServer } from '@/lib/supabase-server';
+import { createNotification } from '@/lib/notifications';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const postId = params.id;
@@ -28,7 +29,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       const { data: postData } = await supabaseServer.from('wpx_posts').select('author_id').eq('id', postId).maybeSingle();
       const authorId = postData?.author_id;
       if (authorId && authorId !== userId) {
-        await supabaseServer.from('wpx_notifications').insert({ user_id: authorId, type: 'like', metadata: { post_id: postId, actor_id: userId } });
+        await createNotification({
+          userId: authorId,
+          actorId: userId,
+          type: 'like',
+          resourceType: 'post',
+          resourceId: postId,
+          metadata: { post_id: postId },
+          push: { title: 'New like', body: 'Someone liked your post.', url: `/post/${postId}`, tag: `like-${postId}` }
+        });
       }
     } catch {
       // ignore notification errors

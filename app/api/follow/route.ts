@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { supabaseServer } from '@/lib/supabase-server';
+import { createNotification } from '@/lib/notifications';
 
 export async function POST(request: NextRequest) {
   let authContext;
@@ -25,7 +26,15 @@ export async function POST(request: NextRequest) {
   const { error } = await supabaseServer.from('wpx_follows').insert({ follower_id: authContext.user.id, followed_id: followedId });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   try {
-    await supabaseServer.from('wpx_notifications').insert({ user_id: followedId, type: 'follow', metadata: { follower_id: authContext.user.id } });
+    await createNotification({
+      userId: followedId,
+      actorId: authContext.user.id,
+      type: 'follow',
+      resourceType: 'profile',
+      resourceId: followedId,
+      metadata: { follower_id: authContext.user.id },
+      push: { title: 'New follower', body: 'Someone started following you.', url: `/u/${followedId}`, tag: `follow-${authContext.user.id}` }
+    });
   } catch {
     // ignore notification failures
   }

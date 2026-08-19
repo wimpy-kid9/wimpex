@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { supabaseServer } from '@/lib/supabase-server';
+import { createNotification } from '@/lib/notifications';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const postId = params.id;
@@ -58,7 +59,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const { data: postData } = await supabaseServer.from('wpx_posts').select('author_id').eq('id', postId).maybeSingle();
     const authorId = postData?.author_id;
     if (authorId && authorId !== authContext.user.id) {
-      await supabaseServer.from('wpx_notifications').insert({ user_id: authorId, type: 'comment', metadata: { post_id: postId, actor_id: authContext.user.id, comment_id: inserted.id } });
+      await createNotification({
+        userId: authorId,
+        actorId: authContext.user.id,
+        type: 'comment',
+        resourceType: 'post',
+        resourceId: postId,
+        metadata: { post_id: postId, comment_id: inserted.id },
+        push: { title: 'New comment', body: 'Someone commented on your post.', url: `/post/${postId}`, tag: `comment-${postId}` }
+      });
     }
   } catch {
     // ignore

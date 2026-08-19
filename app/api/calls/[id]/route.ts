@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
-
-async function createNotification(userId: string, actorId: string | null, type: string, resourceId: string | null, metadata: Record<string, unknown> = {}) {
-  if (!isSupabaseServerConfigured) return;
-  await supabaseServer.from('wpx_notifications').insert({
-    user_id: userId,
-    actor_id: actorId,
-    type,
-    resource_type: 'call',
-    resource_id: resourceId,
-    metadata
-  });
-}
+import { createNotification } from '@/lib/notifications';
 
 function normalizeStatus(value: string) {
   if (value === 'active') return 'active';
@@ -115,7 +104,15 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     if (nextStatus === 'missed') {
-      await createNotification(data.caller_id, data.callee_id, 'missed_call', data.id, { call_id: data.id, room_id: data.room_id });
+      await createNotification({
+        userId: data.caller_id,
+        actorId: data.callee_id,
+        type: 'missed_call',
+        resourceType: 'call',
+        resourceId: data.id,
+        metadata: { call_id: data.id, room_id: data.room_id },
+        push: { title: 'Missed call', body: 'You missed a call.', url: `/calls?call_id=${data.id}`, tag: `missed-call-${data.id}` }
+      });
     }
 
     return NextResponse.json({ call: data });
