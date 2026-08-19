@@ -235,18 +235,49 @@ export default function CallWindow({
       }
     };
 
+    // Requests the mic with a single retry if the OS reports the audio
+    // hardware as busy (NotReadableError). On Android WebView this is
+    // usually a transient race — nothing else should be holding audio focus
+    // at this point since prepareCallAudio() is deliberately NOT called
+    // until after this succeeds (see initializeCall below).
+    const getAudioStream = async (): Promise<MediaStream> => {
+      const constraints: MediaStreamConstraints = {
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false
+      };
+
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        console.error(
+          'audioinput devices found:',
+          devices.filter((d) => d.kind === 'audioinput').length
+        );
+      } catch (enumErr) {
+        console.error('enumerateDevices failed:', enumErr);
+      }
+
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err: any) {
+        if (err?.name !== 'NotReadableError') throw err;
+        console.error('NotReadableError acquiring mic, retrying once in 500ms');
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      }
+    };
+
     const initializeCall = async () => {
       let pendingLocalStream: MediaStream | null = null;
       try {
         if (Capacitor.isNativePlatform()) await CallAudio.stopRingtone();
-        if (Capacitor.isNativePlatform()) await CallAudio.prepareCallAudio();
-        // Android WebView is more reliable when audio and camera are opened
-        // separately. A combined request can fail with NotReadableError even
-        // after audio focus and both OS permissions have been granted.
-        pendingLocalStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-          video: false
-        });
+
+        // Android WebView is more reliable when the mic is opened by
+        // Chromium's own audio session BEFORE the host app touches
+        // AudioManager mode/focus. Calling prepareCallAudio() first was
+        // found to conflict with Chromium's internal WebRTC audio session
+        // setup and reliably threw NotReadableError, so we now acquire the
+        // stream first and only manage native audio routing afterward.
+        pendingLocalStream = await getAudioStream();
 
         if (callType === 'video') {
           const cameraStream = await navigator.mediaDevices.getUserMedia({
@@ -254,6 +285,12 @@ export default function CallWindow({
             video: { width: { ideal: 1280 }, height: { ideal: 720 } }
           });
           cameraStream.getVideoTracks().forEach((track) => pendingLocalStream?.addTrack(track));
+        }
+
+        if (Capacitor.isNativePlatform()) {
+          await CallAudio.prepareCallAudio().catch((focusErr) =>
+            console.error('prepareCallAudio failed after mic was already open (non-fatal):', focusErr)
+          );
         }
 
         if (stoppedRef.current) {
