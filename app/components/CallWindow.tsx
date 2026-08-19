@@ -236,20 +236,32 @@ export default function CallWindow({
     };
 
     const initializeCall = async () => {
+      let pendingLocalStream: MediaStream | null = null;
       try {
         if (Capacitor.isNativePlatform()) await CallAudio.stopRingtone();
         if (Capacitor.isNativePlatform()) await CallAudio.prepareCallAudio();
-        // Audio-only calls never request the camera.
-        const localStream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false
+        // Android WebView is more reliable when audio and camera are opened
+        // separately. A combined request can fail with NotReadableError even
+        // after audio focus and both OS permissions have been granted.
+        pendingLocalStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: false
         });
 
+        if (callType === 'video') {
+          const cameraStream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+          });
+          cameraStream.getVideoTracks().forEach((track) => pendingLocalStream?.addTrack(track));
+        }
+
         if (stoppedRef.current) {
-          localStream.getTracks().forEach((track) => track.stop());
+          pendingLocalStream.getTracks().forEach((track) => track.stop());
           return;
         }
 
+        const localStream = pendingLocalStream;
         localStreamRef.current = localStream;
 
         if (localVideoRef.current) {
@@ -303,6 +315,7 @@ export default function CallWindow({
         setLoading(false);
       } catch (err: any) {
         console.error('Call media initialization failed:', err?.name, err?.message);
+        pendingLocalStream?.getTracks().forEach((track) => track.stop());
         if (Capacitor.isNativePlatform()) await CallAudio.releaseCallAudio().catch(() => undefined);
         setError(`${err?.name || 'Error'}: ${err?.message || 'Failed to initialize call'}`);
         setLoading(false);
