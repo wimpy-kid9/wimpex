@@ -32,6 +32,17 @@ export function useCalling(userId?: string) {
     error: null
   });
 
+  const expireUnansweredCall = useCallback(async (callId: string) => {
+    try {
+      await authedFetch(`/api/calls/${callId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'ended' })
+      });
+    } catch (err) {
+      console.error('Error expiring unanswered call:', err);
+    }
+  }, []);
+
   // Fetch active calls
   const fetchCalls = useCallback(async () => {
     try {
@@ -40,6 +51,16 @@ export function useCalling(userId?: string) {
 
       const data = await response.json();
       const calls = data.calls || [];
+      const now = Date.now();
+      const staleRingingCalls = calls.filter((call: Call) =>
+        (call.status === 'ringing' || call.status === 'pending') &&
+        call.created_at && now - new Date(call.created_at).getTime() >= 60_000
+      );
+      if (staleRingingCalls.length > 0) {
+        await Promise.all(staleRingingCalls.map((call: Call) => expireUnansweredCall(call.id)));
+        await fetchCalls();
+        return;
+      }
 
       // Separate active, incoming, and outgoing (caller still waiting for
       // pickup) calls. Without outgoingCall the caller had no call state at
@@ -60,7 +81,7 @@ export function useCalling(userId?: string) {
     } catch (err) {
       console.error('Error fetching calls:', err);
     }
-  }, [userId]);
+  }, [expireUnansweredCall, userId]);
 
   // Poll for calls
   useEffect(() => {

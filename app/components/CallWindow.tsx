@@ -120,6 +120,7 @@ export default function CallWindow({
   const [isVideoOn, setIsVideoOn] = useState(callType === 'video');
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [pipPosition, setPipPosition] = useState<{ x: number; y: number } | null>(null);
   const [peer, setPeer] = useState<{ display_name?: string; avatar_url?: string } | null>(
     peerName || peerAvatar ? { display_name: peerName, avatar_url: peerAvatar } : null
@@ -459,9 +460,48 @@ export default function CallWindow({
   const displayName = peer?.display_name || userName || 'Unknown';
   const showVideoFeed = callType === 'video' && isVideoOn;
 
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-20 right-4 z-50 w-64 rounded-2xl border border-hairline bg-panel/95 p-3 shadow-2xl backdrop-blur-xl sm:bottom-6 sm:right-6">
+        <div className="flex items-center gap-3">
+          {peer?.avatar_url ? (
+            <img src={peer.avatar_url} alt={displayName} className="h-11 w-11 rounded-full object-cover" />
+          ) : (
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-panel-2 text-lg font-semibold text-slate">
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setIsMinimized(false)}>
+            <p className="truncate text-sm font-semibold text-ivory">{displayName}</p>
+            <p className="text-xs text-slate">{statusLabel()}</p>
+          </button>
+          <button
+            type="button"
+            aria-label="End call"
+            onClick={handleLeaveCall}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-rose-500 text-white transition hover:bg-rose-600"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian">
       <div className="h-full w-full">
+        <button
+          type="button"
+          aria-label="Minimize call"
+          onClick={(event) => {
+            event.stopPropagation();
+            setIsMinimized(true);
+          }}
+          className="absolute right-4 top-4 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/45 text-xl text-ivory backdrop-blur-xl transition hover:bg-black/65"
+        >
+          <span aria-hidden="true">−</span>
+        </button>
         {loading && (
           <div className="flex h-full flex-col items-center justify-center gap-3">
             {peer?.avatar_url ? (

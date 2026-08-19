@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
 
   try {
     const authContext = await requireAuth(request);
+    const cutoff = new Date(Date.now() - 60_000).toISOString();
+    await supabaseServer
+      .from('wpx_calls')
+      .update({ status: 'ended', ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .or(`caller_id.eq.${authContext.user.id},callee_id.eq.${authContext.user.id}`)
+      .in('status', ['ringing', 'pending'])
+      .lt('created_at', cutoff);
     const { data, error } = await supabaseServer
       .from('wpx_calls')
       .select('*')

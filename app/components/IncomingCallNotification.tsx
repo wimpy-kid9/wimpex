@@ -28,6 +28,7 @@ export default function IncomingCallNotification({
   onDecline
 }: IncomingCallNotificationProps) {
   const [responding, setResponding] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [callerInfo, setCallerInfo] = useState<any>(null);
 
   // Fetch caller info if not provided
@@ -70,9 +71,46 @@ export default function IncomingCallNotification({
     }
   };
 
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-20 right-4 z-50 w-64 rounded-2xl border border-gold/40 bg-panel/95 p-3 shadow-2xl backdrop-blur-xl sm:bottom-6 sm:right-6">
+        <div className="flex items-center gap-3">
+          {callerInfo?.avatar_url ? (
+            <img src={callerInfo.avatar_url} alt={callerInfo.display_name} className="h-11 w-11 rounded-full object-cover" />
+          ) : (
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-panel-2 text-lg font-semibold text-slate">
+              {(callerInfo?.display_name || 'U').charAt(0).toUpperCase()}
+            </div>
+          )}
+          <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setIsMinimized(false)}>
+            <p className="truncate text-sm font-semibold text-ivory">{callerInfo?.display_name || 'Unknown caller'}</p>
+            <p className="text-xs text-gold">Incoming call</p>
+          </button>
+          <button
+            type="button"
+            aria-label="Decline call"
+            onClick={handleDecline}
+            disabled={responding}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-rose-500 text-white transition hover:bg-rose-600 disabled:opacity-50"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="rounded-3xl border border-hairline bg-panel p-6 text-center shadow-2xl shadow-black/40">
+      <div className="relative rounded-3xl border border-hairline bg-panel p-6 text-center shadow-2xl shadow-black/40">
+        <button
+          type="button"
+          aria-label="Minimize incoming call"
+          onClick={() => setIsMinimized(true)}
+          className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-ivory/10 text-lg text-ivory transition hover:bg-ivory/20"
+        >
+          <span aria-hidden="true">−</span>
+        </button>
         {callerInfo?.avatar_url && (
           <img
             src={callerInfo.avatar_url}
