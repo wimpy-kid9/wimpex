@@ -19,12 +19,14 @@ import com.google.firebase.messaging.RemoteMessage;
 
 public class IncomingCallMessagingService extends FirebaseMessagingService {
     private static final String CHANNEL_ID = "wimpex-calls";
+    private static final String MESSAGE_CHANNEL_ID = "wimpex-messages";
     private static final int NOTIFICATION_ID = 7401;
     private static Ringtone activeRingtone;
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage message) {
         if (!"incoming_call".equals(message.getData().get("type"))) {
+            showMessageNotification(message);
             return;
         }
 
@@ -78,6 +80,48 @@ public class IncomingCallMessagingService extends FirebaseMessagingService {
         }
     }
 
+    private void showMessageNotification(RemoteMessage message) {
+        createMessageChannel();
+
+        String title = message.getNotification() != null ? message.getNotification().getTitle() : null;
+        String body = message.getNotification() != null ? message.getNotification().getBody() : null;
+        if (title == null || title.isEmpty()) title = message.getData().get("title");
+        if (body == null || body.isEmpty()) body = message.getData().get("body");
+        if (title == null || title.isEmpty()) title = "New message";
+        if (body == null || body.isEmpty()) body = "You received a new message.";
+
+        String url = message.getData().get("url");
+        Intent messageIntent = new Intent(this, MainActivity.class);
+        messageIntent.setAction(Intent.ACTION_VIEW);
+        if (url != null && !url.isEmpty()) {
+            messageIntent.setData(Uri.parse("com.wimpex.app://" + url.replaceFirst("^/", "")));
+        }
+        messageIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+            this,
+            (int) (System.currentTimeMillis() & 0x7fffffff),
+            messageIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        Notification notification = new NotificationCompat.Builder(this, MESSAGE_CHANNEL_ID)
+            .setSmallIcon(com.wimpex.app.R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build();
+
+        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (manager != null) {
+            manager.notify((int) (System.currentTimeMillis() & 0x7fffffff), notification);
+        }
+    }
+
     public static void stopRingtone() {
         if (activeRingtone != null && activeRingtone.isPlaying()) {
             activeRingtone.stop();
@@ -114,6 +158,32 @@ public class IncomingCallMessagingService extends FirebaseMessagingService {
         channel.setDescription("Incoming and missed calls");
         channel.enableVibration(true);
         channel.setSound(ringtone, audioAttributes);
+        manager.createNotificationChannel(channel);
+    }
+
+    private void createMessageChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
+
+        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (manager == null) {
+            return;
+        }
+
+        Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build();
+        NotificationChannel channel = new NotificationChannel(
+            MESSAGE_CHANNEL_ID,
+            "Messages",
+            NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription("New direct and group messages");
+        channel.enableVibration(true);
+        channel.setSound(sound, audioAttributes);
         manager.createNotificationChannel(channel);
     }
 }

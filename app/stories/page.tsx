@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
-import { getUserAccent } from '@/lib/ui-theme';
+import PostCard from '@/app/components/PostCard';
 
 export default function StoriesPage() {
   const [posts, setPosts] = useState<any[]>([]);
@@ -38,22 +38,7 @@ export default function StoriesPage() {
       {error ? <p className="text-sm text-rose-300">{error}</p> : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {posts.map((post) => {
-          const accent = getUserAccent(post.author || 'story');
-          const accentClass = post.accent || accent.gradient;
-          return (
-            <div key={post.id} className={`rounded-md bg-gradient-to-r ${accentClass} p-[1px]`}>
-              <div className="rounded-md bg-panel/90 p-4">
-                <p className="font-semibold text-ivory">{post.author}</p>
-                {post.mediaType === 'image' && post.imageUrl ? (
-                  <img src={post.imageUrl} alt={post.caption || 'Story image'} className="mt-2 h-44 w-full object-cover rounded-md" />
-                ) : post.mediaType === 'video' && post.videoUrl ? (
-                  <video src={post.videoUrl} className="mt-2 h-44 w-full object-cover rounded-md" controls />
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
+        {posts.map((post) => <PostCard key={post.id} post={post} variant="grid" />)}
       </div>
     </main>
   );

@@ -25,7 +25,7 @@ const FILTER_CLASSES: Record<string, string> = {
   infrared: 'filter hue-rotate-310 saturate-140 contrast-115'
 };
 
-export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?: boolean }) {
+export default function PostCard({ post, isFeedItem, variant }: { post: any; isFeedItem?: boolean; variant?: 'grid' }) {
   const [liked, setLiked] = useState<boolean>(post?.liked_by_me ?? false);
   const [likeCount, setLikeCount] = useState<number | null>(post?.like_count ?? null);
   const [favorited, setFavorited] = useState<boolean>(post?.favorited_by_me ?? false);
@@ -263,7 +263,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
 
   return (
     <>
-    <article ref={cardRef} className={`w-full relative overflow-hidden bg-black text-ivory ${isFeedItem ? 'feed-snap-item h-[calc(100dvh-var(--header-h)-var(--bottomnav-h))] md:h-[80vh]' : ''}`}>
+    <article ref={cardRef} className={`relative w-full overflow-hidden bg-black text-ivory ${variant === 'grid' ? 'aspect-[3/4] rounded-2xl' : ''} ${isFeedItem ? 'feed-snap-item h-[calc(100dvh-var(--header-h)-var(--bottomnav-h))] md:h-[80vh]' : ''}`}>
       {post.mediaType === 'image' && post.imageUrl ? (
         <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`} onClick={handleVideoTap} />
       ) : post.mediaType === 'video' && post.videoUrl ? (
@@ -282,7 +282,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
 
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-      <div className="absolute left-3 top-3 flex items-center gap-3 rounded-3xl bg-black/60 px-3 py-2 backdrop-blur-sm">
+      <div className={`absolute left-3 top-3 flex items-center gap-3 rounded-3xl bg-black/60 px-3 py-2 backdrop-blur-sm ${variant === 'grid' ? 'max-w-[calc(100%-1.5rem)] scale-90 origin-top-left' : ''}`}>
         <Link href={postLink} className="flex items-center gap-3">
           {post.avatar_url ? (
             <img src={post.avatar_url} alt={post.author || post.handle || 'Author avatar'} className="h-11 w-11 rounded-full object-cover" />
@@ -299,7 +299,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
         </Link>
       </div>
 
-      <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5 text-slate">
+      <div className={`absolute right-3 bottom-24 flex flex-col items-center gap-5 text-slate ${variant === 'grid' ? 'bottom-16 gap-2 scale-75 origin-bottom-right' : ''}`}>
         <Link href={postLink} className="rounded-full border border-white/10 bg-black/70 p-1 transition hover:scale-105">
           {post.avatar_url ? (
             <img src={post.avatar_url} alt={post.author || post.handle || 'Author avatar'} className="h-12 w-12 rounded-full object-cover" />
@@ -374,7 +374,7 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
           ❤️
         </div>
       ) : null}
-      <div className="absolute left-3 bottom-6 max-w-[75%] space-y-3 text-sm leading-6">
+      <div className={`absolute left-3 bottom-6 max-w-[75%] space-y-3 text-sm leading-6 ${variant === 'grid' ? 'bottom-3 max-w-[78%] space-y-1 text-xs leading-4' : ''}`}>
         <Link href={postLink} className="inline-flex items-center gap-2 text-sm font-semibold text-ivory transition hover:text-gold">
           <span>@{post.handle?.replace(/^@/, '') || 'wimpex'}</span>
           {post.is_gold ? <GoldBadge size="sm" inline /> : null}
