@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
           requireInteraction: true,
           channelId: 'wimpex-calls',
           sound: 'default',
-          data: { type: 'incoming_call', callId: data.id, callerId: authContext.user.id, callerName }
+          data: { type: 'incoming_call', callId: data.id, callerId: authContext.user.id, callerName, callType: call_type }
         }
       });
     }

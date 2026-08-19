@@ -51,20 +51,21 @@ async function sendFcmToUser(userId: string, options: PushNotificationOptions) {
     devices.map((device: any) =>
       messaging!.send({
         token: device.token,
-        notification: {
-          title: options.title,
-          body: options.body
-        },
+        ...(options.data?.type === 'incoming_call' ? {} : {
+          notification: {
+            title: options.title,
+            body: options.body
+          }
+        }),
         data: {
           ...(options.data || {}),
           ...(options.url ? { url: options.url } : {})
         },
         android: {
           priority: 'high' as const,
-          notification: {
-            sound: options.sound || 'default',
-            channelId: options.channelId || 'wimpex-default'
-          }
+          ...(options.data?.type === 'incoming_call'
+            ? {}
+            : { notification: { sound: options.sound || 'default', channelId: options.channelId || 'wimpex-default' } })
         },
         apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: options.sound || 'default' } } }
       })

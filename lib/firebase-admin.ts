@@ -20,3 +20,7 @@ if (serviceAccountJson) {
 
 export const isFirebaseConfigured = Boolean(app);
 export const messaging = app ? getMessaging(app) : null;
+
+if (!isFirebaseConfigured) {
+  console.warn('Firebase push is disabled: FIREBASE_SERVICE_ACCOUNT is not configured or could not be parsed.');
+}

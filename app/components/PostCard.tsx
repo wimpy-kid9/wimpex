@@ -186,9 +186,10 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
 
   const handleVideoTap = (event: any) => {
     const video = videoRef.current;
-    if (!video) return;
+    const mediaElement = video || event.currentTarget;
+    if (!mediaElement) return;
 
-    const rect = video.getBoundingClientRect();
+    const rect = mediaElement.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     const now = Date.now();
@@ -211,10 +212,10 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
 
     doubleTapRef.current.lastTapAt = now;
     doubleTapRef.current.timer = window.setTimeout(() => {
-      void toggleVideoPlayback();
+      if (video) void toggleVideoPlayback();
       doubleTapRef.current.lastTapAt = 0;
       doubleTapRef.current.timer = null;
-    }, 260);
+    }, 220);
   };
 
   const toggleFavorite = async () => {
@@ -262,9 +263,9 @@ export default function PostCard({ post, isFeedItem }: { post: any; isFeedItem?:
 
   return (
     <>
-    <article ref={cardRef} className={`w-full relative overflow-hidden bg-black text-ivory ${isFeedItem ? 'feed-snap-item h-[100dvh] md:h-[80vh]' : ''}`}>
+    <article ref={cardRef} className={`w-full relative overflow-hidden bg-black text-ivory ${isFeedItem ? 'feed-snap-item h-[calc(100dvh-var(--header-h)-var(--bottomnav-h))] md:h-[80vh]' : ''}`}>
       {post.mediaType === 'image' && post.imageUrl ? (
-        <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`} />
+        <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`} onClick={handleVideoTap} />
       ) : post.mediaType === 'video' && post.videoUrl ? (
         <video
           ref={videoRef}

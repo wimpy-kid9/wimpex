@@ -31,6 +31,7 @@ export default function CallsPage() {
   const [connections, setConnections] = useState<ConnectionRecord[]>([]);
   const [busy, setBusy] = useState(false);
   const [permissionState, setPermissionState] = useState<'idle' | 'requesting' | 'ready' | 'blocked'>('idle');
+  const [permissionMessage, setPermissionMessage] = useState('');
   
   // Use calling hook for WebRTC state management
   const calling = useCalling(session?.user?.id);
@@ -74,7 +75,8 @@ export default function CallsPage() {
 
   const requestMediaPermissions = async () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      return;
+      setPermissionMessage('Camera and microphone access are unavailable on this device.');
+      return false;
     }
 
     setPermissionState('requesting');
@@ -82,8 +84,17 @@ export default function CallsPage() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
       stream.getTracks().forEach((track) => track.stop());
       setPermissionState('ready');
-    } catch {
+      setPermissionMessage('');
+      return true;
+    } catch (error) {
       setPermissionState('blocked');
+      const permissionError = error as DOMException;
+      if (permissionError?.name === 'NotAllowedError' || permissionError?.name === 'SecurityError') {
+        setPermissionState('blocked');
+        setPermissionMessage('Camera or microphone access is blocked. Enable both permissions in device Settings, then try again.');
+        return false;
+      }
+      throw error;
     }
   };
 
@@ -94,11 +105,14 @@ export default function CallsPage() {
       setBusy(true);
 
       try {
-        await requestMediaPermissions();
+        const permissionsReady = await requestMediaPermissions();
+        if (!permissionsReady) return;
         const recipientId = connection.peer_id || (connection.requester_id === session.user.id ? connection.recipient_id : connection.requester_id);
         await calling.initiateCall(recipientId, 'video');
       } catch (err) {
         console.error('Error starting call:', err);
+        setPermissionState('blocked');
+        setPermissionMessage(err instanceof Error ? err.message : 'Enable camera and microphone permissions in device Settings.');
       } finally {
         setBusy(false);
       }
@@ -155,9 +169,15 @@ export default function CallsPage() {
                   <h1 className="text-display text-3xl text-ivory">Calls</h1>
                 </div>
                 <div className={`rounded-full border border-hairline bg-gradient-to-r ${accent.gradient} px-3 py-1 text-sm font-medium text-obsidian`}>
-                  {permissionState === 'ready' ? 'Mic + camera ready' : permissionState === 'requesting' ? 'Asking for access…' : 'Ready to connect'}
+                  {permissionState === 'ready' ? 'Mic + camera ready' : permissionState === 'requesting' ? 'Asking for access…' : permissionState === 'blocked' ? 'Permissions blocked' : 'Ready to connect'}
                 </div>
               </div>
+              {permissionMessage ? (
+                <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                  <span>{permissionMessage}</span>
+                  <button type="button" onClick={() => window.open('app-settings:', '_system')} className="rounded-full border border-rose-200/30 px-3 py-1 font-semibold hover:bg-rose-200/10">Open Settings</button>
+                </div>
+              ) : null}
               <p className="mt-3 max-w-2xl text-sm text-slate">WebRTC-based peer-to-peer calling with end-to-end encryption. Start a call with an accepted connection and connect directly.</p>
             </div>
           </div>

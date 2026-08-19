@@ -55,7 +55,7 @@ export default function FeedPage() {
   }, []);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-obsidian text-ivory">
+    <main className="relative min-h-screen overflow-hidden bg-obsidian text-ivory [--header-h:72px] [--bottomnav-h:calc(4.5rem+env(safe-area-inset-bottom))]">
       <div className="fixed inset-x-0 top-0 z-20 border-b border-hairline bg-panel/95 backdrop-blur-xl px-4 py-4 sm:px-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex gap-2">
@@ -69,7 +69,7 @@ export default function FeedPage() {
         </div>
       </div>
 
-      <div className="absolute inset-x-0 top-[72px] bottom-0 overflow-y-auto snap-y snap-mandatory feed-snap-stack">
+      <div className="absolute inset-x-0 top-[var(--header-h)] bottom-0 overflow-y-auto snap-y snap-mandatory feed-snap-stack">
         {error ? <div className="mx-4 mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div> : null}
         {loading ? <div className="mx-4 mt-5 rounded-2xl border border-hairline bg-panel-2/70 px-4 py-3 text-sm text-slate">Loading feed…</div> : null}
 

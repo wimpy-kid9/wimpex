@@ -172,6 +172,7 @@ select {
 .feed-snap-item {
   scroll-snap-align: start;
   scroll-snap-stop: always;
+  scroll-margin-top: var(--header-h, 0px);
 }
 
 @keyframes driftIn {
