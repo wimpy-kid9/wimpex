@@ -5,7 +5,11 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { getRTCConfig } from '@/lib/webrtc-config';
 import { authedFetch } from '@/lib/api-client';
 
-const CallAudio = registerPlugin<{ stopRingtone: () => Promise<void> }>('CallAudio');
+const CallAudio = registerPlugin<{
+  stopRingtone: () => Promise<void>;
+  prepareCallAudio: () => Promise<void>;
+  releaseCallAudio: () => Promise<void>;
+}>('CallAudio');
 
 export interface CallProps {
   roomUrl: string;
@@ -234,6 +238,7 @@ export default function CallWindow({
     const initializeCall = async () => {
       try {
         if (Capacitor.isNativePlatform()) await CallAudio.stopRingtone();
+        if (Capacitor.isNativePlatform()) await CallAudio.prepareCallAudio();
         // Audio-only calls never request the camera.
         const localStream = await navigator.mediaDevices.getUserMedia({
           audio: true,
@@ -297,7 +302,9 @@ export default function CallWindow({
 
         setLoading(false);
       } catch (err: any) {
-        setError(err.message || 'Failed to initialize call');
+        console.error('Call media initialization failed:', err?.name, err?.message);
+        if (Capacitor.isNativePlatform()) await CallAudio.releaseCallAudio().catch(() => undefined);
+        setError(`${err?.name || 'Error'}: ${err?.message || 'Failed to initialize call'}`);
         setLoading(false);
       }
     };
@@ -309,6 +316,7 @@ export default function CallWindow({
       if (signalPollRef.current) clearInterval(signalPollRef.current);
       peerConnectionRef.current?.close();
       localStreamRef.current?.getTracks().forEach((track) => track.stop());
+      if (Capacitor.isNativePlatform()) void CallAudio.releaseCallAudio();
       if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
     };
   }, [roomUrl, callType, isCaller]);
@@ -318,6 +326,7 @@ export default function CallWindow({
     if (signalPollRef.current) clearInterval(signalPollRef.current);
     peerConnectionRef.current?.close();
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    if (Capacitor.isNativePlatform()) void CallAudio.releaseCallAudio();
     onClose();
   };
 
