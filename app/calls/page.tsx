@@ -73,31 +73,6 @@ export default function CallsPage() {
     void init();
   }, []);
 
-  const requestMediaPermissions = async () => {
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      setPermissionMessage('Camera and microphone access are unavailable on this device.');
-      return false;
-    }
-
-    setPermissionState('requesting');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-      stream.getTracks().forEach((track) => track.stop());
-      setPermissionState('ready');
-      setPermissionMessage('');
-      return true;
-    } catch (error) {
-      setPermissionState('blocked');
-      const permissionError = error as DOMException;
-      if (permissionError?.name === 'NotAllowedError' || permissionError?.name === 'SecurityError') {
-        setPermissionState('blocked');
-        setPermissionMessage('Camera or microphone access is blocked. Enable both permissions in device Settings, then try again.');
-        return false;
-      }
-      throw error;
-    }
-  };
-
   const startCall = useCallback(
     async (connection: ConnectionRecord) => {
       if (!session?.user?.id || busy) return;
@@ -105,8 +80,6 @@ export default function CallsPage() {
       setBusy(true);
 
       try {
-        const permissionsReady = await requestMediaPermissions();
-        if (!permissionsReady) return;
         const recipientId = connection.peer_id || (connection.requester_id === session.user.id ? connection.recipient_id : connection.requester_id);
         await calling.initiateCall(recipientId, 'video');
       } catch (err) {
