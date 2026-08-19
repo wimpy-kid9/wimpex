@@ -114,7 +114,7 @@ export default function MessageList() {
     es.onerror = () => {
       es.close();
       // fallback to polling if SSE fails
-      const id = window.setInterval(() => void loadState(), 5000);
+      const id = window.setInterval(() => void loadState(), 500);
       (es as any)._pollId = id;
     };
     return () => {

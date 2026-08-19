@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
       interval = setInterval(() => {
         send({ ts: Date.now() });
-      }, 3000);
+      }, 500);
 
       controller.enqueue(encoder.encode(`event: connected\ndata: {"ok":true}\n\n`));
 

@@ -94,7 +94,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     es.onerror = () => {
       es.close();
       // fallback: poll
-      const id = window.setInterval(() => void loadThread(), 3000);
+      const id = window.setInterval(() => void loadThread(), 500);
       (es as any)._pollId = id;
     };
     return () => {
