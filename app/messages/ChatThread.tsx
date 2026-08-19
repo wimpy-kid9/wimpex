@@ -73,6 +73,8 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
       setMessages(payload.messages || []);
       if (payload.conversation) setConversation(payload.conversation);
       setHasEarlier(Boolean(payload.hasMore));
+    } catch (error) {
+      setNotice(error instanceof TypeError ? 'You appear to be offline. Reconnect and retry.' : 'Unable to load messages.');
     } finally {
       setLoadingMessages(false);
     }

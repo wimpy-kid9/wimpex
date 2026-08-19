@@ -7,6 +7,7 @@ import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
 import { usePushNotifications } from '@/lib/use-push-notifications';
 import { useCalling } from '@/lib/use-calling';
+import { useOnlineStatus } from '@/lib/use-online-status';
 import { supabase } from '@/lib/supabase';
 import BottomNav from './BottomNav';
 import { InstallPrompt } from './InstallPrompt';
@@ -21,6 +22,8 @@ export default function AppShell({ children }: AppShellProps) {
   const [accent, setAccent] = useState(() => getUserAccent('wimpex-shell'));
   const pathname = usePathname();
   const { subscribe, permission } = usePushNotifications();
+  const online = useOnlineStatus();
+  const [networkError, setNetworkError] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [indicatorStyle, setIndicatorStyle] = useState<{ top?: number; height?: number }>({});
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
@@ -145,8 +148,23 @@ export default function AppShell({ children }: AppShellProps) {
   const isChatThreadRoute = pathname?.startsWith('/messages/') && pathname !== '/messages';
   const isFullBleedRoute = isFeedRoute || isChatThreadRoute;
 
+  useEffect(() => {
+    const handleNetworkError = () => setNetworkError(true);
+    window.addEventListener('wimpex-network-error', handleNetworkError);
+    return () => window.removeEventListener('wimpex-network-error', handleNetworkError);
+  }, []);
+
+  useEffect(() => {
+    if (online) setNetworkError(false);
+  }, [online]);
+
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden text-ivory">
+      {!online || networkError ? (
+        <div className="fixed inset-x-0 top-0 z-[100] border-b border-amber-400/30 bg-amber-950/95 px-4 py-2 text-center text-xs font-semibold text-amber-100 backdrop-blur-xl">
+          You&apos;re offline — some features may not work. Reconnect to continue.
+        </div>
+      ) : null}
       {/*
         Global call UI: rendered here (not just on /calls) so a ring is
         actually heard/seen no matter what page the callee is on.

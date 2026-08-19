@@ -16,10 +16,18 @@ export async function authedFetch(path: string, init: any = {}) {
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(path, {
-    ...init,
-    headers
-  });
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      ...init,
+      headers
+    });
+  } catch (error) {
+    if (typeof window !== 'undefined' && error instanceof TypeError) {
+      window.dispatchEvent(new Event('wimpex-network-error'));
+    }
+    throw error;
+  }
 
   if (response.status === 401 && typeof window !== 'undefined') {
     window.dispatchEvent(new Event('wimpex-auth-required'));
