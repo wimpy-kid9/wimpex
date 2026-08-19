@@ -159,6 +159,7 @@ export async function GET(request: NextRequest) {
   }
 
   const conversationId = request.nextUrl.searchParams.get('conversation_id');
+  const before = request.nextUrl.searchParams.get('before');
   const participantId = request.nextUrl.searchParams.get('participant_id');
 
   if (conversationId) {
@@ -170,10 +171,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
     }
 
-    const [{ data: messages, error: messagesError }, { data: members, error: membersError }] = await Promise.all([
-      supabaseServer.from('wpx_messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true }),
+    let messagesQuery = supabaseServer.from('wpx_messages').select('*').eq('conversation_id', conversationId);
+    if (before) messagesQuery = messagesQuery.lt('created_at', before);
+    const [{ data: recentMessages, error: messagesError }, { data: members, error: membersError }] = await Promise.all([
+      messagesQuery.order('created_at', { ascending: false }).limit(50),
       supabaseServer.from('wpx_conversation_members').select('conversation_id, user_id').eq('conversation_id', conversationId)
     ]);
+
+    const messages = (recentMessages || []).reverse();
 
     if (messagesError) {
       return NextResponse.json({ error: messagesError.message }, { status: 500 });
@@ -271,7 +276,7 @@ export async function GET(request: NextRequest) {
       messages || []
     );
 
-    return NextResponse.json({ messages: messagesWithReactions, conversation: summary });
+    return NextResponse.json({ messages: messagesWithReactions, conversation: summary, hasMore: (recentMessages || []).length === 50 });
   }
 
   if (participantId) {

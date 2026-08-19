@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { authedFetch } from '@/lib/api-client';
 
 type TabValue = 'posts' | 'liked' | 'favorited' | 'drafts' | 'followers' | 'following';
@@ -106,7 +107,7 @@ export default function ProfileTabs({ profile, isOwn }: { profile: any; isOwn: b
         ) : active === 'followers' || active === 'following' ? (
           <div className="grid gap-4 sm:grid-cols-2">
             {items.map((item) => (
-              <a key={item.id} href={`/user/${item.id}`} className="rounded-3xl border border-hairline bg-panel-2/80 p-4 transition hover:border-gold hover:bg-panel/80">
+              <Link key={item.id} href={`/user/${item.id}`} className="rounded-3xl border border-hairline bg-panel-2/80 p-4 transition hover:border-gold hover:bg-panel/80">
                 <div className="flex items-center gap-3">
                   {item.profile?.avatar_url ? (
                     <img src={item.profile.avatar_url} alt={item.profile.display_name || item.profile.username} className="h-12 w-12 rounded-full object-cover" />
@@ -118,7 +119,7 @@ export default function ProfileTabs({ profile, isOwn }: { profile: any; isOwn: b
                     <p className="text-xs text-slate">@{item.profile?.username || item.id}</p>
                   </div>
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         ) : (
@@ -129,7 +130,7 @@ export default function ProfileTabs({ profile, isOwn }: { profile: any; isOwn: b
                 ? `/post/${item.id}?from=${active}&index=${index}`
                 : `/post/${item.id}`;
               return (
-                <a key={item.id} href={postLink} className="group relative block overflow-hidden rounded-3xl border border-hairline bg-black/40 transition hover:border-gold">
+                <Link key={item.id} href={postLink} className="group relative block overflow-hidden rounded-3xl border border-hairline bg-black/40 transition hover:border-gold">
                   {preview ? (
                     <img src={preview} alt={item.caption || item.title || 'Post preview'} className="h-48 w-full object-cover transition duration-300 group-hover:scale-105" />
                   ) : (
@@ -139,7 +140,7 @@ export default function ProfileTabs({ profile, isOwn }: { profile: any; isOwn: b
                     <p className="truncate text-sm font-semibold text-ivory">{item.caption || item.title || 'Untitled'}</p>
                     <p className="text-xs text-slate">{item.handle || item.author || '@wimpex'}</p>
                   </div>
-                </a>
+                </Link>
               );
             })}
           </div>

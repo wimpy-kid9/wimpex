@@ -280,7 +280,7 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
         <div className="absolute inset-0 flex items-center justify-center bg-panel-900 text-slate">No media available.</div>
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
       <div className={`absolute left-3 top-3 flex items-center gap-3 rounded-3xl bg-black/60 px-3 py-2 backdrop-blur-sm ${variant === 'grid' ? 'max-w-[calc(100%-1.5rem)] scale-90 origin-top-left' : ''}`}>
         <Link href={postLink} className="flex items-center gap-3">

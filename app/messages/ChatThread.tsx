@@ -20,6 +20,9 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [draft, setDraft] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [notice, setNotice] = useState('');
+  const [loadingMessages, setLoadingMessages] = useState(true);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
+  const [hasEarlier, setHasEarlier] = useState(false);
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
@@ -59,15 +62,37 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   );
 
   const loadThread = useCallback(async () => {
-    const resp = await authedFetch(`/api/messages?conversation_id=${encodeURIComponent(conversationId)}`);
-    const payload = await resp.json();
-    if (!resp.ok) {
-      setNotice(payload.error || 'Unable to load messages.');
-      return;
+    setLoadingMessages(true);
+    try {
+      const resp = await authedFetch(`/api/messages?conversation_id=${encodeURIComponent(conversationId)}`);
+      const payload = await resp.json();
+      if (!resp.ok) {
+        setNotice(payload.error || 'Unable to load messages.');
+        return;
+      }
+      setMessages(payload.messages || []);
+      if (payload.conversation) setConversation(payload.conversation);
+      setHasEarlier(Boolean(payload.hasMore));
+    } finally {
+      setLoadingMessages(false);
     }
-    setMessages(payload.messages || []);
-    if (payload.conversation) setConversation(payload.conversation);
   }, [conversationId]);
+
+  const loadEarlier = useCallback(async () => {
+    const oldest = messages[0]?.created_at;
+    if (!oldest || loadingEarlier || !hasEarlier) return;
+    setLoadingEarlier(true);
+    try {
+      const response = await authedFetch(`/api/messages?conversation_id=${encodeURIComponent(conversationId)}&before=${encodeURIComponent(oldest)}`);
+      const payload = await response.json();
+      if (response.ok) {
+        setMessages((current) => [...(payload.messages || []), ...current]);
+        setHasEarlier(Boolean(payload.hasMore));
+      }
+    } finally {
+      setLoadingEarlier(false);
+    }
+  }, [conversationId, hasEarlier, loadingEarlier, messages]);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -465,14 +490,26 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
 
         <section className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-3xl border border-hairline bg-panel-2/70 shadow-inner shadow-black/10">
           <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-4">
+            {hasEarlier ? (
+              <button type="button" onClick={() => void loadEarlier()} disabled={loadingEarlier} className="mx-auto block rounded-full border border-hairline px-3 py-1 text-xs text-slate hover:bg-panel disabled:opacity-50">
+                {loadingEarlier ? 'Loading earlier…' : 'Load earlier messages'}
+              </button>
+            ) : null}
             {notice ? (
               <div className="rounded-3xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-100">{notice}</div>
             ) : null}
-            {messagesWithReply.length > 0 ? (
+            {loadingMessages && messagesWithReply.length === 0 ? (
+              <div className="space-y-4" aria-label="Loading messages">
+                <div className="h-16 w-2/3 animate-pulse rounded-3xl bg-panel" />
+                <div className="ml-auto h-16 w-1/2 animate-pulse rounded-3xl bg-gold/10" />
+                <div className="h-12 w-3/5 animate-pulse rounded-3xl bg-panel" />
+              </div>
+            ) : messagesWithReply.length > 0 ? (
               messagesWithReply.map((messageItem) => {
                 const incoming = messageItem.sender_id === conversation?.otherUser?.user_id;
                 const replyPreview = messageItem.replyPreview;
                 const isHighlighted = highlightedMessageId === messageItem.id;
+                const isCallLog = messageItem.media_type === 'call_log';
                 return (
                   <div
                     key={messageItem.id}
@@ -509,7 +546,12 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                           Replying to: {replyPreview.body ? `${replyPreview.body.slice(0, 80)}${replyPreview.body.length > 80 ? '…' : ''}` : 'Media message'}
                         </button>
                       ) : null}
-                      {messageItem.body ? <div>{renderRichText(messageItem.body || '', { className: 'break-words', linkClassName: 'text-sky-400 underline decoration-sky-400/80 underline-offset-2 hover:text-sky-300' })}</div> : null}
+                      {isCallLog ? (
+                        <div className="min-w-[180px] text-center">
+                          <p className="font-semibold text-ivory">{messageItem.metadata?.status === 'missed' ? 'Missed call' : incoming ? 'Incoming call' : 'Outgoing call'}</p>
+                          {messageItem.metadata?.duration != null ? <p className="mt-1 text-xs text-slate">Duration {Math.floor(messageItem.metadata.duration / 60)}:{String(messageItem.metadata.duration % 60).padStart(2, '0')}</p> : null}
+                        </div>
+                      ) : messageItem.body ? <div>{renderRichText(messageItem.body || '', { className: 'break-words', linkClassName: 'text-sky-400 underline decoration-sky-400/80 underline-offset-2 hover:text-sky-300' })}</div> : null}
                       {messageItem.media_url ? (
                         <div className="mt-3 overflow-hidden rounded-3xl border border-hairline bg-panel/80">
                           {messageItem.media_type?.startsWith('image') ? (

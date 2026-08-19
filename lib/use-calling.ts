@@ -36,7 +36,7 @@ export function useCalling(userId?: string) {
     try {
       await authedFetch(`/api/calls/${callId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: 'ended' })
+        body: JSON.stringify({ status: 'missed' })
       });
     } catch (err) {
       console.error('Error expiring unanswered call:', err);

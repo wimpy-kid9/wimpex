@@ -39,7 +39,7 @@ export default function FeedPage() {
       if (!userId) return setFollowingIds([]);
       const resp = await authedFetch(`/api/follow?user_id=${encodeURIComponent(userId)}&type=following`);
       const payload = await resp.json();
-      setFollowingIds(payload.following || []);
+      setFollowingIds((payload.following || []).map((profile: any) => profile.user_id));
     };
     void loadFollowing();
   }, []);

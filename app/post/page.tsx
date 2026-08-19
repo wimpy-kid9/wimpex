@@ -67,8 +67,13 @@ export default function CreatePostPage() {
   const [step, setStep] = useState<'media' | 'details'>('media');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recorderStreamRef = useRef<MediaStream | null>(null);
+  const recorderTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [audioTime, setAudioTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -197,6 +202,55 @@ export default function CreatePostPage() {
   const openFilePicker = () => {
     fileInputRef.current?.click();
   };
+
+  const stopRecording = () => {
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+      recorderRef.current.stop();
+    }
+  };
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setError('Camera recording is not available on this device.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4'].find((type) => MediaRecorder.isTypeSupported(type)) || '';
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        recorderStreamRef.current = null;
+        recorderRef.current = null;
+        if (recorderTimerRef.current) clearInterval(recorderTimerRef.current);
+        setIsRecording(false);
+        const type = recorder.mimeType || 'video/webm';
+        handleMediaChange(new File([new Blob(chunks, { type })], `recording-${Date.now()}.webm`, { type }));
+      };
+      recorderStreamRef.current = stream;
+      recorderRef.current = recorder;
+      setRecordingSeconds(0);
+      setIsRecording(true);
+      recorder.start();
+      recorderTimerRef.current = setInterval(() => {
+        setRecordingSeconds((seconds) => {
+          if (seconds + 1 >= 60) stopRecording();
+          return seconds + 1;
+        });
+      }, 1000);
+    } catch (recordingError) {
+      setError(recordingError instanceof Error ? recordingError.message : 'Unable to access the camera and microphone.');
+    }
+  };
+
+  useEffect(() => () => {
+    recorderStreamRef.current?.getTracks().forEach((track) => track.stop());
+    if (recorderTimerRef.current) clearInterval(recorderTimerRef.current);
+  }, []);
 
   const removeMedia = () => {
     setMediaFile(null);
@@ -374,7 +428,11 @@ export default function CreatePostPage() {
                       </div>
 
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-obsidian/95 via-obsidian/65 to-transparent px-4 py-4 sm:px-6">
-                        <label onDragOver={(event) => event.preventDefault()} onDrop={handleDrop} className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-hairline bg-panel/50 px-4 py-3 text-sm text-slate transition hover:bg-panel-2">
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                          <button type="button" onClick={isRecording ? stopRecording : startRecording} className="rounded-2xl bg-rose-500/20 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/30">
+                            {isRecording ? `Stop recording ${recordingSeconds}s / 60s` : 'Record'}
+                          </button>
+                          <label onDragOver={(event) => event.preventDefault()} onDrop={handleDrop} className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-hairline bg-panel/50 px-4 py-3 text-sm text-slate transition hover:bg-panel-2">
                           <input
                             ref={fileInputRef}
                             type="file"
@@ -383,7 +441,8 @@ export default function CreatePostPage() {
                             onChange={(event) => handleMediaChange(event.target.files?.[0] ?? null)}
                           />
                           {previewUrl ? 'Tap to change media' : 'Drop a photo or video or tap to choose'}
-                        </label>
+                          </label>
+                        </div>
                       </div>
                     </div>
 

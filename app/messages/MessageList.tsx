@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authedFetch } from '@/lib/api-client';
 import GoldBadge from '@/app/components/GoldBadge';
@@ -422,9 +423,10 @@ export default function MessageList() {
             const initials = other?.display_name?.charAt(0)?.toUpperCase() || other?.username?.charAt(0)?.toUpperCase() || 'C';
 
             return (
-              <button
+              <Link
                 key={conversation.id}
-                type="button"
+                prefetch
+                href={`/messages/${conversation.id}`}
                 onClick={() => openConversation(conversation.id)}
                 className="group flex w-full items-start gap-4 rounded-3xl border border-hairline bg-panel-2/70 px-4 py-4 text-left transition hover:border-gold hover:bg-panel/80"
               >
@@ -450,7 +452,7 @@ export default function MessageList() {
                     </div>
                   ) : null}
                 </div>
-              </button>
+              </Link>
             );
           })
         ) : (

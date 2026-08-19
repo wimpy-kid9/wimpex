@@ -20,21 +20,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get or create conversation between sender and recipient
-    let { data: conversation, error: convError } = await supabaseServer
-      .from('wpx_conversations')
-      .select('id, participant_ids')
-      .contains('participant_ids', [userId, recipientId])
-      .single();
+    const { data: senderMemberships, error: senderMembershipError } = await supabaseServer
+      .from('wpx_conversation_members')
+      .select('conversation_id')
+      .eq('user_id', userId);
+    const { data: recipientMemberships, error: recipientMembershipError } = await supabaseServer
+      .from('wpx_conversation_members')
+      .select('conversation_id')
+      .eq('user_id', recipientId);
+    if (senderMembershipError || recipientMembershipError) {
+      return NextResponse.json({ error: 'Failed to find conversation' }, { status: 500 });
+    }
 
-    if (convError || !conversation) {
-      // Create new conversation
-      const participantIds = [userId, recipientId].sort();
+    const recipientConversationIds = new Set((recipientMemberships || []).map((row: any) => row.conversation_id));
+    const existingConversationId = (senderMemberships || [])
+      .map((row: any) => row.conversation_id)
+      .find((id: string) => recipientConversationIds.has(id));
+    let conversation = existingConversationId ? { id: existingConversationId } : null;
+
+    if (!conversation) {
       const { data: newConv, error: createError } = await supabaseServer
         .from('wpx_conversations')
-        .insert({
-          participant_ids: participantIds
-        })
+        .insert({ type: 'direct', title: 'Direct message' })
         .select()
         .single();
 
@@ -44,7 +51,16 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+      const { error: memberError } = await supabaseServer.from('wpx_conversation_members').insert([
+        { conversation_id: newConv.id, user_id: userId },
+        { conversation_id: newConv.id, user_id: recipientId }
+      ]);
+      if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 });
       conversation = newConv;
+    }
+
+    if (!conversation) {
+      return NextResponse.json({ error: 'Failed to resolve conversation' }, { status: 500 });
     }
 
     // Get the post to include in message

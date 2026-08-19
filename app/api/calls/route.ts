@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { hasAcceptedConnection } from '@/lib/connections';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 import { createNotification } from '@/lib/notifications';
+import { recordCallLog } from '@/lib/call-log';
 
 function normalizeStatus(value: string) {
   if (value === 'active') return 'active';
@@ -18,12 +19,33 @@ export async function GET(request: NextRequest) {
   try {
     const authContext = await requireAuth(request);
     const cutoff = new Date(Date.now() - 60_000).toISOString();
-    await supabaseServer
+    const { data: staleCalls } = await supabaseServer
       .from('wpx_calls')
-      .update({ status: 'ended', ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .select('*')
       .or(`caller_id.eq.${authContext.user.id},callee_id.eq.${authContext.user.id}`)
       .in('status', ['ringing', 'pending'])
       .lt('created_at', cutoff);
+    for (const staleCall of staleCalls || []) {
+      const endedAt = new Date().toISOString();
+      const { data: missedCall } = await supabaseServer
+        .from('wpx_calls')
+        .update({ status: 'missed', ended_at: endedAt, updated_at: endedAt })
+        .eq('id', staleCall.id)
+        .select()
+        .single();
+      if (missedCall) {
+        await createNotification({
+          userId: missedCall.callee_id,
+          actorId: missedCall.caller_id,
+          type: 'missed_call',
+          resourceType: 'call',
+          resourceId: missedCall.id,
+          metadata: { call_id: missedCall.id, room_id: missedCall.room_id },
+          push: { title: 'Missed call', body: 'You missed a call.', url: `/calls?call_id=${missedCall.id}`, tag: `missed-call-${missedCall.id}` }
+        });
+        await recordCallLog(missedCall);
+      }
+    }
     const { data, error } = await supabaseServer
       .from('wpx_calls')
       .select('*')
@@ -192,14 +214,18 @@ export async function PATCH(request: NextRequest) {
 
     if (nextStatus === 'missed') {
       await createNotification({
-        userId: data.caller_id,
-        actorId: data.callee_id,
+        userId: data.callee_id,
+        actorId: data.caller_id,
         type: 'missed_call',
         resourceType: 'call',
         resourceId: data.id,
         metadata: { call_id: data.id, room_id: data.room_id },
         push: { title: 'Missed call', body: 'You missed a call.', url: `/calls?call_id=${data.id}`, tag: `missed-call-${data.id}` }
       });
+    }
+
+    if (['ended', 'missed', 'declined'].includes(nextStatus)) {
+      await recordCallLog(data);
     }
 
     return NextResponse.json({ call: data });

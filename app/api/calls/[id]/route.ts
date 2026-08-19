@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 import { createNotification } from '@/lib/notifications';
+import { recordCallLog } from '@/lib/call-log';
 
 function normalizeStatus(value: string) {
   if (value === 'active') return 'active';
@@ -105,14 +106,18 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     if (nextStatus === 'missed') {
       await createNotification({
-        userId: data.caller_id,
-        actorId: data.callee_id,
+        userId: data.callee_id,
+        actorId: data.caller_id,
         type: 'missed_call',
         resourceType: 'call',
         resourceId: data.id,
         metadata: { call_id: data.id, room_id: data.room_id },
         push: { title: 'Missed call', body: 'You missed a call.', url: `/calls?call_id=${data.id}`, tag: `missed-call-${data.id}` }
       });
+    }
+
+    if (['ended', 'missed', 'declined'].includes(nextStatus)) {
+      await recordCallLog(data);
     }
 
     return NextResponse.json({ call: data });
