@@ -520,6 +520,12 @@ export async function POST(request: NextRequest) {
   await supabaseServer.from('wpx_conversations').update({ last_activity_at: new Date().toISOString() }).eq('id', conversationData.id);
 
   const notifyIds = recipients.length > 0 ? recipients : [body.recipient_id];
+  const { data: senderProfile } = await supabaseServer
+    .from('wpx_profiles')
+    .select('username, display_name')
+    .eq('user_id', authContext.user.id)
+    .maybeSingle();
+  const senderName = senderProfile?.display_name || senderProfile?.username || 'Someone';
   for (const recipientId of notifyIds.filter((id: string) => id && id !== authContext.user.id)) {
     await createNotification({
       userId: recipientId,
@@ -529,10 +535,12 @@ export async function POST(request: NextRequest) {
       resourceId: messageData.id,
       metadata: { conversation_id: conversationData.id },
       push: {
-        title: 'New message',
+        title: senderName,
         body: textBody || 'You received a new message.',
         url: `/messages?conversation_id=${conversationData.id}`,
-        tag: `message-${conversationData.id}`
+        tag: `message-${conversationData.id}`,
+        channelId: 'wimpex-messages',
+        data: { type: 'message', conversationId: conversationData.id, senderId: authContext.user.id }
       }
     });
   }

@@ -19,6 +19,9 @@ export interface PushNotificationOptions {
   tag?: string;
   requireInteraction?: boolean;
   url?: string;
+  channelId?: string;
+  sound?: string;
+  data?: Record<string, string>;
 }
 
 /**
@@ -52,9 +55,18 @@ async function sendFcmToUser(userId: string, options: PushNotificationOptions) {
           title: options.title,
           body: options.body
         },
-        data: options.url ? { url: options.url } : undefined,
-        android: { priority: 'high' as const },
-        apns: { headers: { 'apns-priority': '10' } }
+        data: {
+          ...(options.data || {}),
+          ...(options.url ? { url: options.url } : {})
+        },
+        android: {
+          priority: 'high' as const,
+          notification: {
+            sound: options.sound || 'default',
+            channelId: options.channelId || 'wimpex-default'
+          }
+        },
+        apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: options.sound || 'default' } } }
       })
     )
   );
@@ -115,7 +127,8 @@ export async function sendPushToUser(userId: string, options: PushNotificationOp
       badge: options.badge,
       tag: options.tag,
       requireInteraction: options.requireInteraction,
-      url: options.url
+      url: options.url,
+      data: options.data
     });
 
     // Send notification to each subscription

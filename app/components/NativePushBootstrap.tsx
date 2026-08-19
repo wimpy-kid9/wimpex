@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications, type Token, type PushNotificationSchema, type ActionPerformed } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { useRouter } from 'next/navigation';
 import type { AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -54,6 +55,28 @@ export default function NativePushBootstrap() {
         return;
       }
 
+      const localPermission = await LocalNotifications.checkPermissions();
+      if (localPermission.display === 'prompt') {
+        await LocalNotifications.requestPermissions();
+      }
+
+      await LocalNotifications.createChannel({
+        id: 'wimpex-calls',
+        name: 'Calls',
+        description: 'Incoming and missed calls',
+        importance: 5,
+        sound: 'default',
+        vibration: true
+      });
+      await LocalNotifications.createChannel({
+        id: 'wimpex-messages',
+        name: 'Messages',
+        description: 'New direct and group messages',
+        importance: 4,
+        sound: 'default',
+        vibration: true
+      });
+
       if (cancelled) return;
       // Safe to call again on every sign-in: it just re-delivers the
       // current token to the 'registration' listener below, which is how
@@ -79,8 +102,19 @@ export default function NativePushBootstrap() {
     // simple ourselves — swap this for a toast/in-app banner if you have one.
     const receivedListener = PushNotifications.addListener(
       'pushNotificationReceived',
-      (notification: PushNotificationSchema) => {
-        console.log('Push received in foreground', notification);
+      async (notification: PushNotificationSchema) => {
+        const data = notification.data || {};
+        const isCall = data.type === 'incoming_call';
+        await LocalNotifications.schedule({
+          notifications: [{
+            id: Math.floor(Date.now() % 2147483647),
+            title: notification.title || (isCall ? 'Incoming call' : 'New notification'),
+            body: notification.body || '',
+            channelId: isCall ? 'wimpex-calls' : 'wimpex-messages',
+            sound: 'default',
+            extra: data
+          }]
+        });
       }
     );
 

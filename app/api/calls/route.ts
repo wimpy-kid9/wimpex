@@ -90,19 +90,28 @@ export async function POST(request: NextRequest) {
     }
 
     if (data) {
+      const { data: callerProfile } = await supabaseServer
+        .from('wpx_profiles')
+        .select('username, display_name')
+        .eq('user_id', authContext.user.id)
+        .maybeSingle();
+      const callerName = callerProfile?.display_name || callerProfile?.username || 'Someone';
       await createNotification({
         userId: callee_id,
         actorId: authContext.user.id,
         type: 'incoming_call',
         resourceType: 'call',
         resourceId: data.id,
-        metadata: { call_id: data.id, room_id: data.room_id, call_type },
+        metadata: { call_id: data.id, room_id: data.room_id, call_type, caller_name: callerName },
         push: {
-          title: call_type === 'video' ? 'Incoming video call' : 'Incoming call',
-          body: 'You have an incoming call.',
+          title: callerName,
+          body: call_type === 'video' ? 'Incoming video call' : 'Incoming voice call',
           url: `/calls?call_id=${data.id}`,
           tag: `call-${data.id}`,
-          requireInteraction: true
+          requireInteraction: true,
+          channelId: 'wimpex-calls',
+          sound: 'default',
+          data: { type: 'incoming_call', callId: data.id, callerId: authContext.user.id, callerName }
         }
       });
     }
