@@ -105,6 +105,9 @@ export default function NativePushBootstrap() {
       async (notification: PushNotificationSchema) => {
         const data = notification.data || {};
         const isCall = data.type === 'incoming_call';
+        if (!isCall) {
+          return;
+        }
         const notificationId = Math.floor(Date.now() % 2147483647);
         await LocalNotifications.schedule({
           notifications: [{

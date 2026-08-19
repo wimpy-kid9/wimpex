@@ -81,6 +81,9 @@ public class IncomingCallMessagingService extends FirebaseMessagingService {
     }
 
     private void showMessageNotification(RemoteMessage message) {
+        if (MainActivity.isAppForeground()) {
+            return;
+        }
         createMessageChannel();
 
         String title = message.getNotification() != null ? message.getNotification().getTitle() : null;
