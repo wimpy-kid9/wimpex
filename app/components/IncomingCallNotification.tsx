@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { authedFetch } from '@/lib/api-client';
+
+const CallAudio = registerPlugin<{ stopRingtone: () => Promise<void> }>('CallAudio');
 
 export interface IncomingCallNotificationProps {
   callId: string;
@@ -56,6 +59,7 @@ export default function IncomingCallNotification({
   const handleAccept = async () => {
     setResponding(true);
     try {
+      if (Capacitor.isNativePlatform()) await CallAudio.stopRingtone();
       await onAccept(callId);
     } finally {
       setResponding(false);
@@ -65,6 +69,7 @@ export default function IncomingCallNotification({
   const handleDecline = async () => {
     setResponding(true);
     try {
+      if (Capacitor.isNativePlatform()) await CallAudio.stopRingtone();
       await onDecline(callId);
     } finally {
       setResponding(false);

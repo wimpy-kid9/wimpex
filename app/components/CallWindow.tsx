@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { getRTCConfig } from '@/lib/webrtc-config';
 import { authedFetch } from '@/lib/api-client';
+
+const CallAudio = registerPlugin<{ stopRingtone: () => Promise<void> }>('CallAudio');
 
 export interface CallProps {
   roomUrl: string;
@@ -230,6 +233,7 @@ export default function CallWindow({
 
     const initializeCall = async () => {
       try {
+        if (Capacitor.isNativePlatform()) await CallAudio.stopRingtone();
         // Audio-only calls never request the camera.
         const localStream = await navigator.mediaDevices.getUserMedia({
           audio: true,

@@ -519,7 +519,19 @@ export async function POST(request: NextRequest) {
 
   await supabaseServer.from('wpx_conversations').update({ last_activity_at: new Date().toISOString() }).eq('id', conversationData.id);
 
-  const notifyIds = recipients.length > 0 ? recipients : [body.recipient_id];
+  let notifyIds: string[];
+  if (conversationId) {
+    const { data: conversationMembers, error: conversationMembersError } = await supabaseServer
+      .from('wpx_conversation_members')
+      .select('user_id')
+      .eq('conversation_id', conversationId);
+    if (conversationMembersError) {
+      return NextResponse.json({ error: conversationMembersError.message }, { status: 500 });
+    }
+    notifyIds = (conversationMembers || []).map((member: any) => member.user_id);
+  } else {
+    notifyIds = recipients.length > 0 ? recipients : [body.recipient_id];
+  }
   const { data: senderProfile } = await supabaseServer
     .from('wpx_profiles')
     .select('username, display_name')

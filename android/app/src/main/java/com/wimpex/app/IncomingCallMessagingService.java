@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.RingtoneManager;
 import android.media.Ringtone;
 import android.net.Uri;
@@ -22,6 +23,8 @@ public class IncomingCallMessagingService extends FirebaseMessagingService {
     private static final String MESSAGE_CHANNEL_ID = "wimpex-messages";
     private static final int NOTIFICATION_ID = 7401;
     private static Ringtone activeRingtone;
+    private static AudioManager audioManager;
+    private static AudioManager.OnAudioFocusChangeListener audioFocusListener;
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage message) {
@@ -70,13 +73,20 @@ public class IncomingCallMessagingService extends FirebaseMessagingService {
             manager.notify(NOTIFICATION_ID, notification);
         }
 
-        Uri ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-        activeRingtone = RingtoneManager.getRingtone(this, ringtoneUri);
-        if (activeRingtone != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                activeRingtone.setLooping(true);
+        if (!MainActivity.isAppForeground()) {
+            audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+            audioFocusListener = focusChange -> { };
+            if (audioManager != null) {
+                audioManager.requestAudioFocus(audioFocusListener, AudioManager.STREAM_RING, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
             }
-            activeRingtone.play();
+            Uri ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+            activeRingtone = RingtoneManager.getRingtone(this, ringtoneUri);
+            if (activeRingtone != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    activeRingtone.setLooping(true);
+                }
+                activeRingtone.play();
+            }
         }
     }
 
@@ -130,6 +140,11 @@ public class IncomingCallMessagingService extends FirebaseMessagingService {
             activeRingtone.stop();
         }
         activeRingtone = null;
+        if (audioManager != null && audioFocusListener != null) {
+            audioManager.abandonAudioFocus(audioFocusListener);
+            audioManager = null;
+            audioFocusListener = null;
+        }
     }
 
     @Override

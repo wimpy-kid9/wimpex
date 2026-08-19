@@ -22,6 +22,7 @@ public class MainActivity extends BridgeActivity {
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
+		registerPlugin(CallAudioPlugin.class);
 		super.onCreate(savedInstanceState);
 		getBridge().getWebView().setWebChromeClient(new BridgeWebChromeClient(getBridge()) {
 			@Override
