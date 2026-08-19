@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
 import AuthActionPrompt from '@/app/components/AuthActionPrompt';
+import { useAudioMixer } from '@/lib/use-audio-mixer';
 
 const FILTER_PRESETS = [
   { key: 'none', label: 'None', description: 'Natural colors' },
@@ -69,11 +70,16 @@ export default function CreatePostPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recorderStreamRef = useRef<MediaStream | null>(null);
+  const cameraPreviewRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const recorderTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [audioTime, setAudioTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [cameraArmed, setCameraArmed] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const { mixAudio, isProcessing: isMixing, progress: mixProgress, error: mixError } = useAudioMixer();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -200,7 +206,74 @@ export default function CreatePostPage() {
   };
 
   const openFilePicker = () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setCameraArmed(false);
     fileInputRef.current?.click();
+  };
+
+  const armCamera = async (requestedFacingMode = facingMode) => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('Camera access is not available on this device.');
+      return false;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: requestedFacingMode }, audio: true });
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = stream;
+      setCameraArmed(true);
+      if (cameraPreviewRef.current) {
+        cameraPreviewRef.current.srcObject = stream;
+        await cameraPreviewRef.current.play().catch(() => undefined);
+      }
+      return true;
+    } catch (cameraError) {
+      setError(cameraError instanceof Error ? cameraError.message : 'Unable to access the camera and microphone.');
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    const preview = cameraPreviewRef.current;
+    if (!preview) return;
+    preview.srcObject = cameraStreamRef.current;
+    if (cameraStreamRef.current) void preview.play().catch(() => undefined);
+  }, [cameraArmed]);
+
+  const toggleCamera = async () => {
+    if (isRecording) return;
+    const nextFacingMode = facingMode === 'user' ? 'environment' : 'user';
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setFacingMode(nextFacingMode);
+    await armCamera(nextFacingMode);
+  };
+
+  const takePhoto = async () => {
+    if (!cameraStreamRef.current && !(await armCamera())) return;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const preview = cameraPreviewRef.current;
+    if (!preview) return;
+    if (preview.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      await new Promise<void>((resolve) => {
+        const handleLoaded = () => {
+          preview.removeEventListener('loadeddata', handleLoaded);
+          resolve();
+        };
+        preview.addEventListener('loadeddata', handleLoaded, { once: true });
+      });
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = preview.videoWidth || 1080;
+    canvas.height = preview.videoHeight || 1920;
+    canvas.getContext('2d')?.drawImage(preview, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      handleMediaChange(new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+      setCameraArmed(false);
+    }, 'image/jpeg', 0.92);
   };
 
   const stopRecording = () => {
@@ -215,7 +288,9 @@ export default function CreatePostPage() {
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      if (!cameraStreamRef.current && !(await armCamera())) return;
+      const stream = cameraStreamRef.current;
+      if (!stream) return;
       const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4'].find((type) => MediaRecorder.isTypeSupported(type)) || '';
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       const chunks: Blob[] = [];
@@ -225,9 +300,11 @@ export default function CreatePostPage() {
       recorder.onstop = () => {
         stream.getTracks().forEach((track) => track.stop());
         recorderStreamRef.current = null;
+        cameraStreamRef.current = null;
         recorderRef.current = null;
         if (recorderTimerRef.current) clearInterval(recorderTimerRef.current);
         setIsRecording(false);
+        setCameraArmed(false);
         const type = recorder.mimeType || 'video/webm';
         handleMediaChange(new File([new Blob(chunks, { type })], `recording-${Date.now()}.webm`, { type }));
       };
@@ -249,10 +326,14 @@ export default function CreatePostPage() {
 
   useEffect(() => () => {
     recorderStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
     if (recorderTimerRef.current) clearInterval(recorderTimerRef.current);
   }, []);
 
   const removeMedia = () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setCameraArmed(false);
     setMediaFile(null);
     setPreviewUrl(null);
     setSelectedTrack(null);
@@ -285,17 +366,21 @@ export default function CreatePostPage() {
     setBusy(true);
     setError('');
 
-    // The selected audio track rides along as metadata on the post (title,
-    // artist, preview URL, cover art — all appended below) rather than
-    // being baked into the media file. Trying to physically mix it into
-    // the upload previously ran the raw video blob through
-    // AudioContext.decodeAudioData, which only accepts audio-only files
-    // and rejects on real video containers — every post with an attached
-    // track failed here with "Unable to process the selected audio
-    // track." The upload below stays a straight passthrough of the
-    // original file; PostCard already renders the track name/artist as a
-    // badge rather than expecting it mixed into the audio.
-    const mediaToUpload: File | Blob = mediaFile ?? new Blob();
+    let mediaToUpload: File | Blob = mediaFile ?? new Blob();
+    if (mediaFile && mediaType === 'video' && selectedTrack?.preview_url) {
+      try {
+        const mixedBlob = await mixAudio(mediaFile, selectedTrack.preview_url, 0.7);
+        if (mixedBlob.type.startsWith('video/')) {
+          mediaToUpload = new File([mixedBlob], mediaFile.name, { type: mixedBlob.type });
+        } else {
+          setError('Audio mixing returned no video container; the original video will be uploaded.');
+        }
+      } catch (mixingError) {
+        setError(mixingError instanceof Error ? mixingError.message : 'Unable to mix the selected audio track.');
+        setBusy(false);
+        return;
+      }
+    }
 
     const formData = new FormData();
     if (mediaToUpload && mediaToUpload.size > 0) {
@@ -395,7 +480,16 @@ export default function CreatePostPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="overflow-hidden rounded-[2rem] border border-hairline bg-panel-2/70">
                     <div className="relative aspect-[9/16] min-h-[320px] overflow-hidden bg-panel/70 sm:aspect-[4/5] lg:min-h-[520px]">
-                      {previewUrl ? (
+                      {cameraArmed && !previewUrl ? (
+                        <div className="absolute inset-0">
+                          <video ref={cameraPreviewRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+                          <div className="absolute inset-x-0 top-4 flex justify-end px-4">
+                            <button type="button" onClick={() => void toggleCamera()} disabled={isRecording} className="rounded-full bg-black/60 px-3 py-2 text-sm font-semibold text-ivory disabled:opacity-50" aria-label="Switch camera">
+                              Flip camera
+                            </button>
+                          </div>
+                        </div>
+                      ) : previewUrl ? (
                         <div className={`absolute inset-0 ${filterClasses[filterPreset]}`}>
                           {mediaType === 'image' ? (
                             <img src={previewUrl} alt={draft || 'Post preview'} className="h-full w-full object-cover" />
@@ -429,9 +523,10 @@ export default function CreatePostPage() {
 
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-obsidian/95 via-obsidian/65 to-transparent px-4 py-4 sm:px-6">
                         <div className="flex flex-wrap items-center justify-center gap-2">
-                          <button type="button" onClick={isRecording ? stopRecording : startRecording} className="rounded-2xl bg-rose-500/20 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/30">
-                            {isRecording ? `Stop recording ${recordingSeconds}s / 60s` : 'Record'}
+                          <button type="button" onClick={() => isRecording ? stopRecording() : cameraArmed ? void startRecording() : void armCamera()} className="rounded-2xl bg-rose-500/20 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/30">
+                            {isRecording ? `Stop recording ${recordingSeconds}s / 60s` : cameraArmed ? 'Start recording' : 'Record'}
                           </button>
+                          <button type="button" onClick={() => void takePhoto()} disabled={isRecording} className="rounded-2xl bg-ivory/10 px-4 py-3 text-sm font-semibold text-ivory disabled:opacity-50">Take photo</button>
                           <label onDragOver={(event) => event.preventDefault()} onDrop={handleDrop} className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-hairline bg-panel/50 px-4 py-3 text-sm text-slate transition hover:bg-panel-2">
                           <input
                             ref={fileInputRef}
@@ -585,6 +680,8 @@ export default function CreatePostPage() {
                       {error ? (
                         <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p>
                       ) : null}
+                      {mixError ? <p className="text-sm text-rose-200">{mixError}</p> : null}
+                      {isMixing ? <p className="text-sm text-gold">Mixing audio… {mixProgress}%</p> : null}
 
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-sm text-slate">Posting uses the same upload logic as the feed composer.</p>
@@ -600,7 +697,7 @@ export default function CreatePostPage() {
                             <button
                               type="submit"
                               className={`rounded-full bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
-                              disabled={busy}
+                              disabled={busy || isMixing}
                             >
                               {busy ? 'Publishing…' : editingId ? 'Update post' : 'Publish post'}
                             </button>

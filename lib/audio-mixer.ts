@@ -12,49 +12,75 @@ export async function mixAudioWithVideo(
   audioTrackUrl: string,
   audioVolume: number = 0.7
 ): Promise<Blob> {
+  const video = document.createElement('video');
+  const trackAudio = document.createElement('audio');
+  const videoUrl = URL.createObjectURL(videoBlob);
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
 
   try {
-    // Load video audio
-    const videoArrayBuffer = await videoBlob.arrayBuffer();
-    const videoAudioBuffer = await audioContext.decodeAudioData(videoArrayBuffer);
-
-    // Fetch and load audio track
-    const response = await fetch(audioTrackUrl);
-    const trackArrayBuffer = await response.arrayBuffer();
-    const trackAudioBuffer = await audioContext.decodeAudioData(trackArrayBuffer);
-
-    // Create mix buffer with same sample rate and length as video
-    const sampleRate = audioContext.sampleRate;
-    const videoChannels = videoAudioBuffer.numberOfChannels;
-    const trackChannels = trackAudioBuffer.numberOfChannels;
-    const channels = Math.max(videoChannels, trackChannels);
-    const length = videoAudioBuffer.length;
-
-    const mixBuffer = audioContext.createBuffer(channels, length, sampleRate);
-
-    // Mix the audio
-    for (let ch = 0; ch < channels; ch++) {
-      const mixData = mixBuffer.getChannelData(ch);
-      const videoData = videoAudioBuffer.getChannelData(ch) || new Float32Array(length);
-      const trackData = trackAudioBuffer.getChannelData(Math.min(ch, trackChannels - 1)) || new Float32Array(length);
-
-      for (let i = 0; i < length; i++) {
-        // Mix: video at full volume + track at specified volume
-        mixData[i] = videoData[i] + trackData[i] * audioVolume;
-
-        // Soft clipping to prevent distortion
-        if (mixData[i] > 1) mixData[i] = 1;
-        if (mixData[i] < -1) mixData[i] = -1;
-      }
+    const captureStream = (video as HTMLVideoElement & { captureStream?: () => MediaStream }).captureStream;
+    if (!captureStream || typeof MediaRecorder === 'undefined') {
+      throw new Error('This browser cannot create a mixed video recording.');
     }
 
-    // Convert mix buffer to WAV blob
-    const wavBlob = await audioBufferToWav(mixBuffer);
-    return wavBlob;
+    video.src = videoUrl;
+    video.preload = 'auto';
+    video.muted = true;
+    video.playsInline = true;
+    trackAudio.src = audioTrackUrl;
+    trackAudio.crossOrigin = 'anonymous';
+    trackAudio.loop = true;
+    trackAudio.volume = 1;
+
+    await Promise.all([
+      new Promise<void>((resolve, reject) => {
+        video.onloadedmetadata = () => resolve();
+        video.onerror = () => reject(new Error('Unable to read the video for audio mixing.'));
+      }),
+      new Promise<void>((resolve, reject) => {
+        trackAudio.onloadedmetadata = () => resolve();
+        trackAudio.onerror = () => reject(new Error('Unable to load the selected audio track.'));
+      })
+    ]);
+
+    await audioContext.resume();
+    const videoSource = audioContext.createMediaElementSource(video);
+    const trackSource = audioContext.createMediaElementSource(trackAudio);
+    const trackGain = audioContext.createGain();
+    trackGain.gain.value = audioVolume;
+    const destination = audioContext.createMediaStreamDestination();
+    videoSource.connect(destination);
+    trackSource.connect(trackGain);
+    trackGain.connect(destination);
+
+    const videoStream = captureStream.call(video);
+    const mixedStream = new MediaStream([
+      ...videoStream.getVideoTracks(),
+      ...destination.stream.getAudioTracks()
+    ]);
+    const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4'].find((type) => MediaRecorder.isTypeSupported(type)) || '';
+    const recorder = new MediaRecorder(mixedStream, mimeType ? { mimeType } : undefined);
+    const chunks: Blob[] = [];
+    const recording = new Promise<Blob>((resolve, reject) => {
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onerror = () => reject(new Error('Unable to record the mixed video.'));
+      recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType || 'video/webm' }));
+    });
+
+    recorder.start();
+    await Promise.all([video.play(), trackAudio.play()]);
+    await new Promise<void>((resolve) => {
+      video.onended = () => resolve();
+    });
+    if (recorder.state !== 'inactive') recorder.stop();
+    return await recording;
   } finally {
-    // Cleanup
-    audioContext.close();
+    video.pause();
+    trackAudio.pause();
+    URL.revokeObjectURL(videoUrl);
+    await audioContext.close();
   }
 }
 

@@ -164,6 +164,13 @@ export default function CallWindow({
   }, [connectionState]);
 
   useEffect(() => {
+    if (!loading && localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+      void localVideoRef.current.play().catch(() => undefined);
+    }
+  }, [loading, isVideoOn]);
+
+  useEffect(() => {
     stoppedRef.current = false;
 
     const sendSignal = async (signal_type: CallSignal['signal_type'], payload: any) => {
