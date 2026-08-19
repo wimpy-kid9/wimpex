@@ -70,13 +70,17 @@ export async function POST(request: NextRequest) {
       .eq('id', postId)
       .single();
 
+    if (!post) {
+      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    }
+
     // Create "shared post" message
     const { data: message, error: messageError } = await supabaseServer
       .from('wpx_messages')
       .insert({
         conversation_id: conversation.id,
         sender_id: userId,
-        body: `Shared a video: ${post?.caption || 'Check this out!'}`,
+        body: `Shared a post: ${post.caption || 'Check this out!'}`,
         shared_post_id: postId
       })
       .select()

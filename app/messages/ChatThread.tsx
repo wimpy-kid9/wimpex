@@ -512,6 +512,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                 const replyPreview = messageItem.replyPreview;
                 const isHighlighted = highlightedMessageId === messageItem.id;
                 const isCallLog = messageItem.media_type === 'call_log';
+                const sharedPost = messageItem.sharedPost;
                 return (
                   <div
                     key={messageItem.id}
@@ -548,7 +549,26 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                           Replying to: {replyPreview.body ? `${replyPreview.body.slice(0, 80)}${replyPreview.body.length > 80 ? '…' : ''}` : 'Media message'}
                         </button>
                       ) : null}
-                      {isCallLog ? (
+                      {sharedPost ? (
+                        <Link
+                          href={`/post/${messageItem.shared_post_id}`}
+                          onClick={(event) => event.stopPropagation()}
+                          className="block min-w-[220px] overflow-hidden rounded-2xl border border-hairline bg-panel/80 transition hover:border-gold"
+                        >
+                          {sharedPost.thumbnail_url || sharedPost.image_url || sharedPost.video_url ? (
+                            <img
+                              src={sharedPost.thumbnail_url || sharedPost.image_url || sharedPost.video_url}
+                              alt={sharedPost.caption || 'Shared post'}
+                              className="h-32 w-full object-cover"
+                            />
+                          ) : null}
+                          <div className="p-3">
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-gold">Shared post</p>
+                            <p className="mt-1 line-clamp-2 text-sm text-ivory">{sharedPost.caption || 'View shared post'}</p>
+                            {sharedPost.author ? <p className="mt-1 text-xs text-slate">{sharedPost.author.display_name || sharedPost.author.username || 'WIMPEX user'}</p> : null}
+                          </div>
+                        </Link>
+                      ) : isCallLog ? (
                         <div className="min-w-[180px] text-center">
                           <p className="font-semibold text-ivory">{messageItem.metadata?.status === 'missed' ? 'Missed call' : incoming ? 'Incoming call' : 'Outgoing call'}</p>
                           {messageItem.metadata?.duration != null ? <p className="mt-1 text-xs text-slate">Duration {Math.floor(messageItem.metadata.duration / 60)}:{String(messageItem.metadata.duration % 60).padStart(2, '0')}</p> : null}

@@ -211,6 +211,39 @@ export async function GET(request: NextRequest) {
 
     const replyMessageMap = new Map((replyMessages || []).map((reply: any) => [reply.id, reply]));
 
+    const sharedPostIds = Array.from(
+      new Set(
+        (messages || [])
+          .map((message: any) => message.shared_post_id)
+          .filter((id: string | null): id is string => Boolean(id))
+      )
+    );
+    const { data: sharedPosts, error: sharedPostsError } = sharedPostIds.length
+      ? await supabaseServer
+        .from('wpx_posts')
+        .select('id, caption, video_url, image_url, thumbnail_url, author_id')
+        .in('id', sharedPostIds)
+      : { data: [], error: null };
+
+    if (sharedPostsError) {
+      return NextResponse.json({ error: sharedPostsError.message }, { status: 500 });
+    }
+
+    const sharedAuthorIds = Array.from(new Set((sharedPosts || []).map((post: any) => post.author_id).filter(Boolean)));
+    const { data: sharedAuthors } = sharedAuthorIds.length
+      ? await supabaseServer
+        .from('wpx_profiles')
+        .select('user_id, username, display_name')
+        .in('user_id', sharedAuthorIds)
+      : { data: [] };
+    const sharedPostMap = new Map((sharedPosts || []).map((post: any) => [
+      post.id,
+      {
+        ...post,
+        author: (sharedAuthors || []).find((author: any) => author.user_id === post.author_id) || null
+      }
+    ]));
+
     const { data: reactions, error: reactionsError } = await supabaseServer
       .from('wpx_message_reactions')
       .select('message_id, emoji, user_id')
@@ -236,6 +269,7 @@ export async function GET(request: NextRequest) {
     const messagesWithReactions = (messages || []).map((message: any) => ({
       ...message,
       replyPreview: message.reply_to_message_id ? replyMessageMap.get(message.reply_to_message_id) ?? null : null,
+      sharedPost: message.shared_post_id ? sharedPostMap.get(message.shared_post_id) ?? null : null,
       reactions: reactionGroups[message.id] || {}
     }));
 
