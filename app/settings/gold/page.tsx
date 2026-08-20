@@ -40,6 +40,10 @@ export default function GoldSettingsPage() {
   const [streak, setStreak] = useState<any>(null);
   const [theme, setTheme] = useState<ThemeName>('gold');
   const [sound, setSound] = useState('default');
+  const [digestNotifications, setDigestNotifications] = useState(false);
+  const [quietStart, setQuietStart] = useState('');
+  const [quietEnd, setQuietEnd] = useState('');
+  const [links, setLinks] = useState<Array<{ label: string; url: string }>>([]);
   const [tab, setTab] = useState('Appearance');
   const [notice, setNotice] = useState('');
 
@@ -62,6 +66,10 @@ export default function GoldSettingsPage() {
       setIsGold(gold);
       setTheme(profilePayload.profile?.theme_preference || 'gold');
       setSound(profilePayload.profile?.notification_sound || 'default');
+      setDigestNotifications(Boolean(profilePayload.profile?.digest_notifications));
+      setQuietStart(profilePayload.profile?.quiet_hours_start?.slice?.(0, 5) || '');
+      setQuietEnd(profilePayload.profile?.quiet_hours_end?.slice?.(0, 5) || '');
+      setLinks(Array.isArray(profilePayload.profile?.custom_links) ? profilePayload.profile.custom_links : []);
       setConversations(messagesPayload.conversations || []);
       setPosts(postsPayload.posts || []);
       setLoading(false);
@@ -90,6 +98,27 @@ export default function GoldSettingsPage() {
   const unpin = async (conversationId: string) => {
     const response = await authedFetch('/api/messages/pin', { method: 'PATCH', body: JSON.stringify({ conversationId, pinned: false }) });
     if (response.ok) setConversations((current) => current.map((item) => item.id === conversationId ? { ...item, pinnedAt: null } : item));
+  };
+
+  const saveNotificationControls = async (next: Record<string, unknown>) => {
+    const response = await authedFetch('/api/profile', { method: 'PATCH', body: JSON.stringify(next) });
+    if (!response.ok) setNotice((await response.json()).error || 'Unable to save notification controls.');
+  };
+
+  const uploadBanner = async (file: File | null) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('kind', 'banner');
+    formData.append('file', file);
+    const response = await authedFetch('/api/upload-profile-media', { method: 'POST', body: formData });
+    const payload = await response.json();
+    if (response.ok) setProfile((current: any) => ({ ...current, banner_url: payload.bannerUrl }));
+    else setNotice(payload.error || 'Unable to upload banner.');
+  };
+
+  const saveLinks = async () => {
+    const response = await authedFetch('/api/profile', { method: 'PATCH', body: JSON.stringify({ custom_links: links }) });
+    if (!response.ok) setNotice((await response.json()).error || 'Unable to save links.');
   };
 
   if (loading || !isGold) return <main className="min-h-screen px-4 py-8"><p className="text-sm text-slate">Loading Gold…</p></main>;
@@ -158,6 +187,25 @@ export default function GoldSettingsPage() {
           <h2 className="mt-2 text-2xl font-semibold">Know your audience.</h2>
           <p className="mt-2 text-sm text-slate">Profile insights show recent members who visited your profile, using privacy-respecting aggregate visits.</p>
           <Link href="/profile" className="mt-4 inline-flex rounded-full border border-gold/40 px-4 py-2 text-sm font-semibold text-gold">View profile insights</Link>
+        </section>
+        <section className="gold-panel gold-reveal grid gap-5 lg:grid-cols-2">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-gold">Profile studio</p>
+            <h2 className="mt-2 text-2xl font-semibold">A little more of you.</h2>
+            <p className="mt-2 text-sm text-slate">Add a cover image and up to five external links to your profile.</p>
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void uploadBanner(event.target.files?.[0] || null)} className="mt-4 block w-full text-xs text-slate" />
+            {profile?.banner_url ? <img src={profile.banner_url} alt="Current profile banner" className="mt-3 h-20 w-full rounded-xl object-cover" /> : null}
+            <div className="mt-4 space-y-2">{links.map((link, index) => <div key={index} className="flex gap-2"><input value={link.label} onChange={(event) => setLinks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, label: event.target.value } : item))} placeholder="Label" className="w-1/3 rounded-xl border border-hairline bg-panel px-2 py-2 text-xs text-ivory" /><input value={link.url} onChange={(event) => setLinks((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, url: event.target.value } : item))} placeholder="https://" className="flex-1 rounded-xl border border-hairline bg-panel px-2 py-2 text-xs text-ivory" /></div>)}</div>
+            {links.length < 5 ? <button type="button" onClick={() => setLinks((current) => [...current, { label: '', url: 'https://' }])} className="mt-3 text-xs text-gold">Add link</button> : null}
+            <button type="button" onClick={() => void saveLinks()} className="mt-3 ml-3 rounded-full bg-gold px-3 py-2 text-xs font-semibold text-obsidian">Save links</button>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-gold">Quiet intelligence</p>
+            <h2 className="mt-2 text-2xl font-semibold">Less noise, more signal.</h2>
+            <label className="mt-4 flex items-center gap-2 text-sm text-ivory"><input type="checkbox" checked={digestNotifications} onChange={(event) => { setDigestNotifications(event.target.checked); void saveNotificationControls({ digest_notifications: event.target.checked }); }} /> Bundle low-priority notifications</label>
+            <div className="mt-4 grid grid-cols-2 gap-2"><label className="text-xs text-slate">Quiet starts<input type="time" value={quietStart} onChange={(event) => setQuietStart(event.target.value)} className="mt-1 w-full rounded-xl border border-hairline bg-panel px-2 py-2 text-sm text-ivory" /></label><label className="text-xs text-slate">Quiet ends<input type="time" value={quietEnd} onChange={(event) => setQuietEnd(event.target.value)} className="mt-1 w-full rounded-xl border border-hairline bg-panel px-2 py-2 text-sm text-ivory" /></label></div>
+            <button type="button" onClick={() => void saveNotificationControls({ quiet_hours_start: quietStart || null, quiet_hours_end: quietEnd || null })} className="mt-3 rounded-full border border-gold/40 px-3 py-2 text-xs font-semibold text-gold">Save quiet hours</button>
+          </div>
         </section>
         {notice ? <p className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-3 text-sm text-rose-200">{notice}</p> : null}
         <footer className="gold-panel flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-sm font-semibold text-ivory">Gold is active on this account.</p><p className="mt-1 text-xs text-slate">Manage billing through your WimpyPay membership.</p></div><Link href="/settings" className="rounded-full border border-gold/40 px-4 py-2 text-sm font-semibold text-gold">Billing settings</Link></footer>

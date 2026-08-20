@@ -45,6 +45,7 @@ export default function ProfileHeader({ profile, subscription }: { profile: any;
 
   return (
     <section className="surface-veil rounded-md bg-panel-2/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl gold-reveal">
+      {profile?.banner_url ? <div className="mb-5 h-32 overflow-hidden rounded-2xl"><img src={profile.banner_url} alt="Profile banner" className="h-full w-full object-cover" /></div> : null}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           {profile?.avatar_url ? (
@@ -100,6 +101,7 @@ export default function ProfileHeader({ profile, subscription }: { profile: any;
           )}
         </div>
       </div>
+      {Array.isArray(profile?.custom_links) && profile.custom_links.length > 0 ? <div className="mt-5 flex flex-wrap gap-2">{profile.custom_links.map((link: any) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="rounded-full border border-gold/30 px-3 py-2 text-xs font-semibold text-gold hover:bg-gold/10">{link.label}</a>)}</div> : null}
     </section>
   );
 }

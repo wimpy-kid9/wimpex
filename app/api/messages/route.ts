@@ -62,6 +62,7 @@ function getConversationSummary(conversation: any, members: any[], profiles: any
     otherUser,
     currentUserId: conversation.currentUserId,
     pinnedAt: currentMember?.pinned_at || null,
+    folderName: currentMember?.folder_name || null,
     wallpaperUrl: currentMember?.wallpaper_url || null,
     wallpaperColor: currentMember?.wallpaper_color || null
   };

@@ -34,6 +34,7 @@ interface ConversationSummary {
   } | null;
   unreadCount?: number;
   pinnedAt?: string | null;
+  folderName?: string | null;
 }
 
 interface RequestSummary {
@@ -57,6 +58,7 @@ export default function MessageList() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [isGold, setIsGold] = useState(false);
+  const [folderFilter, setFolderFilter] = useState('all');
   const upgrade = usePaidUpgradeFlow({ productName: 'wimpex', planName: 'Wimpex Pro' });
 
   useEffect(() => {
@@ -79,13 +81,15 @@ export default function MessageList() {
   }, [conversations]);
 
   const sortedConversations = useMemo(
-    () => [...conversationsWithUnread].sort((a, b) => {
+    () => [...conversationsWithUnread].filter((conversation) => folderFilter === 'all' || conversation.folderName === folderFilter).sort((a, b) => {
       if (Boolean(a.pinnedAt) !== Boolean(b.pinnedAt)) return a.pinnedAt ? -1 : 1;
       if (a.pinnedAt && b.pinnedAt) return new Date(b.pinnedAt).getTime() - new Date(a.pinnedAt).getTime();
       return new Date(b.previewAt).getTime() - new Date(a.previewAt).getTime();
     }),
-    [conversationsWithUnread]
+    [conversationsWithUnread, folderFilter]
   );
+
+  const folders = useMemo(() => Array.from(new Set(conversations.map((conversation) => conversation.folderName).filter((folder): folder is string => Boolean(folder)))), [conversations]);
 
   const unreadConversationCount = sortedConversations.filter((conversation) => (conversation.unreadCount || 0) > 0).length;
 
@@ -445,6 +449,7 @@ export default function MessageList() {
       ) : null}
 
       <section className="space-y-3">
+        {isGold && folders.length > 0 ? <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setFolderFilter('all')} className="rounded-full border border-gold/30 px-3 py-1 text-xs text-gold">All</button>{folders.map((folder) => <button key={folder} type="button" onClick={() => setFolderFilter(folder)} className="rounded-full border border-hairline px-3 py-1 text-xs text-slate">{folder}</button>)}</div> : null}
         {sortedConversations.length > 0 ? (
           sortedConversations.map((conversation) => {
             const other = conversation.otherUser;
@@ -480,6 +485,7 @@ export default function MessageList() {
                       <button type="button" onClick={(event) => { event.stopPropagation(); void togglePinned(conversation); }} className="rounded-full border border-hairline px-2 py-1 text-xs text-slate hover:border-gold hover:text-gold" title={isGold ? (conversation.pinnedAt ? 'Unpin chat' : 'Pin chat') : 'Gold: pin chat'}>
                         {conversation.pinnedAt ? '📌' : isGold ? 'Pin' : <GoldUpgradeHint compact perk="Pin chats" detail="Preview your pinned inbox and unlock quick access with Gold." />}
                       </button>
+                      {isGold ? <select value={conversation.folderName || ''} onClick={(event) => event.stopPropagation()} onChange={async (event) => { event.stopPropagation(); await authedFetch('/api/messages/folder', { method: 'PATCH', body: JSON.stringify({ conversationId: conversation.id, folderName: event.target.value || null }) }); await loadState(); }} className="max-w-24 rounded-full border border-hairline bg-panel px-2 py-1 text-[10px] text-slate"><option value="">Folder</option><option value="Work">Work</option><option value="Close Friends">Close Friends</option><option value="Family">Family</option></select> : null}
                     </div>
                   </div>
                   {typeof conversation.unreadCount === 'number' && conversation.unreadCount > 0 ? (

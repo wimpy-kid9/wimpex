@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 }
 
 async function updateProfileFromBody(body: any, authContext: any) {
-  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at, avatar_url, message_privacy, call_privacy, notification_sound, theme_preference } = body;
+  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at, avatar_url, message_privacy, call_privacy, notification_sound, theme_preference, custom_links, digest_notifications, quiet_hours_start, quiet_hours_end } = body;
 
   const normalizedUsername = typeof username === 'string' ? username.trim() : username;
 
@@ -113,6 +113,23 @@ async function updateProfileFromBody(body: any, authContext: any) {
       return NextResponse.json({ error: 'Gold membership is required for custom themes.' }, { status: 403 });
     }
     updates.theme_preference = theme_preference;
+  }
+  if (custom_links !== undefined || digest_notifications !== undefined || quiet_hours_start !== undefined || quiet_hours_end !== undefined) {
+    if (!(await isUserGold(authContext.user.id))) return NextResponse.json({ error: 'Gold membership is required for these settings.' }, { status: 403 });
+  }
+  if (custom_links !== undefined) {
+    if (!Array.isArray(custom_links) || custom_links.length > 5 || custom_links.some((link: any) => !link || typeof link.label !== 'string' || typeof link.url !== 'string' || !/^https:\/\//i.test(link.url))) {
+      return NextResponse.json({ error: 'Links must contain up to five HTTPS URLs with labels.' }, { status: 400 });
+    }
+    updates.custom_links = custom_links.map((link: any) => ({ label: link.label.trim().slice(0, 40), url: link.url.trim().slice(0, 500) }));
+  }
+  if (digest_notifications !== undefined) {
+    if (typeof digest_notifications !== 'boolean') return NextResponse.json({ error: 'Invalid digest setting.' }, { status: 400 });
+    updates.digest_notifications = digest_notifications;
+  }
+  for (const [key, value] of [['quiet_hours_start', quiet_hours_start], ['quiet_hours_end', quiet_hours_end]] as const) {
+    if (value !== undefined && value !== null && value !== '' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return NextResponse.json({ error: 'Quiet hours must use HH:MM.' }, { status: 400 });
+    if (value !== undefined) updates[key] = value || null;
   }
 
   if (Object.keys(updates).length > 0) {
