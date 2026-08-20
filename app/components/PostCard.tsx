@@ -22,7 +22,11 @@ const FILTER_CLASSES: Record<string, string> = {
   golden: 'filter sepia brightness-110 contrast-105',
   cyberpunk: 'filter hue-rotate-280 saturate-180 contrast-120',
   pastel: 'filter brightness-110 saturate-120 contrast-95',
-  infrared: 'filter hue-rotate-310 saturate-140 contrast-115'
+    infrared: 'filter hue-rotate-310 saturate-140 contrast-115',
+    chrome: 'filter contrast-125 saturate-150 brightness-110',
+    velvet: 'filter sepia contrast-125 saturate-125 brightness-90',
+    arctic: 'filter grayscale-[35%] hue-rotate-180 saturate-75 contrast-110',
+    sunset: 'filter sepia saturate-150 hue-rotate-[-15deg] contrast-110'
 };
 
 export default function PostCard({ post, isFeedItem, variant }: { post: any; isFeedItem?: boolean; variant?: 'grid' }) {

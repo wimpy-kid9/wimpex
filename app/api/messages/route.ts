@@ -44,6 +44,7 @@ function getConversationTitle(conversation: any, members: any[], profiles: any[]
 
 function getConversationSummary(conversation: any, members: any[], profiles: any[], messages: any[]) {
   const lastMessage = messages.find((message) => message.conversation_id === conversation.id) ?? null;
+  const currentMember = members.find((member) => member.user_id === conversation.currentUserId);
   const otherMemberIds = members.map((member) => member.user_id).filter((id: string) => id !== conversation.currentUserId);
   const otherProfiles = profiles.filter((profile: any) => otherMemberIds.includes(profile.user_id));
   const otherUser = otherProfiles[0] || null;
@@ -59,7 +60,10 @@ function getConversationSummary(conversation: any, members: any[], profiles: any
     isGroup: conversation.type === 'group',
     otherUsers: otherProfiles,
     otherUser,
-    currentUserId: conversation.currentUserId
+    currentUserId: conversation.currentUserId,
+    pinnedAt: currentMember?.pinned_at || null,
+    wallpaperUrl: currentMember?.wallpaper_url || null,
+    wallpaperColor: currentMember?.wallpaper_color || null
   };
 }
 
@@ -175,7 +179,7 @@ export async function GET(request: NextRequest) {
     if (before) messagesQuery = messagesQuery.lt('created_at', before);
     const [{ data: recentMessages, error: messagesError }, { data: members, error: membersError }] = await Promise.all([
       messagesQuery.order('created_at', { ascending: false }).limit(50),
-      supabaseServer.from('wpx_conversation_members').select('conversation_id, user_id').eq('conversation_id', conversationId)
+      supabaseServer.from('wpx_conversation_members').select('*').eq('conversation_id', conversationId)
     ]);
 
     const messages = (recentMessages || []).reverse();
@@ -368,7 +372,7 @@ export async function GET(request: NextRequest) {
 
   const { data: members, error: membersError } = await supabaseServer
     .from('wpx_conversation_members')
-    .select('conversation_id, user_id')
+    .select('*')
     .in('conversation_id', conversationIds);
 
   if (membersError) {
@@ -578,6 +582,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
   const senderName = senderProfile?.display_name || senderProfile?.username || 'Someone';
   for (const recipientId of notifyIds.filter((id: string) => id && id !== authContext.user.id)) {
+    const { data: recipientProfile } = await supabaseServer.from('wpx_profiles').select('notification_sound').eq('user_id', recipientId).maybeSingle();
     await createNotification({
       userId: recipientId,
       actorId: authContext.user.id,
@@ -591,7 +596,7 @@ export async function POST(request: NextRequest) {
         url: `/messages?conversation_id=${conversationData.id}`,
         tag: `message-${conversationData.id}`,
         channelId: 'wimpex-messages',
-        data: { type: 'message', conversationId: conversationData.id, senderId: authContext.user.id }
+        data: { type: 'message', conversationId: conversationData.id, senderId: authContext.user.id, notificationSound: recipientProfile?.notification_sound || 'default' }
       }
     });
   }

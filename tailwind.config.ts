@@ -13,8 +13,8 @@ const config: Config = {
           DEFAULT: '#8a8478'
         },
         gold: {
-          DEFAULT: '#c9a961',
-          deep: '#8b6f3d'
+          DEFAULT: 'var(--gold)',
+          deep: 'var(--gold-deep)'
         }
       },
       borderColor: {

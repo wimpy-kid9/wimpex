@@ -7,8 +7,10 @@ import { getUserAccent } from '@/lib/ui-theme';
 import { authedFetch } from '@/lib/api-client';
 import AuthActionPrompt from '@/app/components/AuthActionPrompt';
 import { useAudioMixer } from '@/lib/use-audio-mixer';
+import { isGoldSubscription } from '@/lib/subscription';
+import { usePaidUpgradeFlow } from '@/app/components/PaidUpgradeFlow';
 
-const FILTER_PRESETS = [
+const FILTER_PRESETS: { key: string; label: string; description: string; gold?: boolean }[] = [
   { key: 'none', label: 'None', description: 'Natural colors' },
   { key: 'vivid', label: 'Vivid', description: 'High contrast and saturation' },
   { key: 'mono', label: 'Mono', description: 'Black and white' },
@@ -22,7 +24,11 @@ const FILTER_PRESETS = [
   { key: 'golden', label: 'Golden Hour', description: 'Warm evening tones' },
   { key: 'cyberpunk', label: 'Cyberpunk', description: 'Neon pink and blue lighting' },
   { key: 'pastel', label: 'Pastel', description: 'Soft color wash' },
-  { key: 'infrared', label: 'Infrared', description: 'Dreamy magenta tint' }
+  { key: 'infrared', label: 'Infrared', description: 'Dreamy magenta tint' },
+  { key: 'chrome', label: 'Chrome', description: 'Metallic high contrast', gold: true },
+  { key: 'velvet', label: 'Velvet', description: 'Deep warm shadows', gold: true },
+  { key: 'arctic', label: 'Arctic', description: 'Cool desaturated tone', gold: true },
+  { key: 'sunset', label: 'Sunset', description: 'Warm evening tint', gold: true }
 ];
 
 const filterClasses: Record<string, string> = {
@@ -39,7 +45,11 @@ const filterClasses: Record<string, string> = {
   golden: 'filter sepia brightness-110 contrast-105',
   cyberpunk: 'filter hue-rotate-280 saturate-180 contrast-120',
   pastel: 'filter brightness-110 saturate-120 contrast-95',
-  infrared: 'filter hue-rotate-310 saturate-140 contrast-115'
+  infrared: 'filter hue-rotate-310 saturate-140 contrast-115',
+  chrome: 'filter contrast-125 saturate-150 brightness-110',
+  velvet: 'filter sepia contrast-125 saturate-125 brightness-90',
+  arctic: 'filter grayscale-[35%] hue-rotate-180 saturate-75 contrast-110',
+  sunset: 'filter sepia saturate-150 hue-rotate-[-15deg] contrast-110'
 };
 
 type AudioTrack = {
@@ -77,6 +87,9 @@ export default function CreatePostPage() {
   const [audioDuration, setAudioDuration] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [isGold, setIsGold] = useState(false);
+  const [goldStatusLoaded, setGoldStatusLoaded] = useState(false);
+  const upgrade = usePaidUpgradeFlow({ productName: 'wimpex', planName: 'Wimpex Pro', onSuccess: (subscription) => setIsGold(isGoldSubscription(subscription)) });
   const [cameraArmed, setCameraArmed] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const { mixAudio, isProcessing: isMixing, progress: mixProgress, error: mixError } = useAudioMixer();
@@ -85,6 +98,16 @@ export default function CreatePostPage() {
     const params = new URLSearchParams(window.location.search);
     setEditingId(params.get('edit'));
   }, []);
+
+  useEffect(() => {
+    void authedFetch('/api/wimpypay')
+      .then((response) => response.json())
+      .then((payload) => setIsGold(isGoldSubscription(payload.subscription)))
+      .catch(() => setIsGold(false))
+      .finally(() => setGoldStatusLoaded(true));
+  }, []);
+
+  const maxRecordingSeconds = isGold ? 180 : 60;
 
   useEffect(() => {
     supabase.auth.getSession().then((result: { data: { session: any } | null }) => {
@@ -181,7 +204,7 @@ export default function CreatePostPage() {
   const accent = useMemo(() => getUserAccent(session?.user?.id ?? 'post-creator'), [session?.user?.id]);
   const characterCount = draft.length;
 
-  const handleMediaChange = (file: File | null) => {
+  const handleMediaChange = async (file: File | null) => {
     setError('');
     if (!file) {
       setMediaFile(null);
@@ -196,6 +219,22 @@ export default function CreatePostPage() {
     }
 
     if (file.type.startsWith('video/')) {
+      if (goldStatusLoaded) {
+        const probe = document.createElement('video');
+        const objectUrl = URL.createObjectURL(file);
+        probe.src = objectUrl;
+        const duration = await new Promise<number>((resolve) => {
+          probe.onloadedmetadata = () => resolve(probe.duration || 0);
+          probe.onerror = () => resolve(0);
+        });
+        URL.revokeObjectURL(objectUrl);
+        if (duration > maxRecordingSeconds) {
+          setError(`Videos longer than ${maxRecordingSeconds} seconds are not supported for this account.`);
+          setMediaFile(null);
+          setPreviewUrl(null);
+          return;
+        }
+      }
       setMediaType('video');
       setMediaFile(file);
       return;
@@ -315,7 +354,7 @@ export default function CreatePostPage() {
       recorder.start();
       recorderTimerRef.current = setInterval(() => {
         setRecordingSeconds((seconds) => {
-          if (seconds + 1 >= 60) stopRecording();
+          if (seconds + 1 >= maxRecordingSeconds) stopRecording();
           return seconds + 1;
         });
       }, 1000);
@@ -344,7 +383,7 @@ export default function CreatePostPage() {
   const handleDrop = (event: DragEvent<HTMLLabelElement>) => {
     event.preventDefault();
     const file = event.dataTransfer?.files?.[0] ?? null;
-    handleMediaChange(file);
+    void handleMediaChange(file);
   };
 
   const selectTrack = (track: AudioTrack) => {
@@ -392,6 +431,11 @@ export default function CreatePostPage() {
     formData.append('visibility', visibility);
     formData.append('status', desiredStatus);
     formData.append('filter_preset', filterPreset);
+    if (mediaFile && mediaType === 'video') {
+      const probe = document.createElement('video');
+      probe.src = URL.createObjectURL(mediaFile);
+      await new Promise<void>((resolve) => { probe.onloadedmetadata = () => { formData.append('duration_seconds', String(probe.duration || 0)); URL.revokeObjectURL(probe.src); resolve(); }; probe.onerror = () => resolve(); });
+    }
 
     if (selectedTrack) {
       formData.append('audio_track_id', selectedTrack.id);
@@ -524,7 +568,7 @@ export default function CreatePostPage() {
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-obsidian/95 via-obsidian/65 to-transparent px-4 py-4 sm:px-6">
                         <div className="flex flex-wrap items-center justify-center gap-2">
                           <button type="button" onClick={() => isRecording ? stopRecording() : cameraArmed ? void startRecording() : void armCamera()} className="rounded-2xl bg-rose-500/20 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/30">
-                            {isRecording ? `Stop recording ${recordingSeconds}s / 60s` : cameraArmed ? 'Start recording' : 'Record'}
+                            {isRecording ? `Stop recording ${recordingSeconds}s / ${maxRecordingSeconds}s` : cameraArmed ? 'Start recording' : 'Record'}
                           </button>
                           <button type="button" onClick={() => void takePhoto()} disabled={isRecording} className="rounded-2xl bg-ivory/10 px-4 py-3 text-sm font-semibold text-ivory disabled:opacity-50">Take photo</button>
                           <label onDragOver={(event) => event.preventDefault()} onDrop={handleDrop} className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-hairline bg-panel/50 px-4 py-3 text-sm text-slate transition hover:bg-panel-2">
@@ -533,7 +577,7 @@ export default function CreatePostPage() {
                             type="file"
                             accept="image/*,video/*"
                             className="sr-only"
-                            onChange={(event) => handleMediaChange(event.target.files?.[0] ?? null)}
+                            onChange={(event) => void handleMediaChange(event.target.files?.[0] ?? null)}
                           />
                           {previewUrl ? 'Tap to change media' : 'Drop a photo or video or tap to choose'}
                           </label>
@@ -557,10 +601,17 @@ export default function CreatePostPage() {
                           <button
                             key={preset.key}
                             type="button"
-                            onClick={() => setFilterPreset(preset.key)}
-                            className={`rounded-full border px-3 py-2 text-left text-sm ${filterPreset === preset.key ? 'border-amber-400 bg-gold/10 text-ivory' : 'border-hairline text-slate hover:border-white/20 hover:bg-ivory/5'}`}
+                            onClick={() => {
+                              if (preset.gold && !isGold) {
+                                void upgrade.attemptPurchase();
+                                return;
+                              }
+                              setFilterPreset(preset.key);
+                            }}
+                            aria-disabled={preset.gold && !isGold}
+                            className={`rounded-full border px-3 py-2 text-left text-sm ${filterPreset === preset.key ? 'border-amber-400 bg-gold/10 text-ivory' : 'border-hairline text-slate hover:border-white/20 hover:bg-ivory/5'} ${preset.gold && !isGold ? 'opacity-60' : ''}`}
                           >
-                            <span className="font-semibold">{preset.label}</span>
+                            <span className="font-semibold">{preset.gold && !isGold ? '🔒 ' : ''}{preset.label}</span>
                           </button>
                         ))}
                       </div>

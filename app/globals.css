@@ -2,7 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+[data-theme='gold'] {
   color-scheme: dark;
   --obsidian: #0b0b0c;
   --panel: #131311;
@@ -16,6 +17,15 @@
   --house: var(--gold);
   --house-deep: var(--gold-deep);
 }
+
+[data-theme='blue'] { --gold: #4f8ff7; --gold-deep: #2f5fc7; }
+[data-theme='green'] { --gold: #4fbf6e; --gold-deep: #2f8f4a; }
+[data-theme='red'] { --gold: #e0524f; --gold-deep: #a83431; }
+[data-theme='pink'] { --gold: #e668a3; --gold-deep: #b8437a; }
+[data-theme='yellow'] { --gold: #e0c34f; --gold-deep: #b09526; }
+[data-theme='violet'] { --gold: #9a6fe0; --gold-deep: #6f45b0; }
+[data-theme='orange'] { --gold: #e08a3f; --gold-deep: #b3651f; }
+[data-theme='black'] { --gold: #a8a8a8; --gold-deep: #555555; }
 
 html {
   scroll-behavior: smooth;

@@ -4,9 +4,11 @@ import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-serve
 import { calculateDailyPostStreakState } from '@/lib/streak-utils';
 import { isGoldSubscription } from '@/lib/subscription';
 import { syncPostHashtagsAndMentions } from '@/lib/post-tags';
+import { isUserGold } from '@/lib/gold';
 
 const VIDEO_BUCKET = 'wpx-videos';
 const IMAGE_BUCKET = 'wpx-images';
+const GOLD_FILTERS = new Set(['chrome', 'velvet', 'arctic', 'sunset']);
 
 function mapPost(post: any, likeCounts: Record<string, number>, favoriteCounts: Record<string, number>, authorMap: Record<string, any>, hashtagsByPost: Record<string, string[]> = {}, taggedUsersByPost: Record<string, { user_id: string; username: string | null; display_name: string | null }[]> = {}) {
   const author = authorMap[post.author_id] || {};
@@ -572,6 +574,7 @@ export async function POST(request: NextRequest) {
   let audioPreviewUrl = '';
   let audioCoverArtUrl = '';
   let filterPreset = 'none';
+  let durationSeconds = 0;
 
   const contentType = request.headers.get('content-type') || '';
   if (contentType.includes('multipart/form-data')) {
@@ -582,6 +585,7 @@ export async function POST(request: NextRequest) {
     thumbnailUrl = formData.get('thumbnail_url')?.toString() || '';
     mediaType = formData.get('media_type')?.toString() || 'video';
     filterPreset = formData.get('filter_preset')?.toString() || 'none';
+    durationSeconds = Number(formData.get('duration_seconds') || 0);
     audioTrackId = formData.get('audio_track_id')?.toString() || '';
     audioTrackName = formData.get('audio_track_name')?.toString() || '';
     audioArtistName = formData.get('audio_artist_name')?.toString() || '';
@@ -650,6 +654,7 @@ export async function POST(request: NextRequest) {
     thumbnailUrl = body.thumbnail_url || '';
     mediaType = body.media_type || (body.image_url ? 'image' : 'video');
     filterPreset = body.filter_preset || 'none';
+    durationSeconds = Number(body.duration_seconds || 0);
     audioTrackId = body.audio_track_id || '';
     audioTrackName = body.audio_track_name || '';
     audioArtistName = body.audio_artist_name || '';
@@ -659,6 +664,15 @@ export async function POST(request: NextRequest) {
 
   if (!imageUrl && !videoUrl && status !== 'draft') {
     return NextResponse.json({ error: 'Please upload an image or video.' }, { status: 400 });
+  }
+
+  const posterIsGold = await isUserGold(authContext.user.id);
+  if (GOLD_FILTERS.has(filterPreset) && !posterIsGold) {
+    return NextResponse.json({ error: 'Gold membership is required for this filter.' }, { status: 403 });
+  }
+  const maximumVideoSeconds = posterIsGold ? 180 : 60;
+  if (mediaType === 'video' && Number.isFinite(durationSeconds) && durationSeconds > maximumVideoSeconds) {
+    return NextResponse.json({ error: `Videos longer than ${maximumVideoSeconds} seconds are not supported for this account.` }, { status: 403 });
   }
 
   const { data, error } = await supabaseServer

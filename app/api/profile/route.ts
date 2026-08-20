@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
+import { isUserGold } from '@/lib/gold';
+import { isThemeName } from '@/lib/theme';
 
 const usernamePattern = /^[A-Za-z0-9_]{3,20}$/;
 
@@ -48,7 +50,7 @@ export async function GET(request: NextRequest) {
 }
 
 async function updateProfileFromBody(body: any, authContext: any) {
-  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at, avatar_url, message_privacy, call_privacy } = body;
+  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at, avatar_url, message_privacy, call_privacy, notification_sound, theme_preference } = body;
 
   const normalizedUsername = typeof username === 'string' ? username.trim() : username;
 
@@ -97,6 +99,21 @@ async function updateProfileFromBody(body: any, authContext: any) {
   if (gender !== undefined) updates.gender = gender;
   if (onboarding_completed_at !== undefined) updates.onboarding_completed_at = onboarding_completed_at;
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+  if (notification_sound !== undefined) {
+    const allowedSounds = ['default', 'chime', 'pop', 'marimba'];
+    if (!allowedSounds.includes(notification_sound)) return NextResponse.json({ error: 'Invalid notification sound.' }, { status: 400 });
+    if (notification_sound !== 'default' && !(await isUserGold(authContext.user.id))) {
+      return NextResponse.json({ error: 'Gold membership is required for custom notification sounds.' }, { status: 403 });
+    }
+    updates.notification_sound = notification_sound;
+  }
+  if (theme_preference !== undefined) {
+    if (!isThemeName(theme_preference)) return NextResponse.json({ error: 'Invalid theme selection.' }, { status: 400 });
+    if (!(await isUserGold(authContext.user.id))) {
+      return NextResponse.json({ error: 'Gold membership is required for custom themes.' }, { status: 403 });
+    }
+    updates.theme_preference = theme_preference;
+  }
 
   if (Object.keys(updates).length > 0) {
     const { error: upsertError } = await supabaseServer.from('wpx_profiles').upsert(

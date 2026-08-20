@@ -7,6 +7,8 @@ import { authedFetch } from '@/lib/api-client';
 import { renderRichText } from '@/lib/rich-text';
 import GoldBadge from '@/app/components/GoldBadge';
 import { markConversationRead } from '@/lib/chat-unread';
+import { supabase } from '@/lib/supabase';
+import { isGoldSubscription } from '@/lib/subscription';
 
 interface ChatThreadProps {
   conversationId: string;
@@ -21,6 +23,10 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [attachment, setAttachment] = useState<File | null>(null);
   const [notice, setNotice] = useState('');
   const [loadingMessages, setLoadingMessages] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [senderIsGold, setSenderIsGold] = useState(false);
+  const [wallpaperPickerOpen, setWallpaperPickerOpen] = useState(false);
+  const wallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [hasEarlier, setHasEarlier] = useState(false);
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
@@ -51,6 +57,10 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const longPressTimerRef = useRef<number | null>(null);
   const reactionOptions = useMemo(() => ['👍', '❤️', '😂', '👏', '🔥'], []);
   const messagesById = useMemo(() => new Map(messages.map((message) => [message.id, message])), [messages]);
+  const mostRecentOwnMessageId = useMemo(
+    () => [...messages].reverse().find((message) => message.sender_id === currentUserId)?.id || null,
+    [currentUserId, messages]
+  );
   const messagesWithReply = useMemo(
     () =>
       messages.map((message) => ({
@@ -101,6 +111,29 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     void loadThread();
     markConversationRead(conversationId);
   }, [conversationId, loadThread]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.auth.getSession().then(({ data }: { data: { session: any } }) => {
+      const userId = data.session?.user?.id || null;
+      if (!cancelled) setCurrentUserId(userId);
+      if (userId) void authedFetch('/api/profile').then((response) => response.json()).then((payload) => {
+        if (!cancelled) setSenderIsGold(isGoldSubscription(payload.subscription));
+      });
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!conversationId || !currentUserId) return;
+    const timer = window.setTimeout(() => {
+      void authedFetch('/api/messages/read', {
+        method: 'PATCH',
+        body: JSON.stringify({ conversationId })
+      });
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [conversationId, currentUserId, messages.length]);
 
   useEffect(() => {
     setAllowsFinePointer(typeof window !== 'undefined' && window.matchMedia('(pointer:fine)').matches);
@@ -181,6 +214,35 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   }, []);
 
   const canStartCall = Boolean(conversation?.otherUser?.user_id && !conversation?.isGroup);
+
+  const updateWallpaper = useCallback(async (wallpaperColor: string | null) => {
+    if (!senderIsGold) return;
+    const response = await authedFetch('/api/messages/preferences', {
+      method: 'PATCH',
+      body: JSON.stringify({ conversationId, wallpaperColor, reset: wallpaperColor === null })
+    });
+    if (!response.ok) {
+      setNotice((await response.json()).error || 'Unable to update chat wallpaper.');
+      return;
+    }
+    setConversation((current: any) => ({ ...current, wallpaperColor, wallpaperUrl: null }));
+    setWallpaperPickerOpen(false);
+  }, [conversationId, senderIsGold]);
+
+  const uploadWallpaper = useCallback(async (file: File | null) => {
+    if (!file || !senderIsGold) return;
+    const formData = new FormData();
+    formData.append('conversationId', conversationId);
+    formData.append('wallpaper', file);
+    const response = await authedFetch('/api/messages/preferences', { method: 'PATCH', body: formData });
+    if (!response.ok) {
+      setNotice((await response.json()).error || 'Unable to upload chat wallpaper.');
+      return;
+    }
+    const payload = await response.json();
+    setConversation((current: any) => ({ ...current, wallpaperUrl: payload.wallpaperUrl, wallpaperColor: null }));
+    setWallpaperPickerOpen(false);
+  }, [conversationId, senderIsGold]);
 
   const handleStartCall = useCallback(
     async (callType: 'voice' | 'video') => {
@@ -477,6 +539,9 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M22 16.92V21a1 1 0 0 1-1.11 1 19.86 19.86 0 0 1-8.63-3.07A19.38 19.38 0 0 1 3.07 9.74 19.86 19.86 0 0 1 0 1.11 1 1 0 0 1 1 0h4.09a1 1 0 0 1 1 .76c.12.83.33 1.64.63 2.42a1 1 0 0 1-.24 1.03L5.2 6.79a16 16 0 0 0 10.45 10.45l1.58-1.58a1 1 0 0 1 1.03-.24c.78.3 1.59.51 2.42.63a1 1 0 0 1 .76 1V22z" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
+              <button type="button" onClick={() => senderIsGold ? setWallpaperPickerOpen((open) => !open) : setNotice('Gold membership is required for chat wallpapers.')} className="rounded-full border border-hairline bg-panel p-2 text-ivory transition hover:bg-ivory/10" title="Chat wallpaper">
+                🖼️
+              </button>
               <button
                 type="button"
                 onClick={() => void handleStartCall('video')}
@@ -488,10 +553,20 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
               </button>
             </div>
           </div>
+          {wallpaperPickerOpen ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-gold/30 bg-panel/95 p-3">
+              {['#18233d', '#173b2a', '#40202a', '#34204a', '#4a321c'].map((color) => (
+                <button key={color} type="button" onClick={() => void updateWallpaper(color)} className="h-8 w-8 rounded-full border border-white/30" style={{ backgroundColor: color }} title="Use wallpaper color" />
+              ))}
+              <button type="button" onClick={() => wallpaperInputRef.current?.click()} className="rounded-full border border-hairline px-3 py-2 text-xs text-ivory">Upload image</button>
+              <button type="button" onClick={() => void updateWallpaper(null)} className="rounded-full border border-hairline px-3 py-2 text-xs text-slate">Reset</button>
+              <input ref={wallpaperInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => void uploadWallpaper(event.target.files?.[0] || null)} />
+            </div>
+          ) : null}
         </section>
 
         <section className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-3xl border border-hairline bg-panel-2/70 shadow-inner shadow-black/10">
-          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-4">
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto bg-cover bg-center px-4 py-5 space-y-4" style={{ backgroundColor: conversation?.wallpaperColor || undefined, backgroundImage: conversation?.wallpaperUrl ? `url(${conversation.wallpaperUrl})` : undefined }}>
             {hasEarlier ? (
               <button type="button" onClick={() => void loadEarlier()} disabled={loadingEarlier} className="mx-auto block rounded-full border border-hairline px-3 py-1 text-xs text-slate hover:bg-panel disabled:opacity-50">
                 {loadingEarlier ? 'Loading earlier…' : 'Load earlier messages'}
@@ -592,6 +667,9 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                       ) : null}
                       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate">
                         <span>{new Date(messageItem.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        {messageItem.id === mostRecentOwnMessageId && messageItem.read_at ? (
+                          <span className="text-[10px] text-slate">{senderIsGold ? `Read ${new Date(messageItem.read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Read'}</span>
+                        ) : null}
                         <div className="flex items-center gap-2">
                           <button type="button" onClick={(event) => { event.stopPropagation(); handleReplyToMessage(messageItem); }} className="rounded-full px-2 py-1 transition hover:bg-panel/80">Reply</button>
                           <button type="button" onClick={(event) => { event.stopPropagation(); toggleReactionPicker(messageItem.id); }} className="rounded-full px-2 py-1 transition hover:bg-panel/80">React</button>

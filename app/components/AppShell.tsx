@@ -13,12 +13,22 @@ import BottomNav from './BottomNav';
 import { InstallPrompt } from './InstallPrompt';
 import IncomingCallNotification from './IncomingCallNotification';
 import CallWindow from './CallWindow';
+import { applyTheme, getStoredTheme } from '@/lib/theme';
 
 interface AppShellProps {
   children: ReactNode;
 }
 
 export default function AppShell({ children }: AppShellProps) {
+  useEffect(() => {
+    applyTheme(getStoredTheme());
+    void authedFetch('/api/profile').then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json();
+      if (payload.profile?.theme_preference) applyTheme(payload.profile.theme_preference);
+    }).catch(() => undefined);
+  }, []);
+
   const [accent, setAccent] = useState(() => getUserAccent('wimpex-shell'));
   const pathname = usePathname();
   const { subscribe, permission } = usePushNotifications();

@@ -51,6 +51,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: "try { var theme = localStorage.getItem('wimpex-theme'); if (theme) document.documentElement.dataset.theme = theme; } catch (e) {}" }} />
+      </head>
       <body>
         {gaMeasurementId ? (
           <>

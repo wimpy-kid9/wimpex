@@ -3,6 +3,9 @@ import { requireAuth } from '@/lib/auth';
 import { supabaseServer } from '@/lib/supabase-server';
 import { isGoldSubscription } from '@/lib/subscription';
 import { syncPostHashtagsAndMentions } from '@/lib/post-tags';
+import { isUserGold } from '@/lib/gold';
+
+const GOLD_FILTERS = new Set(['chrome', 'velvet', 'arctic', 'sunset']);
 
 async function enrichPostWithAuthor(post: any) {
   if (!post?.author_id) return post;
@@ -64,6 +67,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (body.visibility !== undefined) updates.visibility = body.visibility;
   if (body.filter_preset !== undefined) updates.filter_preset = body.filter_preset;
   if (body.status !== undefined) updates.status = body.status === 'draft' ? 'draft' : 'published';
+
+  if (GOLD_FILTERS.has(body.filter_preset) && !(await isUserGold(authContext.user.id))) {
+    return NextResponse.json({ error: 'Gold membership is required for this filter.' }, { status: 403 });
+  }
 
   const { data: existing, error: existingError } = await supabaseServer.from('wpx_posts').select('author_id').eq('id', postId).maybeSingle();
   if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });

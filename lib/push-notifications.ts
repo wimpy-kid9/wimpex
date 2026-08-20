@@ -55,7 +55,8 @@ async function sendFcmToUser(userId: string, options: PushNotificationOptions) {
           ...(options.data || {}),
           ...(options.url ? { url: options.url } : {}),
           title: options.title,
-          body: options.body
+          body: options.body,
+          notificationSound: options.sound || options.data?.notificationSound || 'default'
         },
         android: {
           priority: 'high' as const

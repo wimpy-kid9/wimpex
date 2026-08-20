@@ -20,7 +20,7 @@ import com.google.firebase.messaging.RemoteMessage;
 
 public class IncomingCallMessagingService extends FirebaseMessagingService {
     private static final String CHANNEL_ID = "wimpex-calls";
-    private static final String MESSAGE_CHANNEL_ID = "wimpex-messages";
+    private static final String MESSAGE_CHANNEL_ID = "wimpex-messages-default";
     private static final int NOTIFICATION_ID = 7401;
     private static Ringtone activeRingtone;
     private static AudioManager audioManager;
@@ -94,7 +94,9 @@ public class IncomingCallMessagingService extends FirebaseMessagingService {
         if (MainActivity.isAppForeground()) {
             return;
         }
-        createMessageChannel();
+        String notificationSound = message.getData().get("notificationSound");
+        String messageChannelId = getMessageChannelId(notificationSound);
+        createMessageChannels();
 
         String title = message.getNotification() != null ? message.getNotification().getTitle() : null;
         String body = message.getNotification() != null ? message.getNotification().getBody() : null;
@@ -118,7 +120,7 @@ public class IncomingCallMessagingService extends FirebaseMessagingService {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        Notification notification = new NotificationCompat.Builder(this, MESSAGE_CHANNEL_ID)
+        Notification notification = new NotificationCompat.Builder(this, messageChannelId)
             .setSmallIcon(com.wimpex.app.R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(body)
@@ -179,7 +181,12 @@ public class IncomingCallMessagingService extends FirebaseMessagingService {
         manager.createNotificationChannel(channel);
     }
 
-    private void createMessageChannel() {
+    private String getMessageChannelId(String sound) {
+        if ("chime".equals(sound) || "pop".equals(sound) || "marimba".equals(sound)) return "wimpex-messages-" + sound;
+        return MESSAGE_CHANNEL_ID;
+    }
+
+    private void createMessageChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return;
         }
@@ -189,19 +196,31 @@ public class IncomingCallMessagingService extends FirebaseMessagingService {
             return;
         }
 
-        Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
         AudioAttributes audioAttributes = new AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_NOTIFICATION)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build();
-        NotificationChannel channel = new NotificationChannel(
-            MESSAGE_CHANNEL_ID,
-            "Messages",
-            NotificationManager.IMPORTANCE_HIGH
-        );
-        channel.setDescription("New direct and group messages");
-        channel.enableVibration(true);
-        channel.setSound(sound, audioAttributes);
-        manager.createNotificationChannel(channel);
+        for (String soundName : new String[] { "default", "chime", "pop", "marimba" }) {
+            NotificationChannel channel = new NotificationChannel(
+                "wimpex-messages-" + soundName,
+                "Messages (" + soundName + ")",
+                NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("New direct and group messages");
+            channel.enableVibration(true);
+            channel.setSound(getMessageSoundUri(soundName), audioAttributes);
+            manager.createNotificationChannel(channel);
+        }
+    }
+
+    private Uri getMessageSoundUri(String soundName) {
+        if ("default".equals(soundName)) {
+            return RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        }
+
+        int resourceId = getResources().getIdentifier(soundName, "raw", getPackageName());
+        return resourceId == 0
+            ? RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            : Uri.parse("android.resource://" + getPackageName() + "/" + resourceId);
     }
 }

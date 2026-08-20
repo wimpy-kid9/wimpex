@@ -61,10 +61,10 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const people = unique.slice(0, 10).map((person) => ({
+  const people = unique.map((person) => ({
     ...person,
     is_gold: isGoldSubscription(subscriptionMap[person.user_id])
-  }));
+  })).sort((a, b) => Number(b.is_gold) - Number(a.is_gold)).slice(0, 10);
 
   return NextResponse.json({ people });
 }

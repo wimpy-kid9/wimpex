@@ -1,11 +1,12 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authedFetch } from '@/lib/api-client';
 import GoldBadge from '@/app/components/GoldBadge';
 import { getConversationUnreadCount, markConversationRead, syncTotalUnreadCount } from '@/lib/chat-unread';
+import { usePaidUpgradeFlow } from '@/app/components/PaidUpgradeFlow';
+import { isGoldSubscription } from '@/lib/subscription';
 
 interface ProfileMatch {
   user_id: string;
@@ -31,6 +32,7 @@ interface ConversationSummary {
     is_gold?: boolean;
   } | null;
   unreadCount?: number;
+  pinnedAt?: string | null;
 }
 
 interface RequestSummary {
@@ -53,6 +55,12 @@ export default function MessageList() {
   const [acceptedConnectionIds, setAcceptedConnectionIds] = useState<Record<string, boolean>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+  const [isGold, setIsGold] = useState(false);
+  const upgrade = usePaidUpgradeFlow({ productName: 'wimpex', planName: 'Wimpex Pro' });
+
+  useEffect(() => {
+    void authedFetch('/api/wimpypay').then((response) => response.json()).then((payload) => setIsGold(isGoldSubscription(payload.subscription))).catch(() => setIsGold(false));
+  }, []);
 
   const conversationsWithUnread = useMemo(() => {
     let totalUnread = 0;
@@ -70,7 +78,11 @@ export default function MessageList() {
   }, [conversations]);
 
   const sortedConversations = useMemo(
-    () => [...conversationsWithUnread].sort((a, b) => new Date(b.previewAt).getTime() - new Date(a.previewAt).getTime()),
+    () => [...conversationsWithUnread].sort((a, b) => {
+      if (Boolean(a.pinnedAt) !== Boolean(b.pinnedAt)) return a.pinnedAt ? -1 : 1;
+      if (a.pinnedAt && b.pinnedAt) return new Date(b.pinnedAt).getTime() - new Date(a.pinnedAt).getTime();
+      return new Date(b.previewAt).getTime() - new Date(a.previewAt).getTime();
+    }),
     [conversationsWithUnread]
   );
 
@@ -147,6 +159,22 @@ export default function MessageList() {
   const openConversation = (conversationId: string) => {
     markConversationRead(conversationId);
     router.push(`/messages/${conversationId}`);
+  };
+
+  const togglePinned = async (conversation: ConversationSummary) => {
+    if (!isGold) {
+      await upgrade.attemptPurchase();
+      return;
+    }
+    const response = await authedFetch('/api/messages/pin', {
+      method: 'PATCH',
+      body: JSON.stringify({ conversationId: conversation.id, pinned: !conversation.pinnedAt })
+    });
+    if (!response.ok) {
+      setNotice((await response.json()).error || 'Unable to update chat pin.');
+      return;
+    }
+    await loadState();
   };
 
   const openChatWithPerson = async (person: ProfileMatch) => {
@@ -423,12 +451,13 @@ export default function MessageList() {
             const initials = other?.display_name?.charAt(0)?.toUpperCase() || other?.username?.charAt(0)?.toUpperCase() || 'C';
 
             return (
-              <Link
+              <div
                 key={conversation.id}
-                prefetch
-                href={`/messages/${conversation.id}`}
                 onClick={() => openConversation(conversation.id)}
-                className="group flex w-full items-start gap-4 rounded-3xl border border-hairline bg-panel-2/70 px-4 py-4 text-left transition hover:border-gold hover:bg-panel/80"
+                role="link"
+                tabIndex={0}
+                onKeyDown={(event) => { if (event.key === 'Enter') openConversation(conversation.id); }}
+                className="group flex w-full cursor-pointer items-start gap-4 rounded-3xl border border-hairline bg-panel-2/70 px-4 py-4 text-left transition hover:border-gold hover:bg-panel/80"
               >
                 {other?.avatar_url ? (
                   <img src={other.avatar_url} alt={other.display_name || other.username} className="h-16 w-16 rounded-full object-cover" />
@@ -441,10 +470,16 @@ export default function MessageList() {
                       <div className="flex items-center gap-1.5">
                         <p className="truncate text-lg font-semibold text-ivory">{conversation.title || other?.display_name || other?.username || 'Unknown chat'}</p>
                         {other?.is_gold ? <GoldBadge size="sm" inline /> : null}
+                        {conversation.pinnedAt ? <span title="Pinned" className="text-gold">📌</span> : null}
                       </div>
                       <p className="mt-2 truncate text-sm text-slate">{conversation.previewSentByMe ? 'You: ' : ''}{conversation.preview}</p>
                     </div>
-                    <p className="whitespace-nowrap text-xs uppercase tracking-[0.24em] text-slate">{timeLabel}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="whitespace-nowrap text-xs uppercase tracking-[0.24em] text-slate">{timeLabel}</p>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); void togglePinned(conversation); }} className="rounded-full border border-hairline px-2 py-1 text-xs text-slate hover:border-gold hover:text-gold" title={isGold ? (conversation.pinnedAt ? 'Unpin chat' : 'Pin chat') : 'Gold: pin chat'}>
+                        {conversation.pinnedAt ? '📌' : isGold ? 'Pin' : '🔒'}
+                      </button>
+                    </div>
                   </div>
                   {typeof conversation.unreadCount === 'number' && conversation.unreadCount > 0 ? (
                     <div className="mt-4 flex justify-end">
@@ -452,7 +487,7 @@ export default function MessageList() {
                     </div>
                   ) : null}
                 </div>
-              </Link>
+              </div>
             );
           })
         ) : (
