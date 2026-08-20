@@ -67,6 +67,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (body.visibility !== undefined) updates.visibility = body.visibility;
   if (body.filter_preset !== undefined) updates.filter_preset = body.filter_preset;
   if (body.status !== undefined) updates.status = body.status === 'draft' ? 'draft' : 'published';
+  if (body.scheduled_for !== undefined) {
+    if (!(await isUserGold(authContext.user.id))) return NextResponse.json({ error: 'Gold membership is required for scheduled posts.' }, { status: 403 });
+    const scheduledDate = body.scheduled_for ? new Date(body.scheduled_for) : null;
+    if (scheduledDate && (!Number.isFinite(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now())) return NextResponse.json({ error: 'Scheduled time must be in the future.' }, { status: 400 });
+    updates.scheduled_for = body.scheduled_for || null;
+    if (scheduledDate) updates.status = 'draft';
+  }
 
   if (GOLD_FILTERS.has(body.filter_preset) && !(await isUserGold(authContext.user.id))) {
     return NextResponse.json({ error: 'Gold membership is required for this filter.' }, { status: 403 });

@@ -1,5 +1,10 @@
 export const dynamic = 'force-dynamic';
 
+import { NextRequest } from 'next/server';
+import { requireAuth } from '@/lib/auth';
+import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
+import { isUserGold } from '@/lib/gold';
+
 /**
  * Proxies chat requests to the WimpyAI service.
  *
@@ -10,7 +15,37 @@ export const dynamic = 'force-dynamic';
  * routing the call through this same-origin API route sidesteps the problem
  * without needing any change on the WimpyAI side.
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  if (!isSupabaseServerConfigured) return Response.json({ error: 'Supabase is not configured.' }, { status: 500 });
+  let authContext;
+  try {
+    authContext = await requireAuth(request);
+  } catch {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const gold = await isUserGold(authContext.user.id);
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: usage, error: usageError } = await supabaseServer
+    .from('wpx_ai_daily_usage')
+    .select('message_count')
+    .eq('user_id', authContext.user.id)
+    .eq('usage_date', today)
+    .maybeSingle();
+  if (usageError) return Response.json({ error: usageError.message }, { status: 500 });
+
+  const limit = gold ? 100 : 20;
+  if ((usage?.message_count || 0) >= limit) {
+    return Response.json({ error: `Daily WimpyAI limit reached (${limit} messages).`, gold }, { status: 429 });
+  }
+
+  const { error: usageWriteError } = await supabaseServer.from('wpx_ai_daily_usage').upsert({
+    user_id: authContext.user.id,
+    usage_date: today,
+    message_count: (usage?.message_count || 0) + 1
+  }, { onConflict: 'user_id,usage_date' });
+  if (usageWriteError) return Response.json({ error: usageWriteError.message }, { status: 500 });
+
   let body: any;
   try {
     body = await request.json();

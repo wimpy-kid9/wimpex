@@ -44,7 +44,7 @@ export default function ProfileHeader({ profile, subscription }: { profile: any;
   const isGold = isGoldSubscription(subscription);
 
   return (
-    <section className="surface-veil rounded-md bg-panel-2/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
+    <section className="surface-veil rounded-md bg-panel-2/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl gold-reveal">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           {profile?.avatar_url ? (
@@ -85,7 +85,7 @@ export default function ProfileHeader({ profile, subscription }: { profile: any;
           {isOwn ? (
             <div className="flex flex-wrap gap-2">
               {!isGold ? (
-                <a href="/settings" className="rounded-2xl bg-gold px-4 py-2 text-sm font-semibold text-obsidian transition hover:bg-gold-deep">Upgrade to Gold</a>
+                <a href="/settings" className="gold-upgrade-button rounded-2xl bg-gold px-4 py-2 text-sm font-semibold text-obsidian transition hover:bg-gold-deep">Upgrade to Gold</a>
               ) : null}
               <a href="/settings" className="rounded-2xl border border-hairline px-4 py-2 text-sm font-semibold text-ivory transition hover:bg-ivory/10">Edit profile</a>
               <a href="/calls" className="rounded-2xl border border-hairline px-4 py-2 text-sm font-semibold text-ivory transition hover:bg-ivory/10">Call history</a>

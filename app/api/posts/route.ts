@@ -575,6 +575,7 @@ export async function POST(request: NextRequest) {
   let audioCoverArtUrl = '';
   let filterPreset = 'none';
   let durationSeconds = 0;
+  let scheduledFor: string | null = null;
 
   const contentType = request.headers.get('content-type') || '';
   if (contentType.includes('multipart/form-data')) {
@@ -586,6 +587,7 @@ export async function POST(request: NextRequest) {
     mediaType = formData.get('media_type')?.toString() || 'video';
     filterPreset = formData.get('filter_preset')?.toString() || 'none';
     durationSeconds = Number(formData.get('duration_seconds') || 0);
+    scheduledFor = formData.get('scheduled_for')?.toString() || null;
     audioTrackId = formData.get('audio_track_id')?.toString() || '';
     audioTrackName = formData.get('audio_track_name')?.toString() || '';
     audioArtistName = formData.get('audio_artist_name')?.toString() || '';
@@ -655,6 +657,7 @@ export async function POST(request: NextRequest) {
     mediaType = body.media_type || (body.image_url ? 'image' : 'video');
     filterPreset = body.filter_preset || 'none';
     durationSeconds = Number(body.duration_seconds || 0);
+    scheduledFor = body.scheduled_for || null;
     audioTrackId = body.audio_track_id || '';
     audioTrackName = body.audio_track_name || '';
     audioArtistName = body.audio_artist_name || '';
@@ -667,6 +670,14 @@ export async function POST(request: NextRequest) {
   }
 
   const posterIsGold = await isUserGold(authContext.user.id);
+  if (scheduledFor) {
+    if (!posterIsGold) return NextResponse.json({ error: 'Gold membership is required for scheduled posts.' }, { status: 403 });
+    const scheduledDate = new Date(scheduledFor);
+    if (!Number.isFinite(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now()) {
+      return NextResponse.json({ error: 'Scheduled time must be in the future.' }, { status: 400 });
+    }
+    status = 'draft';
+  }
   if (GOLD_FILTERS.has(filterPreset) && !posterIsGold) {
     return NextResponse.json({ error: 'Gold membership is required for this filter.' }, { status: 403 });
   }
@@ -692,6 +703,7 @@ export async function POST(request: NextRequest) {
       audio_preview_url: audioPreviewUrl || null,
       audio_cover_art_url: audioCoverArtUrl || null,
       filter_preset: filterPreset || null
+      ,scheduled_for: scheduledFor
     })
     .select()
     .single();

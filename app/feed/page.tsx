@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
 import { supabase } from '@/lib/supabase';
 import PostCard from '@/app/components/PostCard';
+import GoldUpgradeHint from '@/app/components/GoldUpgradeHint';
+import { isGoldSubscription } from '@/lib/subscription';
 
 export default function FeedPage() {
   const [posts, setPosts] = useState<any[]>([]);
@@ -14,6 +16,8 @@ export default function FeedPage() {
   const [showCreatedToast, setShowCreatedToast] = useState(false);
   const [activeTab, setActiveTab] = useState<'books' | 'feed' | 'friends'>('feed');
   const [followingIds, setFollowingIds] = useState<string[] | null>(null);
+  const [isGold, setIsGold] = useState(false);
+  const [hideGoldNudge, setHideGoldNudge] = useState(false);
 
   useEffect(() => {
     const loadPosts = async () => {
@@ -30,6 +34,10 @@ export default function FeedPage() {
     };
 
     void loadPosts();
+  }, []);
+
+  useEffect(() => {
+    void authedFetch('/api/wimpypay').then((response) => response.json()).then((payload) => setIsGold(isGoldSubscription(payload.subscription))).catch(() => setIsGold(false));
   }, []);
 
   useEffect(() => {
@@ -79,8 +87,16 @@ export default function FeedPage() {
             return followingIds.includes(post.author_id);
           }
           return true;
-        }).map((post) => (
-          <PostCard key={post.id} post={post} isFeedItem />
+        }).map((post, index) => (
+          <div key={post.id} className="snap-start">
+            <PostCard post={post} isFeedItem />
+            {!isGold && !hideGoldNudge && index > 0 && index % 6 === 5 ? (
+              <div className="mx-4 my-3 flex items-center justify-between gap-3 rounded-2xl border border-gold/20 bg-panel-2/90 px-4 py-3 text-sm text-slate">
+                <span>Make more of every post with Gold.</span>
+                <div className="flex items-center gap-2"><GoldUpgradeHint compact perk="Gold creator perks" detail="Unlock exclusive filters and 3-minute posts." /><button type="button" onClick={() => setHideGoldNudge(true)} className="text-xs text-slate hover:text-ivory" aria-label="Dismiss Gold feed nudge">Dismiss</button></div>
+              </div>
+            ) : null}
+          </div>
         ))}
       </div>
 

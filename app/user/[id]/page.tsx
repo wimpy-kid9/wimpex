@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import ProfileHeader from '@/app/components/ProfileHeader';
 import ProfileTabs from '@/app/components/ProfileTabs';
 import { supabaseServer } from '@/lib/supabase-server';
+import ProfileViewTracker from '@/app/components/ProfileViewTracker';
 
 interface Props {
   params: { id: string };
@@ -40,6 +41,7 @@ export default async function UserPage({ params }: Props) {
 
   return (
     <main className="p-8 space-y-6">
+      <ProfileViewTracker profileUserId={id} />
       <ProfileHeader profile={profile} subscription={subscription} />
       <ProfileTabs profile={profile} isOwn={false} />
     </main>

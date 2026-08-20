@@ -9,6 +9,7 @@ import AuthActionPrompt from '@/app/components/AuthActionPrompt';
 import { useAudioMixer } from '@/lib/use-audio-mixer';
 import { isGoldSubscription } from '@/lib/subscription';
 import { usePaidUpgradeFlow } from '@/app/components/PaidUpgradeFlow';
+import GoldUpgradeHint from '@/app/components/GoldUpgradeHint';
 
 const FILTER_PRESETS: { key: string; label: string; description: string; gold?: boolean }[] = [
   { key: 'none', label: 'None', description: 'Natural colors' },
@@ -89,6 +90,8 @@ export default function CreatePostPage() {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [isGold, setIsGold] = useState(false);
   const [goldStatusLoaded, setGoldStatusLoaded] = useState(false);
+  const [goldLimitNotice, setGoldLimitNotice] = useState(false);
+  const [scheduledFor, setScheduledFor] = useState('');
   const upgrade = usePaidUpgradeFlow({ productName: 'wimpex', planName: 'Wimpex Pro', onSuccess: (subscription) => setIsGold(isGoldSubscription(subscription)) });
   const [cameraArmed, setCameraArmed] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
@@ -354,7 +357,10 @@ export default function CreatePostPage() {
       recorder.start();
       recorderTimerRef.current = setInterval(() => {
         setRecordingSeconds((seconds) => {
-          if (seconds + 1 >= maxRecordingSeconds) stopRecording();
+          if (seconds + 1 >= maxRecordingSeconds) {
+            stopRecording();
+            if (!isGold) setGoldLimitNotice(true);
+          }
           return seconds + 1;
         });
       }, 1000);
@@ -431,6 +437,7 @@ export default function CreatePostPage() {
     formData.append('visibility', visibility);
     formData.append('status', desiredStatus);
     formData.append('filter_preset', filterPreset);
+    if (scheduledFor) formData.append('scheduled_for', new Date(scheduledFor).toISOString());
     if (mediaFile && mediaType === 'video') {
       const probe = document.createElement('video');
       probe.src = URL.createObjectURL(mediaFile);
@@ -447,7 +454,7 @@ export default function CreatePostPage() {
 
     const endpoint = editingId ? `/api/posts/${editingId}` : '/api/posts';
     const method = editingId ? 'PATCH' : 'POST';
-    const body = editingId ? JSON.stringify({ caption: draft.trim(), visibility, filter_preset: filterPreset, status: desiredStatus }) : formData;
+    const body = editingId ? JSON.stringify({ caption: draft.trim(), visibility, filter_preset: filterPreset, status: desiredStatus, scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : null }) : formData;
 
     const response = await authedFetch(endpoint, { method, body });
     setBusy(false);
@@ -615,6 +622,8 @@ export default function CreatePostPage() {
                           </button>
                         ))}
                       </div>
+                      {!isGold ? <div className="mt-3"><GoldUpgradeHint perk="Unlock 4 exclusive filters + 3-minute posts with Gold" detail="Tap any locked filter or upgrade here to open the Gold membership flow." /></div> : null}
+                      {goldLimitNotice ? <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-gold/25 bg-gold/5 px-4 py-3 text-sm text-slate"><span>Free limit reached — Gold posts up to 3 minutes.</span><GoldUpgradeHint compact perk="Gold posts" detail="Record up to 3 minutes instead of 1 minute." /></div> : null}
 
                       {step === 'details' ? (
                         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -627,6 +636,12 @@ export default function CreatePostPage() {
                               placeholder="What are you sharing today?"
                               className="min-h-[120px] w-full rounded-2xl border border-hairline bg-panel-2 px-4 py-3 text-sm text-ivory outline-none"
                             />
+                            {isGold ? (
+                              <label className="mt-4 block text-sm font-medium text-slate">
+                                Schedule for later
+                                <input type="datetime-local" value={scheduledFor} onChange={(event) => setScheduledFor(event.target.value)} min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} className="mt-2 w-full rounded-xl border border-hairline bg-panel-2 px-3 py-2 text-sm text-ivory" />
+                              </label>
+                            ) : <GoldUpgradeHint compact perk="Scheduled posts" detail="Choose a future publish time with Gold." />}
                             <div className="mt-2 flex items-center justify-between text-xs text-slate">
                               <span>Keep it concise and intimate.</span>
                               <span>{characterCount}/280</span>

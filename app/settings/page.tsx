@@ -5,27 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { authedFetch } from '@/lib/api-client';
 import { usePaidUpgradeFlow } from '@/app/components/PaidUpgradeFlow';
 import { isGoldSubscription } from '@/lib/subscription';
-import { applyTheme, type ThemeName } from '@/lib/theme';
 
 const WIMPEX_PLAN_NAME = 'Wimpex Pro';
-const NOTIFICATION_SOUNDS = [
-  { value: 'default', label: 'Default' },
-  { value: 'chime', label: 'Chime' },
-  { value: 'pop', label: 'Pop' },
-  { value: 'marimba', label: 'Marimba' }
-];
-const THEMES: Array<{ value: ThemeName; label: string; color: string }> = [
-  { value: 'gold', label: 'Gold', color: '#c9a961' },
-  { value: 'blue', label: 'Blue', color: '#4f8ff7' },
-  { value: 'green', label: 'Green', color: '#4fbf6e' },
-  { value: 'red', label: 'Red', color: '#e0524f' },
-  { value: 'pink', label: 'Pink', color: '#e668a3' },
-  { value: 'yellow', label: 'Yellow', color: '#e0c34f' },
-  { value: 'violet', label: 'Violet', color: '#9a6fe0' },
-  { value: 'orange', label: 'Orange', color: '#e08a3f' },
-  { value: 'black', label: 'Black', color: '#a8a8a8' }
-];
-
 function formatNaira(amount: number) {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
@@ -53,8 +34,6 @@ export default function SettingsPage() {
   const [disappearingMessagesTimer, setDisappearingMessagesTimer] = useState(3600);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
-  const [notificationSound, setNotificationSound] = useState('default');
-  const [themePreference, setThemePreference] = useState<ThemeName>('gold');
   const isGold = isGoldSubscription(subscription);
 
   const upgrade = usePaidUpgradeFlow({
@@ -103,8 +82,6 @@ export default function SettingsPage() {
       setDisappearingMessagesTimer(result.profile?.disappearing_messages_timer ?? 3600);
       setEmailNotifications(result.profile?.email_notifications ?? true);
       setPushNotifications(result.profile?.push_notifications ?? true);
-      setNotificationSound(result.profile?.notification_sound ?? 'default');
-      setThemePreference(result.profile?.theme_preference ?? 'gold');
       await loadSubscription();
       setLoading(false);
     };
@@ -195,8 +172,6 @@ export default function SettingsPage() {
         disappearing_messages_timer: disappearingMessagesTimer,
         email_notifications: emailNotifications,
         push_notifications: pushNotifications,
-        notification_sound: notificationSound,
-        ...(isGold ? { theme_preference: themePreference } : {})
       })
     });
 
@@ -251,59 +226,10 @@ export default function SettingsPage() {
             </div>
           )}
           {upgrade.notice ? <p className="mt-3 text-sm text-gold">{upgrade.notice}</p> : null}
-          <div className={`rounded-2xl border p-4 ${isGold ? 'border-gold/30 bg-panel/40' : 'border-hairline bg-panel/30 opacity-70'}`}>
-            <p className="font-semibold text-ivory">Gold themes</p>
-            <p className="mt-1 text-xs text-slate">Change the app accent across your devices.</p>
-            <div className="mt-3 flex flex-wrap gap-3">
-              {THEMES.map((theme) => (
-                <button
-                  key={theme.value}
-                  type="button"
-                  onClick={async () => {
-                    if (!isGold) {
-                      await runUpgradePurchase();
-                      return;
-                    }
-                    applyTheme(theme.value);
-                    setThemePreference(theme.value);
-                    const response = await authedFetch('/api/profile', {
-                      method: 'PATCH',
-                      body: JSON.stringify({ theme_preference: theme.value })
-                    });
-                    if (!response.ok) setMessage((await response.json()).error || 'Unable to save theme.');
-                  }}
-                  className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${themePreference === theme.value ? 'border-ivory text-ivory' : 'border-hairline text-slate'}`}
-                  title={isGold ? `Use ${theme.label} theme` : 'Upgrade to unlock themes'}
-                >
-                  <span className="h-4 w-4 rounded-full border border-white/30" style={{ backgroundColor: theme.color }} />
-                  {theme.label}
-                </button>
-              ))}
-            </div>
-            {!isGold ? <p className="mt-3 text-xs text-gold">Upgrade to Gold to unlock themes.</p> : null}
-          </div>
+          {isGold ? <a href="/settings/gold" className="inline-flex rounded-full border border-gold/40 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold transition hover:bg-gold/20">Manage Gold Settings →</a> : null}
         </div>
 
         <div className="mt-8 space-y-6">
-          <div className="rounded-3xl border border-gold/30 bg-gold/5 p-4">
-            <p className="font-semibold text-ivory">Gold notification sounds</p>
-            <p className="mt-1 text-xs text-slate">Custom message sounds are available with Gold.</p>
-            <div className="mt-3 space-y-2">
-              {NOTIFICATION_SOUNDS.map((sound) => (
-                <div key={sound.value} className="flex items-center gap-3 rounded-2xl border border-hairline bg-panel px-3 py-2">
-                  <input
-                    type="radio"
-                    name="notification-sound"
-                    value={sound.value}
-                    checked={notificationSound === sound.value}
-                    disabled={sound.value !== 'default' && !isGold}
-                    onChange={(event) => setNotificationSound(event.target.value)}
-                  />
-                  <span className="flex-1 text-sm text-ivory">{sound.label}{sound.value !== 'default' && !isGold ? ' (Gold)' : ''}</span>
-                </div>
-              ))}
-            </div>
-          </div>
           <div className="flex items-center gap-4 rounded-3xl border border-hairline bg-panel-2/80 p-4">
             <div className="relative">
               {avatarUrl ? (

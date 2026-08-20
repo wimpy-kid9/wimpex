@@ -7,6 +7,7 @@ import GoldBadge from '@/app/components/GoldBadge';
 import { getConversationUnreadCount, markConversationRead, syncTotalUnreadCount } from '@/lib/chat-unread';
 import { usePaidUpgradeFlow } from '@/app/components/PaidUpgradeFlow';
 import { isGoldSubscription } from '@/lib/subscription';
+import GoldUpgradeHint from '@/app/components/GoldUpgradeHint';
 
 interface ProfileMatch {
   user_id: string;
@@ -477,7 +478,7 @@ export default function MessageList() {
                     <div className="flex items-center gap-2">
                       <p className="whitespace-nowrap text-xs uppercase tracking-[0.24em] text-slate">{timeLabel}</p>
                       <button type="button" onClick={(event) => { event.stopPropagation(); void togglePinned(conversation); }} className="rounded-full border border-hairline px-2 py-1 text-xs text-slate hover:border-gold hover:text-gold" title={isGold ? (conversation.pinnedAt ? 'Unpin chat' : 'Pin chat') : 'Gold: pin chat'}>
-                        {conversation.pinnedAt ? '📌' : isGold ? 'Pin' : '🔒'}
+                        {conversation.pinnedAt ? '📌' : isGold ? 'Pin' : <GoldUpgradeHint compact perk="Pin chats" detail="Preview your pinned inbox and unlock quick access with Gold." />}
                       </button>
                     </div>
                   </div>

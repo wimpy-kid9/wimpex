@@ -9,6 +9,7 @@ import GoldBadge from '@/app/components/GoldBadge';
 import { markConversationRead } from '@/lib/chat-unread';
 import { supabase } from '@/lib/supabase';
 import { isGoldSubscription } from '@/lib/subscription';
+import GoldUpgradeHint from '@/app/components/GoldUpgradeHint';
 
 interface ChatThreadProps {
   conversationId: string;
@@ -20,6 +21,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [messages, setMessages] = useState<any[]>([]);
   const [conversation, setConversation] = useState<any | null>(null);
   const [draft, setDraft] = useState('');
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [notice, setNotice] = useState('');
   const [loadingMessages, setLoadingMessages] = useState(true);
@@ -326,6 +328,22 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     void loadThread();
   };
 
+  const updateOwnMessage = async (message: any, unsend = false) => {
+    const response = await authedFetch(`/api/messages/${message.id}`, {
+      method: unsend ? 'DELETE' : 'PATCH',
+      body: unsend ? undefined : JSON.stringify({ body: draft })
+    });
+    if (!response.ok) {
+      setNotice((await response.json()).error || 'Unable to update message.');
+      return;
+    }
+    const payload = await response.json();
+    setMessages((current) => current.map((item) => item.id === message.id ? { ...item, ...payload.message } : item));
+    setEditingMessageId(null);
+    setDraft('');
+    setActionMenuFor(null);
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -539,9 +557,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M22 16.92V21a1 1 0 0 1-1.11 1 19.86 19.86 0 0 1-8.63-3.07A19.38 19.38 0 0 1 3.07 9.74 19.86 19.86 0 0 1 0 1.11 1 1 0 0 1 1 0h4.09a1 1 0 0 1 1 .76c.12.83.33 1.64.63 2.42a1 1 0 0 1-.24 1.03L5.2 6.79a16 16 0 0 0 10.45 10.45l1.58-1.58a1 1 0 0 1 1.03-.24c.78.3 1.59.51 2.42.63a1 1 0 0 1 .76 1V22z" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
-              <button type="button" onClick={() => senderIsGold ? setWallpaperPickerOpen((open) => !open) : setNotice('Gold membership is required for chat wallpapers.')} className="rounded-full border border-hairline bg-panel p-2 text-ivory transition hover:bg-ivory/10" title="Chat wallpaper">
-                🖼️
-              </button>
+              {senderIsGold ? <button type="button" onClick={() => setWallpaperPickerOpen((open) => !open)} className="rounded-full border border-hairline bg-panel p-2 text-ivory transition hover:bg-ivory/10" title="Chat wallpaper">🖼️</button> : <GoldUpgradeHint compact perk="Chat wallpapers" detail="Preview custom colors and images for this conversation, then unlock them with Gold." />}
               <button
                 type="button"
                 onClick={() => void handleStartCall('video')}
@@ -648,7 +664,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                           <p className="font-semibold text-ivory">{messageItem.metadata?.status === 'missed' ? 'Missed call' : incoming ? 'Incoming call' : 'Outgoing call'}</p>
                           {messageItem.metadata?.duration != null ? <p className="mt-1 text-xs text-slate">Duration {Math.floor(messageItem.metadata.duration / 60)}:{String(messageItem.metadata.duration % 60).padStart(2, '0')}</p> : null}
                         </div>
-                      ) : messageItem.body ? <div>{renderRichText(messageItem.body || '', { className: 'break-words', linkClassName: 'text-sky-400 underline decoration-sky-400/80 underline-offset-2 hover:text-sky-300' })}</div> : null}
+                      ) : messageItem.unsent_at ? <div className="italic text-slate">Message unsent</div> : messageItem.body ? <div>{renderRichText(messageItem.body || '', { className: 'break-words', linkClassName: 'text-sky-400 underline decoration-sky-400/80 underline-offset-2 hover:text-sky-300' })}</div> : null}
                       {messageItem.media_url ? (
                         <div className="mt-3 overflow-hidden rounded-3xl border border-hairline bg-panel/80">
                           {messageItem.media_type?.startsWith('image') ? (
@@ -666,7 +682,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                         </div>
                       ) : null}
                       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate">
-                        <span>{new Date(messageItem.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>{new Date(messageItem.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{messageItem.edited_at ? ' · edited' : ''}</span>
                         {messageItem.id === mostRecentOwnMessageId && messageItem.read_at ? (
                           <span className="text-[10px] text-slate">{senderIsGold ? `Read ${new Date(messageItem.read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Read'}</span>
                         ) : null}
@@ -722,6 +738,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                       {actionMenuFor === messageItem.id ? (
                         <div className="absolute right-0 top-0 z-10 mt-1 w-32 rounded-3xl border border-hairline bg-panel p-2 shadow-2xl shadow-black/20">
                           <button type="button" onClick={() => handleReplyToMessage(messageItem)} className="w-full rounded-3xl px-3 py-2 text-left text-xs text-ivory transition hover:bg-panel/80">Reply</button>
+                          {messageItem.sender_id === currentUserId ? <><button type="button" onClick={() => { setEditingMessageId(messageItem.id); setDraft(messageItem.body || ''); setActionMenuFor(null); }} className="w-full rounded-3xl px-3 py-2 text-left text-xs text-ivory transition hover:bg-panel/80">Edit</button><button type="button" onClick={() => void updateOwnMessage(messageItem, true)} className="w-full rounded-3xl px-3 py-2 text-left text-xs text-rose-200 transition hover:bg-panel/80">Unsend</button></> : null}
                           <button type="button" onClick={() => toggleReactionPicker(messageItem.id)} className="w-full rounded-3xl px-3 py-2 text-left text-xs text-ivory transition hover:bg-panel/80">React</button>
                           <button type="button" onClick={() => setActionMenuFor(null)} className="w-full rounded-3xl px-3 py-2 text-left text-xs text-slate transition hover:bg-panel/80">Close</button>
                         </div>
@@ -773,13 +790,18 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message"
+                placeholder={editingMessageId ? 'Edit message' : 'Message'}
                 className="flex-1 rounded-full border border-transparent bg-panel px-4 py-3 text-sm text-ivory outline-none focus:border-gold focus:ring-2 focus:ring-gold/20"
               />
               <div className="relative">
                 <button
                   type="button"
                   onClick={async () => {
+                    if (editingMessageId) {
+                      const message = messagesById.get(editingMessageId);
+                      if (message) await updateOwnMessage(message);
+                      return;
+                    }
                     if (draft.trim() || attachment) {
                       await sendMessage();
                       return;

@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 import { authedFetch } from '@/lib/api-client';
 import AuthActionPrompt from '@/app/components/AuthActionPrompt';
 import GoldBadge from '@/app/components/GoldBadge';
+import GoldUpgradeHint from '@/app/components/GoldUpgradeHint';
+import { isGoldSubscription } from '@/lib/subscription';
 
 // useSearchParams() requires a Suspense boundary in the App Router, so the
 // real page body lives in SearchPageInner and this default export just
@@ -27,6 +29,8 @@ function SearchPageInner() {
   const [videoResults, setVideoResults] = useState<any[]>([]);
   const [status, setStatus] = useState('');
   const [session, setSession] = useState<any>(undefined);
+  const [isGold, setIsGold] = useState(false);
+  const [hideGoldNote, setHideGoldNote] = useState(false);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -34,6 +38,7 @@ function SearchPageInner() {
       setSession(data?.session ?? null);
     };
     void loadSession();
+    void authedFetch('/api/wimpypay').then((response) => response.json()).then((payload) => setIsGold(isGoldSubscription(payload.subscription))).catch(() => setIsGold(false));
   }, []);
 
   useEffect(() => {
@@ -147,6 +152,13 @@ function SearchPageInner() {
             </button>
           </div>
         </section>
+      ) : null}
+
+      {!isGold && !hideGoldNote && peopleResults.length > 0 ? (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-gold/20 bg-gold/5 px-4 py-3 text-sm text-slate">
+          <span>Gold members appear higher in search results.</span>
+          <div className="flex items-center gap-2"><GoldUpgradeHint compact perk="Priority discovery" detail="Gold profiles receive a ranking boost in people search." /><button type="button" onClick={() => setHideGoldNote(true)} className="text-xs text-slate hover:text-ivory" aria-label="Dismiss Gold search note">Dismiss</button></div>
+        </div>
       ) : null}
 
       <section className="space-y-3">
