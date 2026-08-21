@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const delta = parsed?.choices?.[0]?.delta?.content ?? parsed?.choices?.[0]?.message?.content ?? parsed?.content ?? parsed?.reply ?? '';
+        const delta = parsed?.delta ?? parsed?.choices?.[0]?.delta?.content ?? parsed?.choices?.[0]?.message?.content ?? parsed?.content ?? parsed?.reply ?? '';
         if (typeof delta === 'string') reply += delta;
       }
 
