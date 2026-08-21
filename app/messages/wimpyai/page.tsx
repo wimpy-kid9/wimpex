@@ -83,7 +83,12 @@ export default function WimpyAIChat() {
       });
 
       if (!response.ok) {
-        throw new Error('WimpyAI service error');
+        // The proxy sends a real, specific message in the JSON body
+        // (e.g. "WimpyAI is temporarily unavailable: ...", a quota error,
+        // etc.) — surface that instead of a generic string so failures are
+        // actually diagnosable from the UI.
+        const errorPayload = await response.json().catch(() => ({}));
+        throw new Error(errorPayload?.error || 'WimpyAI service error');
       }
 
       const payload = await response.json();
