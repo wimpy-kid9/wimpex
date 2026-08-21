@@ -312,7 +312,7 @@ export default function CallWindow({
           localVideoRef.current.srcObject = localStream;
         }
 
-        const rtcConfig = getRTCConfig();
+        const rtcConfig = await getRTCConfig();
         const peerConnection = new RTCPeerConnection(rtcConfig);
         peerConnectionRef.current = peerConnection;
 
