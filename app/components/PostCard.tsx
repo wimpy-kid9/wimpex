@@ -269,7 +269,7 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
     <>
     <article ref={cardRef} className={`relative w-full overflow-hidden bg-black text-ivory ${variant === 'grid' ? 'aspect-[3/4] rounded-2xl' : ''} ${isFeedItem ? 'feed-snap-item h-[calc(100dvh-var(--header-h)-var(--bottomnav-h))] md:h-[80vh]' : ''}`}>
       {post.mediaType === 'image' && post.imageUrl ? (
-        <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`} onClick={handleVideoTap} />
+        <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-contain ${overlayFilter}`} onClick={handleVideoTap} />
       ) : post.mediaType === 'video' && post.videoUrl ? (
         <video
           ref={videoRef}
@@ -277,7 +277,7 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
           muted={muted}
           playsInline
           loop
-          className={`absolute inset-0 h-full w-full object-cover md:object-contain ${overlayFilter}`}
+          className={`absolute inset-0 h-full w-full object-contain ${overlayFilter}`}
           onClick={handleVideoTap}
         />
       ) : (

@@ -5,6 +5,17 @@ import { useEffect, useRef, useState } from 'react';
 import type { SVGProps } from 'react';
 import { authedFetch } from '@/lib/api-client';
 
+type StoryOverlay = {
+  text: string;
+  font: string | null;
+  textColor: string | null;
+  bgColor: string | null;
+  posX: number | null;
+  posY: number | null;
+  scale: number | null;
+  rotation: number | null;
+};
+
 type StoryItem = {
   id: string;
   authorId: string;
@@ -12,11 +23,17 @@ type StoryItem = {
   avatarUrl: string | null;
   caption: string;
   createdAt: string;
-  mediaType: 'video' | 'image';
+  mediaType: 'video' | 'image' | 'text';
   videoUrl: string | null;
   imageUrl: string | null;
   thumbnailUrl: string | null;
   viewedByMe: boolean;
+  // Present only when mediaType === 'text'
+  textContent?: string | null;
+  backgroundColor?: string | null;
+  font?: string | null;
+  // Present only when the author added a text layer on top of video/image
+  overlay?: StoryOverlay | null;
 };
 
 type StoryGroup = {
@@ -25,6 +42,34 @@ type StoryGroup = {
   avatarUrl: string | null;
   stories: StoryItem[];
 };
+
+// Keep in sync with FONT_OPTIONS in stories-create-page.tsx — same ids,
+// same stacks, so a story renders with the exact font it was composed in.
+const FONT_STACKS: Record<string, string> = {
+  sans: '"Inter", "Helvetica Neue", Arial, sans-serif',
+  serif: 'Georgia, "Times New Roman", serif',
+  mono: '"SFMono-Regular", ui-monospace, Menlo, monospace',
+  display: '"Arial Black", "Helvetica Neue", sans-serif',
+  script: '"Segoe Script", "Bradley Hand", cursive'
+};
+
+function fontFamilyFor(id: string | null | undefined) {
+  return FONT_STACKS[id || 'sans'] || FONT_STACKS.sans;
+}
+
+// Keep in sync with BACKGROUND_OPTIONS in stories-create-page.tsx — solid
+// hex values pass through as-is, "grad-*" tokens resolve to the matching
+// gradient here.
+const BACKGROUND_CSS: Record<string, string> = {
+  'grad-gold-obsidian': 'linear-gradient(160deg, #D4AF37 0%, #141014 70%)',
+  'grad-rose-obsidian': 'linear-gradient(160deg, #E11D48 0%, #141014 75%)',
+  'grad-slate-gold': 'linear-gradient(160deg, #1F2937 0%, #D4AF37 100%)'
+};
+
+function backgroundCssFor(value: string | null | undefined) {
+  if (!value) return '#141014';
+  return BACKGROUND_CSS[value] || value;
+}
 
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -47,6 +92,32 @@ function IconClose(props: SVGProps<SVGSVGElement>) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...props}>
       <path d="M6 6l12 12M18 6L6 18" />
     </svg>
+  );
+}
+
+function StoryOverlayLayer({ overlay }: { overlay: StoryOverlay }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: `${overlay.posX ?? 50}%`,
+        top: `${overlay.posY ?? 50}%`,
+        transform: `translate(-50%, -50%) rotate(${overlay.rotation ?? 0}deg) scale(${overlay.scale ?? 1})`,
+        fontFamily: fontFamilyFor(overlay.font),
+        color: overlay.textColor || '#ffffff',
+        backgroundColor: overlay.bgColor || 'transparent',
+        padding: overlay.bgColor ? '0.35em 0.6em' : 0,
+        borderRadius: overlay.bgColor ? '0.5em' : 0,
+        maxWidth: '85%',
+        fontSize: '1.15rem',
+        fontWeight: 600,
+        textAlign: 'center',
+        lineHeight: 1.25,
+        wordBreak: 'break-word'
+      }}
+    >
+      {overlay.text}
+    </div>
   );
 }
 
@@ -137,7 +208,8 @@ export default function StoriesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStory?.id]);
 
-  // Images auto-advance on a fixed timer; videos advance via onEnded below.
+  // Videos advance via onEnded below; images AND text stories auto-advance
+  // on a fixed timer since neither has a natural "finished playing" event.
   useEffect(() => {
     if (!activeStory || activeStory.mediaType === 'video') return undefined;
     const duration = 5000;
@@ -164,7 +236,7 @@ export default function StoriesPage() {
     <main className="space-y-6">
       <section className="surface-veil rounded-md bg-panel-2/75 p-6">
         <h1 className="text-display text-3xl text-ivory">Stories</h1>
-        <p className="mt-2 text-sm text-slate">Photos and clips from people you follow back — gone after 24 hours.</p>
+        <p className="mt-2 text-sm text-slate">Photos, clips, and text from people you follow back — gone after 24 hours.</p>
       </section>
 
       {/* Avatar rail — your story bubble first, tap it to go straight to the story composer */}
@@ -270,28 +342,46 @@ export default function StoriesPage() {
             </div>
 
             <div className="flex h-full items-center justify-center">
-              {activeStory.mediaType === 'video' && activeStory.videoUrl ? (
-                <video
-                  key={activeStory.id}
-                  src={activeStory.videoUrl}
-                  poster={activeStory.thumbnailUrl ?? undefined}
-                  className="h-full w-full object-contain"
-                  autoPlay
-                  playsInline
-                  onTimeUpdate={(e) => {
-                    const v = e.currentTarget;
-                    if (v.duration) setProgress(v.currentTime / v.duration);
-                  }}
-                  onEnded={() => goToStory(viewer!.groupIndex, viewer!.storyIndex + 1)}
-                />
+              {activeStory.mediaType === 'text' ? (
+                <div
+                  className="flex h-full w-full items-center justify-center p-8 text-center"
+                  style={{ background: backgroundCssFor(activeStory.backgroundColor) }}
+                >
+                  <p
+                    style={{ fontFamily: fontFamilyFor(activeStory.font) }}
+                    className="whitespace-pre-wrap break-words text-2xl font-semibold text-ivory"
+                  >
+                    {activeStory.textContent}
+                  </p>
+                </div>
+              ) : activeStory.mediaType === 'video' && activeStory.videoUrl ? (
+                <div className="relative h-full w-full">
+                  <video
+                    key={activeStory.id}
+                    src={activeStory.videoUrl}
+                    poster={activeStory.thumbnailUrl ?? undefined}
+                    className="h-full w-full object-contain"
+                    autoPlay
+                    playsInline
+                    onTimeUpdate={(e) => {
+                      const v = e.currentTarget;
+                      if (v.duration) setProgress(v.currentTime / v.duration);
+                    }}
+                    onEnded={() => goToStory(viewer!.groupIndex, viewer!.storyIndex + 1)}
+                  />
+                  {activeStory.overlay?.text ? <StoryOverlayLayer overlay={activeStory.overlay} /> : null}
+                </div>
               ) : activeStory.imageUrl ? (
-                <img src={activeStory.imageUrl} alt={activeStory.caption || 'Story'} className="h-full w-full object-contain" />
+                <div className="relative h-full w-full">
+                  <img src={activeStory.imageUrl} alt={activeStory.caption || 'Story'} className="h-full w-full object-contain" />
+                  {activeStory.overlay?.text ? <StoryOverlayLayer overlay={activeStory.overlay} /> : null}
+                </div>
               ) : (
                 <p className="text-sm text-slate">No media available.</p>
               )}
             </div>
 
-            {activeStory.caption ? (
+            {activeStory.mediaType !== 'text' && activeStory.caption ? (
               <p className="absolute inset-x-4 bottom-6 z-10 text-center text-sm text-ivory drop-shadow">{activeStory.caption}</p>
             ) : null}
           </div>
