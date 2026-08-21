@@ -190,12 +190,12 @@ export default function WimpyAIChat() {
                   <div
                     className={`max-w-[84%] rounded-3xl px-4 py-3 text-sm leading-7 ${
                       message.role === 'user'
-                        ? 'bg-gold/10 text-obsidian'
+                        ? 'bg-gold text-[color:var(--gold-contrast)]'
                         : 'bg-panel/90 text-ivory'
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                    <p className={`mt-2 text-xs ${message.role === 'user' ? 'text-obsidian/60' : 'text-slate'}`}>
+                    <p className={`mt-2 text-xs ${message.role === 'user' ? 'text-[color:var(--gold-contrast)] opacity-70' : 'text-slate'}`}>
                       {new Date(message.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit'
