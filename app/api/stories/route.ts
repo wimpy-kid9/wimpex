@@ -31,6 +31,18 @@ function clampPercent(value: unknown): number | null {
   return Math.min(100, Math.max(0, num));
 }
 
+function clampScale(value: unknown): number | null {
+  const num = typeof value === 'string' ? Number(value) : typeof value === 'number' ? value : NaN;
+  if (Number.isNaN(num)) return null;
+  return Math.min(3, Math.max(0.5, num));
+}
+
+function clampRotation(value: unknown): number | null {
+  const num = typeof value === 'string' ? Number(value) : typeof value === 'number' ? value : NaN;
+  if (Number.isNaN(num)) return null;
+  return Math.min(180, Math.max(-180, num));
+}
+
 async function loadAuthors(authorIds: string[]) {
   if (authorIds.length === 0) return {};
   const { data: authors } = await supabaseServer
@@ -66,7 +78,9 @@ function serializeStory(story: any, authorMap: Record<string, any>, viewedIds: S
           textColor: story.overlay_text_color,
           bgColor: story.overlay_bg_color,
           posX: story.overlay_pos_x,
-          posY: story.overlay_pos_y
+          posY: story.overlay_pos_y,
+          scale: story.overlay_scale,
+          rotation: story.overlay_rotation
         }
       : null,
     createdAt: story.created_at,
@@ -77,7 +91,8 @@ function serializeStory(story: any, authorMap: Record<string, any>, viewedIds: S
 
 const STORY_SELECT =
   'id, author_id, media_type, video_url, image_url, thumbnail_url, caption, text_content, background_color, font, ' +
-  'overlay_text, overlay_font, overlay_text_color, overlay_bg_color, overlay_pos_x, overlay_pos_y, created_at, expires_at';
+  'overlay_text, overlay_font, overlay_text_color, overlay_bg_color, overlay_pos_x, overlay_pos_y, ' +
+  'overlay_scale, overlay_rotation, created_at, expires_at';
 
 // GET /api/stories — every non-expired story from people you mutually
 // follow (plus your own), grouped isn't done here; the client groups by
@@ -220,7 +235,9 @@ async function handleMediaStory(authContext: any, formData: FormData) {
     overlay_text_color: null,
     overlay_bg_color: null,
     overlay_pos_x: null,
-    overlay_pos_y: null
+    overlay_pos_y: null,
+    overlay_scale: 1,
+    overlay_rotation: 0
   };
 
   if (overlayTextRaw) {
@@ -243,6 +260,8 @@ async function handleMediaStory(authContext: any, formData: FormData) {
 
     const posX = clampPercent(formData.get('overlayPosX'));
     const posY = clampPercent(formData.get('overlayPosY'));
+    const scale = clampScale(formData.get('overlayScale'));
+    const rotation = clampRotation(formData.get('overlayRotation'));
 
     overlayFields = {
       overlay_text: overlayTextRaw,
@@ -250,7 +269,9 @@ async function handleMediaStory(authContext: any, formData: FormData) {
       overlay_text_color: overlayTextColorRaw,
       overlay_bg_color: overlayBgColorRaw || null,
       overlay_pos_x: posX ?? 50,
-      overlay_pos_y: posY ?? 50
+      overlay_pos_y: posY ?? 50,
+      overlay_scale: scale ?? 1,
+      overlay_rotation: rotation ?? 0
     };
   }
 

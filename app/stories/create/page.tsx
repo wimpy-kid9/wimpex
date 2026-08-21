@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent, SVGProps } from 'react';
+import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent, SVGProps } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authedFetch } from '@/lib/api-client';
@@ -84,7 +84,32 @@ export default function CreateStoryPage() {
   const [overlayTextColor, setOverlayTextColor] = useState('#FDF6E3');
   const [overlayBgColor, setOverlayBgColor] = useState<string | null>(null);
   const [overlayPos, setOverlayPos] = useState<OverlayPos>({ x: 50, y: 50 });
+  const [overlayScale, setOverlayScaleState] = useState(1);
+  const [overlayRotation, setOverlayRotationState] = useState(0);
   const dragging = useRef(false);
+
+  // Refs mirror the scale/rotation state so pointer-event closures always
+  // read the latest value instead of a stale one captured at render time.
+  const scaleRef = useRef(1);
+  const rotationRef = useRef(0);
+  const setOverlayScale = (value: number) => {
+    const clamped = Math.min(3, Math.max(0.5, value));
+    scaleRef.current = clamped;
+    setOverlayScaleState(clamped);
+  };
+  const setOverlayRotation = (value: number) => {
+    // wrap into -180..180 rather than clamp, so spinning past 180 keeps going
+    let wrapped = value;
+    while (wrapped > 180) wrapped -= 360;
+    while (wrapped < -180) wrapped += 360;
+    rotationRef.current = wrapped;
+    setOverlayRotationState(wrapped);
+  };
+
+  // Active pointers on the overlay text (for one-finger drag vs. two-finger
+  // pinch/rotate) and the gesture's starting values.
+  const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const gestureStart = useRef<{ dist: number; angle: number; scale: number; rotation: number } | null>(null);
 
   // --- text-story mode state ---
   const [textContent, setTextContent] = useState('');
@@ -113,17 +138,67 @@ export default function CreateStoryPage() {
     setOverlayPos({ x, y });
   };
 
+  const pointerDistanceAndAngle = () => {
+    const pts = Array.from(activePointers.current.values());
+    if (pts.length < 2) return null;
+    const [a, b] = pts;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    return { dist: Math.hypot(dx, dy), angle: (Math.atan2(dy, dx) * 180) / Math.PI };
+  };
+
   const onOverlayPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    dragging.current = true;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.current.size === 1) {
+      dragging.current = true;
+      gestureStart.current = null;
+    } else if (activePointers.current.size === 2) {
+      // Second finger landed — switch from drag to pinch/rotate.
+      dragging.current = false;
+      const da = pointerDistanceAndAngle();
+      if (da) {
+        gestureStart.current = { dist: da.dist, angle: da.angle, scale: scaleRef.current, rotation: rotationRef.current };
+      }
+    }
   };
+
   const onOverlayPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!dragging.current) return;
-    movePointerToOverlay(e.clientX, e.clientY);
+    if (!activePointers.current.has(e.pointerId)) return;
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.current.size >= 2 && gestureStart.current) {
+      const da = pointerDistanceAndAngle();
+      if (!da || da.dist === 0) return;
+      const nextScale = gestureStart.current.scale * (da.dist / gestureStart.current.dist);
+      const nextRotation = gestureStart.current.rotation + (da.angle - gestureStart.current.angle);
+      setOverlayScale(nextScale);
+      setOverlayRotation(nextRotation);
+      return;
+    }
+
+    if (dragging.current && activePointers.current.size === 1) {
+      movePointerToOverlay(e.clientX, e.clientY);
+    }
   };
-  const onOverlayPointerUp = () => {
-    dragging.current = false;
+
+  const endOverlayPointer = (e: ReactPointerEvent<HTMLDivElement>) => {
+    activePointers.current.delete(e.pointerId);
+    if (activePointers.current.size < 2) gestureStart.current = null;
+    if (activePointers.current.size === 0) dragging.current = false;
+    else if (activePointers.current.size === 1) {
+      // Dropped back to one finger — resume dragging from here.
+      dragging.current = true;
+    }
+  };
+
+  // Desktop trackpad pinch (Chrome/Firefox report this as wheel + ctrlKey).
+  const onOverlayWheel = (e: ReactWheelEvent<HTMLDivElement>) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    setOverlayScale(scaleRef.current - e.deltaY * 0.01);
   };
 
   const resetOverlay = () => {
@@ -131,6 +206,8 @@ export default function CreateStoryPage() {
     setOverlayOpen(false);
     setOverlayPos({ x: 50, y: 50 });
     setOverlayBgColor(null);
+    setOverlayScale(1);
+    setOverlayRotation(0);
   };
 
   const submitMedia = async () => {
@@ -153,6 +230,8 @@ export default function CreateStoryPage() {
       if (overlayBgColor) formData.append('overlayBgColor', overlayBgColor);
       formData.append('overlayPosX', String(overlayPos.x));
       formData.append('overlayPosY', String(overlayPos.y));
+      formData.append('overlayScale', String(overlayScale));
+      formData.append('overlayRotation', String(overlayRotation));
     }
 
     try {
@@ -274,12 +353,14 @@ export default function CreateStoryPage() {
               <div
                 onPointerDown={onOverlayPointerDown}
                 onPointerMove={onOverlayPointerMove}
-                onPointerUp={onOverlayPointerUp}
+                onPointerUp={endOverlayPointer}
+                onPointerCancel={endOverlayPointer}
+                onWheel={onOverlayWheel}
                 style={{
                   position: 'absolute',
                   left: `${overlayPos.x}%`,
                   top: `${overlayPos.y}%`,
-                  transform: 'translate(-50%, -50%)',
+                  transform: `translate(-50%, -50%) rotate(${overlayRotation}deg) scale(${overlayScale})`,
                   fontFamily: fontFamilyFor(overlayFont),
                   color: overlayTextColor,
                   backgroundColor: overlayBgColor || 'transparent',
@@ -379,7 +460,41 @@ export default function CreateStoryPage() {
                     ))}
                   </div>
 
-                  <p className="text-xs text-slate">Drag the text on the preview to place it.</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-slate">
+                      <span>Size</span>
+                      <span>{Math.round(overlayScale * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={3}
+                      step={0.05}
+                      value={overlayScale}
+                      onChange={(e) => setOverlayScale(Number(e.target.value))}
+                      className="w-full accent-gold"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-slate">
+                      <span>Rotate</span>
+                      <span>{Math.round(overlayRotation)}°</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-180}
+                      max={180}
+                      step={1}
+                      value={overlayRotation}
+                      onChange={(e) => setOverlayRotation(Number(e.target.value))}
+                      className="w-full accent-gold"
+                    />
+                  </div>
+
+                  <p className="text-xs text-slate">
+                    Drag the text to place it. On touch, pinch with two fingers to resize and twist to rotate — the sliders above work too.
+                  </p>
 
                   {overlayText.trim() && (
                     <button type="button" onClick={resetOverlay} className="text-xs text-rose-300 underline">
