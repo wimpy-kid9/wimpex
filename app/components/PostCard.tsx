@@ -279,7 +279,7 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
 
   return (
     <>
-    <article ref={cardRef} className={`relative w-full overflow-hidden bg-black text-ivory ${variant === 'grid' ? 'aspect-[3/4] rounded-2xl' : ''} ${isFeedItem ? 'feed-snap-item h-[calc(100dvh-var(--header-h)-var(--bottomnav-h))] md:h-[80vh]' : ''}`}>
+    <article ref={cardRef} className={`relative w-full overflow-hidden bg-black text-ivory ${variant === 'grid' ? 'aspect-[3/4] rounded-2xl' : isFeedItem ? 'feed-snap-item h-[calc(100dvh-var(--header-h)-var(--bottomnav-h))] md:h-[80vh]' : 'h-full'}`}>
       {post.mediaType === 'image' && post.imageUrl ? (
         <>
           <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-contain ${overlayFilter}`} onClick={handleVideoTap} />
