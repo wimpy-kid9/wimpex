@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
@@ -61,6 +61,53 @@ const DURATION_OPTIONS = [
 ] as const;
 
 type DurationKey = (typeof DURATION_OPTIONS)[number]['key'];
+
+const FONT_OPTIONS = [
+  { label: 'Classic', className: 'font-body font-medium', canvasFont: (size: number) => `600 ${size}px "Manrope", sans-serif` },
+  { label: 'Elegant', className: 'font-display italic', canvasFont: (size: number) => `italic 700 ${size}px "Bodoni Moda", serif` },
+  { label: 'Bold', className: 'font-body font-extrabold uppercase tracking-tight', canvasFont: (size: number) => `800 ${size}px "Manrope", sans-serif` },
+  { label: 'Typewriter', className: 'font-mono', canvasFont: (size: number) => `600 ${size}px "Courier New", monospace` }
+] as const;
+
+const TEXT_BACKGROUNDS = [
+  { bg: '#0b0b0c', text: '#f0ebe0' },
+  { bg: '#f0ebe0', text: '#0b0b0c' },
+  { bg: '#caa04d', text: '#0b0b0c' },
+  { bg: '#1d3557', text: '#f1faee' },
+  { bg: '#6a040f', text: '#ffe8d6' },
+  { bg: '#283618', text: '#fefae0' },
+  { bg: '#3a0ca3', text: '#f8f9fa' },
+  { bg: '#023047', text: '#ffb703' }
+] as const;
+
+const OVERLAY_STYLES = [
+  { key: 'none', bg: null as string | null, text: '#ffffff' },
+  { key: 'obsidian', bg: '#0b0b0ce6', text: '#f0ebe0' },
+  { key: 'ivory', bg: '#f0ebe0e6', text: '#0b0b0c' },
+  { key: 'gold', bg: '#caa04de6', text: '#0b0b0c' },
+  { key: 'rose', bg: '#6a040fe6', text: '#ffe8d6' },
+  { key: 'navy', bg: '#1d3557e6', text: '#f1faee' }
+] as const;
+
+function wrapCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const paragraphs = text.split('\n');
+  const lines: string[] = [];
+  paragraphs.forEach((paragraph) => {
+    const words = paragraph.split(' ');
+    let line = '';
+    words.forEach((word) => {
+      const test = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(test).width > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    });
+    lines.push(line);
+  });
+  return lines;
+}
 
 type AudioTrack = {
   id: string;
@@ -233,6 +280,23 @@ export default function CreatePostPage() {
   const [speedOption, setSpeedOption] = useState<number>(1);
   const [beautifyOn, setBeautifyOn] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+
+  // --- Text-only post composer ("Aa" from the camera screen) ---
+  const [composerMode, setComposerMode] = useState<'camera' | 'text'>('camera');
+  const [textPostValue, setTextPostValue] = useState('');
+  const [textPostBgIndex, setTextPostBgIndex] = useState(0);
+  const [textPostFontIndex, setTextPostFontIndex] = useState(0);
+
+  // --- Text overlay on a captured/uploaded image or video ---
+  const [showOverlaySheet, setShowOverlaySheet] = useState(false);
+  const [overlayText, setOverlayText] = useState('');
+  const [overlayStyleIndex, setOverlayStyleIndex] = useState(1);
+  const [overlayFontIndex, setOverlayFontIndex] = useState(0);
+  const [overlayPos, setOverlayPos] = useState({ x: 50, y: 82 });
+  const [isBakingOverlay, setIsBakingOverlay] = useState(false);
+  const [overlayBakeProgress, setOverlayBakeProgress] = useState(0);
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
+  const overlayDraggingRef = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -428,9 +492,10 @@ export default function CreatePostPage() {
     if (editingId) return;
     if (previewUrl) return;
     if (cameraArmed) return;
+    if (composerMode === 'text') return;
     void armCamera();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, editingId, previewUrl]);
+  }, [session, editingId, previewUrl, composerMode]);
 
   const toggleCamera = async () => {
     if (isRecording) return;
@@ -603,6 +668,9 @@ export default function CreatePostPage() {
     setTrackQuery('');
     setTrackResults([]);
     setError('');
+    setOverlayText('');
+    setOverlayPos({ x: 50, y: 82 });
+    setComposerMode('camera');
     await armCamera();
   };
 
@@ -611,6 +679,215 @@ export default function CreatePostPage() {
     setTrackQuery('');
     setTrackResults([]);
     setShowSoundsSheet(false);
+  };
+
+  // ---- Text-only post ("Aa" button on the camera screen) ----
+  const enterTextComposer = () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setCameraArmed(false);
+    setComposerMode('text');
+  };
+
+  const exitTextComposer = () => {
+    setComposerMode('camera');
+    void armCamera();
+  };
+
+  const cycleTextPostFont = () => {
+    setTextPostFontIndex((index) => (index + 1) % FONT_OPTIONS.length);
+  };
+
+  const submitTextPost = () => {
+    if (!textPostValue.trim()) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 1350;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const palette = TEXT_BACKGROUNDS[textPostBgIndex];
+    ctx.fillStyle = palette.bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const font = FONT_OPTIONS[textPostFontIndex];
+    const fontSize = 72;
+    ctx.font = font.canvasFont(fontSize);
+    ctx.fillStyle = palette.text;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const displayText = font.label === 'Bold' ? textPostValue.toUpperCase() : textPostValue;
+    const lines = wrapCanvasText(ctx, displayText.trim(), canvas.width * 0.82);
+    const lineHeight = fontSize * 1.3;
+    const startY = canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach((line, index) => ctx.fillText(line, canvas.width / 2, startY + index * lineHeight));
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      void handleMediaChange(new File([blob], `text-post-${Date.now()}.png`, { type: 'image/png' }));
+      setComposerMode('camera');
+      setTextPostValue('');
+    }, 'image/png');
+  };
+
+  // ---- Text overlay on a captured/uploaded photo or video ----
+  const drawOverlayText = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    if (!overlayText.trim()) return;
+    const style = OVERLAY_STYLES[overlayStyleIndex];
+    const font = FONT_OPTIONS[overlayFontIndex];
+    const fontSize = Math.round(width * 0.06);
+    ctx.font = font.canvasFont(fontSize);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const maxWidth = width * 0.82;
+    const displayText = font.label === 'Bold' ? overlayText.toUpperCase() : overlayText;
+    const lines = wrapCanvasText(ctx, displayText.trim(), maxWidth);
+    const lineHeight = fontSize * 1.25;
+    const blockHeight = lines.length * lineHeight;
+    const centerX = (overlayPos.x / 100) * width;
+    const centerY = (overlayPos.y / 100) * height;
+    const startY = centerY - blockHeight / 2 + lineHeight / 2;
+
+    if (style.bg) {
+      const widestLine = Math.max(...lines.map((line) => ctx.measureText(line).width));
+      const paddingX = fontSize * 0.5;
+      const paddingY = fontSize * 0.35;
+      const rectX = centerX - widestLine / 2 - paddingX;
+      const rectY = centerY - blockHeight / 2 - paddingY;
+      const rectW = widestLine + paddingX * 2;
+      const rectH = blockHeight + paddingY * 2;
+      const radius = fontSize * 0.3;
+      ctx.fillStyle = style.bg;
+      ctx.beginPath();
+      ctx.moveTo(rectX + radius, rectY);
+      ctx.arcTo(rectX + rectW, rectY, rectX + rectW, rectY + rectH, radius);
+      ctx.arcTo(rectX + rectW, rectY + rectH, rectX, rectY + rectH, radius);
+      ctx.arcTo(rectX, rectY + rectH, rectX, rectY, radius);
+      ctx.arcTo(rectX, rectY, rectX + rectW, rectY, radius);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.shadowColor = 'rgba(0,0,0,0.55)';
+      ctx.shadowBlur = fontSize * 0.25;
+    }
+
+    ctx.fillStyle = style.text;
+    lines.forEach((line, index) => ctx.fillText(line, centerX, startY + index * lineHeight));
+    ctx.shadowBlur = 0;
+  };
+
+  const bakeImageOverlay = async (): Promise<File | null> => {
+    if (!previewUrl || !overlayText.trim()) return null;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = previewUrl;
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('Unable to load the image to add text.'));
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth || 1080;
+    canvas.height = img.naturalHeight || 1350;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas is not supported on this device.');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    drawOverlayText(ctx, canvas.width, canvas.height);
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((result) => (result ? resolve(result) : reject(new Error('Unable to render the image.'))), 'image/jpeg', 0.92);
+    });
+    return new File([blob], `post-${Date.now()}.jpg`, { type: 'image/jpeg' });
+  };
+
+  const bakeVideoOverlay = async (): Promise<File | null> => {
+    if (!previewUrl || !overlayText.trim()) return null;
+    if (typeof MediaRecorder === 'undefined') {
+      throw new Error('Adding text to video is not supported on this device.');
+    }
+
+    const sourceVideo = document.createElement('video');
+    sourceVideo.src = previewUrl;
+    sourceVideo.muted = false;
+    sourceVideo.playsInline = true;
+    sourceVideo.crossOrigin = 'anonymous';
+    await new Promise<void>((resolve, reject) => {
+      sourceVideo.onloadedmetadata = () => resolve();
+      sourceVideo.onerror = () => reject(new Error('Unable to load the video to add text.'));
+    });
+
+    const width = sourceVideo.videoWidth || 720;
+    const height = sourceVideo.videoHeight || 1280;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas is not supported on this device.');
+
+    const canvasStream = (canvas as HTMLCanvasElement & { captureStream: (fps?: number) => MediaStream }).captureStream(30);
+    let audioTracks: MediaStreamTrack[] = [];
+    try {
+      const captureableVideo = sourceVideo as HTMLVideoElement & { captureStream?: () => MediaStream };
+      const sourceStream = captureableVideo.captureStream ? captureableVideo.captureStream() : null;
+      audioTracks = sourceStream ? sourceStream.getAudioTracks() : [];
+    } catch {
+      audioTracks = [];
+    }
+    const combinedStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks]);
+    const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm'].find((type) => MediaRecorder.isTypeSupported(type)) || '';
+    const recorder = new MediaRecorder(combinedStream, mimeType ? { mimeType } : undefined);
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) chunks.push(event.data);
+    };
+    const recorded = new Promise<Blob>((resolve) => {
+      recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType || 'video/webm' }));
+    });
+
+    let frameHandle = 0;
+    const drawFrame = () => {
+      ctx.drawImage(sourceVideo, 0, 0, width, height);
+      drawOverlayText(ctx, width, height);
+      if (!sourceVideo.ended) {
+        frameHandle = requestAnimationFrame(drawFrame);
+      }
+    };
+    sourceVideo.ontimeupdate = () => {
+      if (sourceVideo.duration) setOverlayBakeProgress(Math.min(100, Math.round((sourceVideo.currentTime / sourceVideo.duration) * 100)));
+    };
+
+    recorder.start();
+    await sourceVideo.play();
+    drawFrame();
+
+    await new Promise<void>((resolve) => {
+      sourceVideo.onended = () => resolve();
+    });
+    cancelAnimationFrame(frameHandle);
+    recorder.stop();
+    sourceVideo.pause();
+
+    const blob = await recorded;
+    return new File([blob], `post-${Date.now()}.webm`, { type: blob.type || 'video/webm' });
+  };
+
+  const handleOverlayPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    overlayDraggingRef.current = true;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleOverlayPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!overlayDraggingRef.current || !previewContainerRef.current) return;
+    const rect = previewContainerRef.current.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    setOverlayPos({ x: Math.min(96, Math.max(4, x)), y: Math.min(96, Math.max(4, y)) });
+  };
+
+  const handleOverlayPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    overlayDraggingRef.current = false;
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // ignore
+    }
   };
 
   const submitPost = async (desiredStatus: 'published' | 'draft') => {
@@ -688,12 +965,32 @@ export default function CreatePostPage() {
     await submitPost('published');
   };
 
-  const goToDetails = () => {
+  const goToDetails = async () => {
     if (!previewUrl) {
       setError('Upload an image or video before continuing.');
       return;
     }
     setError('');
+
+    if (overlayText.trim()) {
+      setIsBakingOverlay(true);
+      setOverlayBakeProgress(0);
+      try {
+        const baked = mediaType === 'image' ? await bakeImageOverlay() : await bakeVideoOverlay();
+        if (baked) {
+          setMediaFile(baked);
+          setMediaType(baked.type.startsWith('image/') ? 'image' : 'video');
+        }
+        setOverlayText('');
+        setOverlayPos({ x: 50, y: 82 });
+      } catch (bakeError) {
+        setIsBakingOverlay(false);
+        setError(bakeError instanceof Error ? bakeError.message : 'Unable to add text to this media.');
+        return;
+      }
+      setIsBakingOverlay(false);
+    }
+
     setStep('details');
   };
 
@@ -834,7 +1131,7 @@ export default function CreatePostPage() {
         </div>
       ) : previewUrl ? (
         /* ---------------- CAPTURED PREVIEW SCREEN ---------------- */
-        <div className="relative flex-1 overflow-hidden bg-black">
+        <div ref={previewContainerRef} className="relative flex-1 overflow-hidden bg-black">
           <div className={`absolute inset-0 ${mediaFilterClass}`}>
             {mediaType === 'image' ? (
               <img src={previewUrl} alt="Captured" className="h-full w-full object-cover" />
@@ -843,21 +1140,57 @@ export default function CreatePostPage() {
             )}
           </div>
 
-          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+          {!showOverlaySheet && overlayText.trim() ? (
+            <div
+              onPointerDown={handleOverlayPointerDown}
+              onPointerMove={handleOverlayPointerMove}
+              onPointerUp={handleOverlayPointerUp}
+              onClick={() => setShowOverlaySheet(true)}
+              style={{ left: `${overlayPos.x}%`, top: `${overlayPos.y}%`, transform: 'translate(-50%, -50%)' }}
+              className="absolute z-10 max-w-[86%] cursor-grab touch-none select-none text-center active:cursor-grabbing"
+            >
+              <span
+                className={`inline-block whitespace-pre-wrap rounded-2xl px-3 py-1.5 text-xl ${FONT_OPTIONS[overlayFontIndex].className}`}
+                style={{
+                  backgroundColor: OVERLAY_STYLES[overlayStyleIndex].bg ?? 'transparent',
+                  color: OVERLAY_STYLES[overlayStyleIndex].text,
+                  textShadow: OVERLAY_STYLES[overlayStyleIndex].bg ? 'none' : '0 2px 10px rgba(0,0,0,0.6)'
+                }}
+              >
+                {overlayText}
+              </span>
+            </div>
+          ) : null}
+
+          <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))]">
             <button type="button" onClick={() => void removeMedia()} aria-label="Discard" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-ivory">
               <IconX className="h-5 w-5" />
             </button>
-            <button type="button" onClick={() => setShowFiltersSheet(true)} className="flex items-center gap-2 rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-ivory backdrop-blur">
-              <IconFilters className="h-4 w-4" />
-              Filters
-            </button>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setShowOverlaySheet(true)} className="flex items-center gap-2 rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-ivory backdrop-blur">
+                Aa {overlayText.trim() ? '•' : 'Text'}
+              </button>
+              <button type="button" onClick={() => setShowFiltersSheet(true)} className="flex items-center gap-2 rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-ivory backdrop-blur">
+                <IconFilters className="h-4 w-4" />
+                Filters
+              </button>
+            </div>
           </div>
 
           {error ? (
-            <div className="absolute inset-x-4 top-20 z-10 rounded-2xl border border-rose-500/20 bg-black/70 px-4 py-3 text-sm text-rose-200">{error}</div>
+            <div className="absolute inset-x-4 top-20 z-20 rounded-2xl border border-rose-500/20 bg-black/70 px-4 py-3 text-sm text-rose-200">{error}</div>
           ) : null}
 
-          <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+          {isBakingOverlay ? (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 px-8 text-center">
+              <div>
+                <p className="text-sm font-semibold text-ivory">Adding your text…</p>
+                {mediaType === 'video' ? <p className="mt-2 text-xs text-slate">{overlayBakeProgress}% rendered — please keep this open</p> : null}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
             <button
               type="button"
               onClick={() => setShowSoundsSheet(true)}
@@ -868,9 +1201,70 @@ export default function CreatePostPage() {
             </button>
             <button
               type="button"
-              onClick={goToDetails}
+              onClick={() => void goToDetails()}
               aria-label="Next"
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-ivory text-obsidian shadow-lg"
+              disabled={isBakingOverlay}
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-ivory text-obsidian shadow-lg disabled:opacity-50"
+            >
+              <IconArrowRight className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+      ) : composerMode === 'text' ? (
+        /* ---------------- TEXT-ONLY POST COMPOSER ---------------- */
+        <div className="flex h-full flex-col" style={{ backgroundColor: TEXT_BACKGROUNDS[textPostBgIndex].bg }}>
+          <div className="flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+            <button
+              type="button"
+              onClick={exitTextComposer}
+              aria-label="Back to camera"
+              className="flex h-10 w-10 items-center justify-center rounded-full"
+              style={{ color: TEXT_BACKGROUNDS[textPostBgIndex].text }}
+            >
+              <IconX />
+            </button>
+            <button
+              type="button"
+              onClick={cycleTextPostFont}
+              className="rounded-full bg-black/20 px-4 py-2 text-sm font-semibold backdrop-blur"
+              style={{ color: TEXT_BACKGROUNDS[textPostBgIndex].text }}
+            >
+              Aa · {FONT_OPTIONS[textPostFontIndex].label}
+            </button>
+          </div>
+
+          <div className="flex flex-1 items-center justify-center px-8">
+            <textarea
+              value={textPostValue}
+              onChange={(event) => setTextPostValue(event.target.value)}
+              placeholder="Start typing…"
+              autoFocus
+              maxLength={220}
+              rows={6}
+              className={`w-full resize-none bg-transparent text-center text-3xl leading-tight outline-none placeholder:opacity-50 ${FONT_OPTIONS[textPostFontIndex].className}`}
+              style={{ color: TEXT_BACKGROUNDS[textPostBgIndex].text }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+            <div className="flex items-center gap-2 overflow-x-auto">
+              {TEXT_BACKGROUNDS.map((palette, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => setTextPostBgIndex(index)}
+                  aria-label={`Background ${index + 1}`}
+                  className={`h-8 w-8 flex-shrink-0 rounded-full border-2 ${textPostBgIndex === index ? 'border-white' : 'border-white/30'}`}
+                  style={{ backgroundColor: palette.bg }}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={submitTextPost}
+              disabled={!textPostValue.trim()}
+              aria-label="Next"
+              className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-ivory text-obsidian shadow-lg disabled:opacity-40"
             >
               <IconArrowRight className="h-6 w-6" />
             </button>
@@ -919,14 +1313,24 @@ export default function CreatePostPage() {
               <IconX />
             </button>
 
-            <button
-              type="button"
-              onClick={() => setShowSoundsSheet(true)}
-              className="flex items-center gap-2 rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-ivory backdrop-blur"
-            >
-              <IconMusic className="h-4 w-4" />
-              {selectedTrack ? selectedTrack.title.slice(0, 14) : 'Sounds'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={enterTextComposer}
+                aria-label="Create a text post"
+                className="flex items-center justify-center rounded-full bg-black/45 px-3 py-2 text-sm font-semibold text-ivory backdrop-blur"
+              >
+                Aa
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSoundsSheet(true)}
+                className="flex items-center gap-2 rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-ivory backdrop-blur"
+              >
+                <IconMusic className="h-4 w-4" />
+                {selectedTrack ? selectedTrack.title.slice(0, 14) : 'Sounds'}
+              </button>
+            </div>
 
             <div className="flex flex-col items-center gap-4 pt-1">
               <RailButton icon={<IconFlip />} label="Flip" onClick={() => void toggleCamera()} />
@@ -995,6 +1399,78 @@ export default function CreatePostPage() {
           </div>
         </div>
       )}
+
+      {/* ---------------- ADD TEXT (OVERLAY) BOTTOM SHEET ---------------- */}
+      {showOverlaySheet ? (
+        <div className="absolute inset-0 z-30 flex flex-col justify-end bg-black/60" onClick={() => setShowOverlaySheet(false)}>
+          <div
+            className="max-h-[70vh] overflow-y-auto rounded-t-3xl border-t border-hairline bg-panel/95 p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ivory/20" />
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate">Add text</p>
+              <button type="button" onClick={() => setShowOverlaySheet(false)} aria-label="Close" className="text-slate"><IconX className="h-5 w-5" /></button>
+            </div>
+
+            <textarea
+              value={overlayText}
+              onChange={(event) => setOverlayText(event.target.value)}
+              placeholder="Say something over your photo or video…"
+              maxLength={140}
+              rows={3}
+              autoFocus
+              className={`w-full resize-none rounded-2xl border border-hairline bg-panel px-4 py-3 text-base text-ivory outline-none ${FONT_OPTIONS[overlayFontIndex].className}`}
+            />
+
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.28em] text-slate">Style</p>
+              <button type="button" onClick={() => setOverlayFontIndex((index) => (index + 1) % FONT_OPTIONS.length)} className="rounded-full border border-hairline px-3 py-1.5 text-xs font-semibold text-ivory">
+                Font: {FONT_OPTIONS[overlayFontIndex].label}
+              </button>
+            </div>
+
+            <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+              {OVERLAY_STYLES.map((style, index) => (
+                <button
+                  key={style.key}
+                  type="button"
+                  onClick={() => setOverlayStyleIndex(index)}
+                  aria-label={style.key}
+                  className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-2 text-[0.6rem] font-semibold ${overlayStyleIndex === index ? 'border-gold' : 'border-white/20'}`}
+                  style={{ backgroundColor: style.bg ?? 'transparent', color: style.bg ? style.text : '#f0ebe0' }}
+                >
+                  {style.bg ? '' : 'Aa'}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-center gap-3">
+              {overlayText.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOverlayText('');
+                    setShowOverlaySheet(false);
+                  }}
+                  className="flex-1 rounded-full border border-hairline px-5 py-3 text-sm font-semibold text-ivory"
+                >
+                  Remove text
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setShowOverlaySheet(false)}
+                disabled={!overlayText.trim()}
+                className="flex-1 rounded-full bg-ivory px-5 py-3 text-sm font-semibold text-obsidian disabled:opacity-40"
+              >
+                Done
+              </button>
+            </div>
+            <p className="mt-3 text-center text-[0.7rem] text-slate">Drag the text on your photo or video to reposition it.</p>
+          </div>
+        </div>
+      ) : null}
 
       {/* ---------------- SOUNDS BOTTOM SHEET ---------------- */}
       {showSoundsSheet ? (

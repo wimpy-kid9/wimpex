@@ -1,9 +1,10 @@
 "use client";
 
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import FollowButton from './FollowButton';
 import GoldBadge from './GoldBadge';
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import type { SVGProps, ButtonHTMLAttributes, AnchorHTMLAttributes } from 'react';
 import { authedFetch } from '@/lib/api-client';
 import { isGoldSubscription } from '@/lib/subscription';
@@ -87,24 +88,22 @@ function IconPlus(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function IconButton({
-  children,
-  label,
-  className = '',
-  ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      className={`grid h-10 w-10 place-items-center rounded-full bg-ivory/5 text-ivory transition hover:bg-ivory/10 ${className}`}
-      {...rest}
-    >
-      {children}
-    </button>
-  );
-}
+const IconButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { label: string }>(
+  function IconButton({ children, label, className = '', ...rest }, ref) {
+    return (
+      <button
+        ref={ref}
+        type="button"
+        aria-label={label}
+        title={label}
+        className={`grid h-10 w-10 place-items-center rounded-full bg-ivory/5 text-ivory transition hover:bg-ivory/10 ${className}`}
+        {...rest}
+      >
+        {children}
+      </button>
+    );
+  }
+);
 
 function IconLink({
   children,
@@ -130,10 +129,12 @@ export default function ProfileHeader({ profile, subscription }: { profile: any;
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [summary, setSummary] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [blocked, setBlocked] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [copied, setCopied] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const menuPanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -166,11 +167,22 @@ export default function ProfileHeader({ profile, subscription }: { profile: any;
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+      const target = e.target as Node;
+      if (menuButtonRef.current?.contains(target)) return;
+      if (menuPanelRef.current?.contains(target)) return;
+      setMenuOpen(false);
     };
     document.addEventListener('mousedown', onClickOutside);
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
+
+  const openMenu = () => {
+    const rect = menuButtonRef.current?.getBoundingClientRect();
+    if (rect) {
+      setMenuPos({ top: rect.bottom + 8, left: Math.max(12, rect.right - 208) });
+    }
+    setMenuOpen((v) => !v);
+  };
 
   const isOwn = profile?.user_id && currentUserId && profile.user_id === currentUserId;
   const isGold = isGoldSubscription(subscription);
@@ -232,37 +244,44 @@ export default function ProfileHeader({ profile, subscription }: { profile: any;
             </IconLink>
           ) : null}
 
-          <div className="relative" ref={menuRef}>
-            <IconButton label="More options" onClick={() => setMenuOpen((v) => !v)}>
+          <div className="relative">
+            <IconButton ref={menuButtonRef} label="More options" onClick={openMenu}>
               <IconMore className="h-5 w-5" />
             </IconButton>
 
-            {menuOpen ? (
-              <div className="absolute right-0 z-10 mt-2 w-52 overflow-hidden rounded-2xl border border-hairline bg-panel shadow-2xl shadow-black/40">
-                {isOwn ? (
-                  <>
-                    <Link href="/settings" className="flex items-center gap-3 px-4 py-3 text-sm text-ivory hover:bg-ivory/5">
-                      <IconPencil className="h-4 w-4" /> Edit profile
-                    </Link>
-                    <Link href="/calls" className="flex items-center gap-3 px-4 py-3 text-sm text-ivory hover:bg-ivory/5">
-                      <IconClock className="h-4 w-4" /> Call history
-                    </Link>
-                    <Link href="/settings" className="flex items-center gap-3 px-4 py-3 text-sm text-ivory hover:bg-ivory/5">
-                      <IconMore className="h-4 w-4 rotate-90" /> Settings
-                    </Link>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={blockUser}
-                    disabled={blocked || blocking}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-rose-300 hover:bg-ivory/5 disabled:opacity-60"
+            {menuOpen && menuPos
+              ? createPortal(
+                  <div
+                    ref={menuPanelRef}
+                    style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
+                    className="z-50 w-52 overflow-hidden rounded-2xl border border-hairline bg-panel shadow-2xl shadow-black/40"
                   >
-                    <IconBlock className="h-4 w-4" /> {blocked ? 'Blocked' : 'Block user'}
-                  </button>
-                )}
-              </div>
-            ) : null}
+                    {isOwn ? (
+                      <>
+                        <Link href="/settings" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-ivory hover:bg-ivory/5">
+                          <IconPencil className="h-4 w-4" /> Edit profile
+                        </Link>
+                        <Link href="/calls" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-ivory hover:bg-ivory/5">
+                          <IconClock className="h-4 w-4" /> Call history
+                        </Link>
+                        <Link href="/settings" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-ivory hover:bg-ivory/5">
+                          <IconMore className="h-4 w-4 rotate-90" /> Settings
+                        </Link>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={blockUser}
+                        disabled={blocked || blocking}
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-rose-300 hover:bg-ivory/5 disabled:opacity-60"
+                      >
+                        <IconBlock className="h-4 w-4" /> {blocked ? 'Blocked' : 'Block user'}
+                      </button>
+                    )}
+                  </div>,
+                  document.body
+                )
+              : null}
           </div>
         </div>
       </div>
@@ -283,9 +302,9 @@ export default function ProfileHeader({ profile, subscription }: { profile: any;
           )}
           {isOwn ? (
             <Link
-              href="/settings"
-              aria-label="Change profile photo"
-              title="Change profile photo"
+              href="/stories/create"
+              aria-label="Add to your story"
+              title="Add to your story"
               className="absolute bottom-0 right-0 grid h-7 w-7 place-items-center rounded-full bg-gold text-obsidian ring-2 ring-panel-2 transition hover:bg-gold-deep"
             >
               <IconPlus className="h-4 w-4" />

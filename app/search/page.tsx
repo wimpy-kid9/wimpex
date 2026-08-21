@@ -107,9 +107,15 @@ function SearchPageInner() {
             <h1 className="text-display mt-3 text-3xl text-ivory">Discover creators and content</h1>
             <p className="mt-2 max-w-2xl text-sm text-slate">Find people, videos, captions, and hashtags across WIMPEX.</p>
           </div>
-          <Link href="/messages" className="inline-flex rounded-md bg-ivory/10 px-4 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/15">
-            Go to messages
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/explore" className="inline-flex items-center gap-2 rounded-full border border-hairline bg-panel/70 px-3 py-2 text-sm text-slate hover:bg-ivory/10">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-4 w-4"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              Explore
+            </Link>
+            <Link href="/messages" className="inline-flex rounded-md bg-ivory/10 px-4 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/15">
+              Go to messages
+            </Link>
+          </div>
         </div>
       </section>
 
