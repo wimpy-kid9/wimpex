@@ -492,6 +492,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     rows = data || [];
+  } else if (currentOnly) {
+    // "My posts" — used by the Gold settings analytics list. Without this
+    // branch, current_only=true only forced auth and then fell through to
+    // the generic public-feed branch below, which returns posts from any
+    // author. That let the Gold page link to analytics for posts the
+    // current user didn't own, which the analytics endpoint (correctly)
+    // rejects as Forbidden.
+    const { data, error } = await query
+      .eq('author_id', authContext.user.id)
+      .order('created_at', { ascending: false });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    rows = data || [];
   } else if (authorId) {
     if (authorId === authContext?.user?.id) {
       const { data, error } = await query.eq('author_id', authorId).order('created_at', { ascending: false });
