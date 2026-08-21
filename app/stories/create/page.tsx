@@ -340,7 +340,7 @@ export default function CreateStoryPage() {
             />
             {previewUrl ? (
               mediaType === 'video' ? (
-                <video src={previewUrl} className="h-full w-full object-cover" muted autoPlay loop playsInline />
+                <video src={previewUrl} className="h-full w-full object-cover" controls autoPlay loop playsInline />
               ) : (
                 <img src={previewUrl} alt="Story preview" className="h-full w-full object-cover" />
               )
