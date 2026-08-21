@@ -91,8 +91,12 @@ export default function FeedPage() {
           <Fragment key={post.id}>
             {/* Each post gets its own dedicated, exactly-one-screen snap slot.
                Nothing else shares this slot, so the next post can never
-               peek through or shift this one out of alignment. */}
-            <div className="snap-start feed-snap-item">
+               peek through or shift this one out of alignment.
+               No scroll-margin here: the container's top is already offset
+               below the header via top-[var(--header-h)], so adding the
+               header height again as scroll-margin would make every snap
+               land short and leave the previous post's tail showing. */}
+            <div className="snap-start [scroll-snap-stop:always]">
               <PostCard post={post} isFeedItem />
             </div>
             {!isGold && !hideGoldNudge && index > 0 && index % 6 === 5 ? (
