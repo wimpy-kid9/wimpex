@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
     .from('wpx_story_views')
     .select('story_id')
     .eq('viewer_id', authContext.user.id);
-  const viewedIds = new Set((views || []).map((v: any) => v.story_id));
+  const viewedIds = new Set<string>((views || []).map((v: any) => String(v.story_id)));
 
   const authorMap = await loadAuthors(authorIds);
 
@@ -203,7 +203,7 @@ async function handleTextStory(authContext: any, formData: FormData) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ story: serializeStory(story, {}, new Set()) });
+  return NextResponse.json({ story: serializeStory(story, {}, new Set<string>()) });
 }
 
 async function handleMediaStory(authContext: any, formData: FormData) {
@@ -324,5 +324,5 @@ async function handleMediaStory(authContext: any, formData: FormData) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ story: serializeStory(story, {}, new Set()) });
+  return NextResponse.json({ story: serializeStory(story, {}, new Set<string>()) });
 }
