@@ -331,11 +331,10 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
           <span className="text-lg">↗️</span>
           <span className="text-xs font-semibold text-ivory">{shareCount ?? 0}</span>
         </button>
-      </div>
 
-      {/* Unmute / play control */}
-      {post.mediaType === 'video' && post.videoUrl ? (
-        <div className="absolute right-4 bottom-40">
+        {/* Unmute / mute control — same column, same width, so it lines up
+           with every other icon instead of floating over them. */}
+        {post.mediaType === 'video' && post.videoUrl ? (
           <button
             type="button"
             onClick={async (e) => {
@@ -351,17 +350,15 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
                 setMuted(true);
               }
             }}
-            className={`rounded-full px-3 py-2 text-lg font-semibold text-ivory transition-transform focus:outline-none focus:ring-2 focus:ring-gold/40 ${muted ? 'bg-black/60 border border-white/10 hover:scale-105' : 'bg-gradient-to-r from-gold to-gold-deep shadow-lg transform hover:scale-105 ring-2 ring-gold/30'}`}
+            className={`grid h-11 w-11 place-items-center rounded-full text-lg transition-transform focus:outline-none focus:ring-2 focus:ring-gold/40 ${muted ? 'bg-black/60 border border-white/10 hover:scale-105' : 'bg-gradient-to-r from-gold to-gold-deep shadow-lg transform hover:scale-105 ring-2 ring-gold/30'}`}
             aria-pressed={!muted}
             aria-label={muted ? 'Unmute video' : 'Mute video'}
             title={muted ? 'Unmute' : 'Mute'}
           >
-            <span className="inline-block" aria-hidden>
-              {muted ? '🔈' : '🔊'}
-            </span>
+            <span aria-hidden>{muted ? '🔈' : '🔊'}</span>
           </button>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       {mediaFlash ? (
         <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center">
