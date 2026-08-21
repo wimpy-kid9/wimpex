@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
@@ -174,7 +174,7 @@ function RailButton({
   onClick,
   active = false
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   onClick: () => void;
   active?: boolean;
