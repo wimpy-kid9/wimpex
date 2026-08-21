@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import type { SVGProps } from 'react';
+import type { SVGProps, ReactElement } from 'react';
 import { authedFetch } from '@/lib/api-client';
 
 type TabValue = 'posts' | 'liked' | 'favorited' | 'drafts' | 'followers' | 'following';
@@ -140,13 +140,13 @@ export default function ProfileTabs({ profile, isOwn }: { profile: any; isOwn: b
     void loadData();
   }, [active, profile]);
 
-  const ownerTabs: Array<{ label: string; value: TabValue; Icon: (p: SVGProps<SVGSVGElement>) => JSX.Element }> = [
+  const ownerTabs: Array<{ label: string; value: TabValue; Icon: (props: SVGProps<SVGSVGElement>) => ReactElement }> = [
     { label: 'Liked', value: 'liked', Icon: IconHeart },
     { label: 'Favorited', value: 'favorited', Icon: IconBookmark },
     { label: 'Drafts', value: 'drafts', Icon: IconDraft }
   ];
 
-  const tabs: Array<{ label: string; value: TabValue; Icon: (p: SVGProps<SVGSVGElement>) => JSX.Element }> = [
+  const tabs: Array<{ label: string; value: TabValue; Icon: (props: SVGProps<SVGSVGElement>) => ReactElement }> = [
     { label: 'Posts', value: 'posts', Icon: IconGrid },
     ...(isOwn ? ownerTabs : []),
     { label: 'Followers', value: 'followers', Icon: IconUsers },
