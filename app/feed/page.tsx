@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { authedFetch } from '@/lib/api-client';
 import { supabase } from '@/lib/supabase';
 import PostCard from '@/app/components/PostCard';
@@ -88,15 +88,22 @@ export default function FeedPage() {
           }
           return true;
         }).map((post, index) => (
-          <div key={post.id} className="snap-start">
-            <PostCard post={post} isFeedItem />
+          <Fragment key={post.id}>
+            {/* Each post gets its own dedicated, exactly-one-screen snap slot.
+               Nothing else shares this slot, so the next post can never
+               peek through or shift this one out of alignment. */}
+            <div className="snap-start feed-snap-item">
+              <PostCard post={post} isFeedItem />
+            </div>
             {!isGold && !hideGoldNudge && index > 0 && index % 6 === 5 ? (
-              <div className="mx-4 my-3 flex items-center justify-between gap-3 rounded-2xl border border-gold/20 bg-panel-2/90 px-4 py-3 text-sm text-slate">
-                <span>Make more of every post with Gold.</span>
-                <div className="flex items-center gap-2"><GoldUpgradeHint compact perk="Gold creator perks" detail="Unlock exclusive filters and 3-minute posts." /><button type="button" onClick={() => setHideGoldNudge(true)} className="text-xs text-slate hover:text-ivory" aria-label="Dismiss Gold feed nudge">Dismiss</button></div>
+              <div className="snap-start flex min-h-[3.5rem] items-center justify-between gap-3 bg-obsidian px-4 py-3">
+                <div className="flex w-full items-center justify-between gap-3 rounded-2xl border border-gold/20 bg-panel-2/90 px-4 py-3 text-sm text-slate">
+                  <span>Make more of every post with Gold.</span>
+                  <div className="flex items-center gap-2"><GoldUpgradeHint compact perk="Gold creator perks" detail="Unlock exclusive filters and 3-minute posts." /><button type="button" onClick={() => setHideGoldNudge(true)} className="text-xs text-slate hover:text-ivory" aria-label="Dismiss Gold feed nudge">Dismiss</button></div>
+                </div>
               </div>
             ) : null}
-          </div>
+          </Fragment>
         ))}
       </div>
 
