@@ -29,7 +29,10 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [senderIsGold, setSenderIsGold] = useState(false);
   const [wallpaperPickerOpen, setWallpaperPickerOpen] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const wallpaperInputRef = useRef<HTMLInputElement | null>(null);
+  const attachInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [hasEarlier, setHasEarlier] = useState(false);
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
@@ -498,7 +501,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
 
   return (
     <main
-      onClick={() => { if (actionMenuFor) setActionMenuFor(null); if (headerMenuOpen) setHeaderMenuOpen(false); }}
+      onClick={() => { if (actionMenuFor) setActionMenuFor(null); if (headerMenuOpen) setHeaderMenuOpen(false); if (attachMenuOpen) setAttachMenuOpen(false); }}
       onTouchStart={handlePageTouchStart}
       onTouchMove={handlePageTouchMove}
       onTouchEnd={handlePageTouchEnd}
@@ -798,13 +801,43 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
               </div>
             ) : null}
             <div className="flex items-center gap-2">
-              <label className="rounded-full p-2 text-slate transition hover:bg-panel-2" title="Attach file">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M21 12.79V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7.21" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 10l5 5 5-5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <input type="file" className="hidden" onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
-              </label>
-              <label className="rounded-full p-2 text-slate transition hover:bg-panel-2" title="Camera">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2v12z" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="13" r="3" strokeWidth="1.6"/></svg>
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={(event) => { event.stopPropagation(); setAttachMenuOpen((open) => !open); }}
+                  className="rounded-full p-2 text-slate transition hover:bg-panel-2"
+                  title="Add attachment"
+                  aria-label="Add attachment"
+                  aria-expanded={attachMenuOpen}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M12 5v14M5 12h14" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                </button>
+                {attachMenuOpen ? (
+                  <div
+                    onClick={(event) => event.stopPropagation()}
+                    className="absolute bottom-full left-0 z-20 mb-2 w-44 space-y-1 rounded-3xl border border-hairline bg-panel p-2 text-left shadow-2xl shadow-black/30"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => { setAttachMenuOpen(false); attachInputRef.current?.click(); }}
+                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm text-ivory transition hover:bg-panel-2"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5 flex-shrink-0"><path d="M21 12.79V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7.21" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 10l5 5 5-5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAttachMenuOpen(false); cameraInputRef.current?.click(); }}
+                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm text-ivory transition hover:bg-panel-2"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5 flex-shrink-0"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2v12z" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="13" r="3" strokeWidth="1.6"/></svg>
+                      Camera
+                    </button>
+                  </div>
+                ) : null}
+                <input ref={attachInputRef} type="file" className="hidden" onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
                 <input
+                  ref={cameraInputRef}
                   type="file"
                   accept="image/*,video/*"
                   capture="environment"
@@ -817,7 +850,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                   }}
                   onChange={(event) => setAttachment(event.target.files?.[0] || null)}
                 />
-              </label>
+              </div>
 
               <input
                 ref={inputRef}
@@ -825,9 +858,9 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={editingMessageId ? 'Edit message' : 'Message'}
-                className="flex-1 rounded-full border border-transparent bg-panel px-4 py-3 text-sm text-ivory outline-none focus:border-gold focus:ring-2 focus:ring-gold/20"
+                className="w-0 min-w-0 flex-1 rounded-full border border-transparent bg-panel px-4 py-3 text-sm text-ivory outline-none focus:border-gold focus:ring-2 focus:ring-gold/20"
               />
-              <div className="relative">
+              <div className="relative shrink-0">
                 <button
                   type="button"
                   onClick={async () => {
