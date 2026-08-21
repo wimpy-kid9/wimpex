@@ -46,6 +46,7 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
   // Default to unmuted per UX request
   const [muted, setMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const soundTrackRef = useRef<HTMLAudioElement | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
   const hasRecordedViewRef = useRef(false);
   const doubleTapRef = useRef<{ timer: number | null; lastTapAt: number }>({ timer: null, lastTapAt: 0 });
@@ -106,8 +107,17 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
     const observer = new IntersectionObserver(
       ([entry]) => {
         const video = videoRef.current;
+        const soundTrack = soundTrackRef.current;
         if (entry.isIntersecting) {
           if (video) void video.play().catch(() => undefined);
+          // The attached sound only lives in this separate <audio> element
+          // for image posts (video posts already have the track mixed into
+          // the video file itself). Without this, picking a sound and
+          // posting an image never actually played it back.
+          if (soundTrack) {
+            soundTrack.currentTime = 0;
+            void soundTrack.play().catch(() => undefined);
+          }
 
           // Record a "view" once per card the first time it's actually
           // scrolled into the feed. This is what lets the feed exclude
@@ -121,8 +131,9 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
               body: JSON.stringify({ post_id: post.id, interaction_type: 'view' })
             }).catch(() => undefined);
           }
-        } else if (video) {
-          video.pause();
+        } else {
+          if (video) video.pause();
+          if (soundTrack) soundTrack.pause();
         }
       },
       { threshold: 0.5 }
@@ -135,8 +146,9 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
   useEffect(() => {
     const handleBackgroundPause = () => {
       const video = videoRef.current;
-      if (!video || video.paused) return;
-      video.pause();
+      if (video && !video.paused) video.pause();
+      const soundTrack = soundTrackRef.current;
+      if (soundTrack && !soundTrack.paused) soundTrack.pause();
     };
 
     const handleVisibilityChange = () => {
@@ -269,7 +281,12 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
     <>
     <article ref={cardRef} className={`relative w-full overflow-hidden bg-black text-ivory ${variant === 'grid' ? 'aspect-[3/4] rounded-2xl' : ''} ${isFeedItem ? 'feed-snap-item h-[calc(100dvh-var(--header-h)-var(--bottomnav-h))] md:h-[80vh]' : ''}`}>
       {post.mediaType === 'image' && post.imageUrl ? (
-        <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-contain ${overlayFilter}`} onClick={handleVideoTap} />
+        <>
+          <img src={post.imageUrl} alt={post.caption || 'Post image'} className={`absolute inset-0 h-full w-full object-contain ${overlayFilter}`} onClick={handleVideoTap} />
+          {post.audioPreviewUrl ? (
+            <audio ref={soundTrackRef} src={post.audioPreviewUrl} loop muted={muted} />
+          ) : null}
+        </>
       ) : post.mediaType === 'video' && post.videoUrl ? (
         <video
           ref={videoRef}
@@ -334,20 +351,24 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
 
         {/* Unmute / mute control — same column, same width, so it lines up
            with every other icon instead of floating over them. */}
-        {post.mediaType === 'video' && post.videoUrl ? (
+        {(post.mediaType === 'video' && post.videoUrl) || (post.mediaType === 'image' && post.audioPreviewUrl) ? (
           <button
             type="button"
             onClick={async (e) => {
               e.stopPropagation();
               const v = videoRef.current;
-              if (!v) return;
+              const soundTrack = soundTrackRef.current;
+              const target = v || soundTrack;
+              if (!target) return;
               if (muted) {
-                v.muted = false;
                 setMuted(false);
-                await v.play().catch(() => undefined);
+                if (v) v.muted = false;
+                if (soundTrack) soundTrack.muted = false;
+                await target.play().catch(() => undefined);
               } else {
-                v.muted = true;
                 setMuted(true);
+                if (v) v.muted = true;
+                if (soundTrack) soundTrack.muted = true;
               }
             }}
             className={`grid h-11 w-11 place-items-center rounded-full text-lg transition-transform focus:outline-none focus:ring-2 focus:ring-gold/40 ${muted ? 'bg-black/60 border border-white/10 hover:scale-105' : 'bg-gradient-to-r from-gold to-gold-deep shadow-lg transform hover:scale-105 ring-2 ring-gold/30'}`}
