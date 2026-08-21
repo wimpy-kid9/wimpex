@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getUserAccent } from '@/lib/ui-theme';
@@ -53,6 +53,15 @@ const filterClasses: Record<string, string> = {
   sunset: 'filter sepia saturate-150 hue-rotate-[-15deg] contrast-110'
 };
 
+const DURATION_OPTIONS = [
+  { key: '3m', seconds: 180, label: '3m', gold: true },
+  { key: '60s', seconds: 60, label: '60s', gold: false },
+  { key: '15s', seconds: 15, label: '15s', gold: false },
+  { key: 'photo', seconds: 0, label: 'Photo', gold: false }
+] as const;
+
+type DurationKey = (typeof DURATION_OPTIONS)[number]['key'];
+
 type AudioTrack = {
   id: string;
   title: string;
@@ -60,6 +69,123 @@ type AudioTrack = {
   preview_url?: string;
   cover_art_url?: string;
 };
+
+function IconX({ className = 'h-6 w-6' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconMusic({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M9 18V5l12-2v13" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
+  );
+}
+
+function IconFlip({ className = 'h-6 w-6' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <path d="M4 9a8 8 0 0 1 14-4.5M20 15a8 8 0 0 1-14 4.5" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M18 4v4.5H13.5M6 20v-4.5H10.5" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconFlash({ className = 'h-6 w-6', filled = false }: { className?: string; filled?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" className={className}>
+      <path d="M13 2 4 14h6l-1 8 9-12h-6z" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconTimer({ className = 'h-6 w-6' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <circle cx="12" cy="13" r="8" strokeWidth="1.6" />
+      <path d="M12 9v4l3 2M10 2h4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconSpeed({ className = 'h-6 w-6' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <path d="M4 15a8 8 0 0 1 16 0" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M12 15l4-5" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="12" cy="15" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function IconFilters({ className = 'h-6 w-6' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <circle cx="9" cy="9" r="5.5" strokeWidth="1.5" />
+      <circle cx="15" cy="15" r="5.5" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function IconSparkles({ className = 'h-6 w-6' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6z" />
+      <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
+    </svg>
+  );
+}
+
+function IconImage({ className = 'h-6 w-6' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" strokeWidth="1.6" />
+      <circle cx="8.5" cy="9.5" r="1.6" strokeWidth="1.6" />
+      <path d="M21 16l-5.5-5.5a2 2 0 0 0-2.8 0L4 19" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconChevronLeft({ className = 'h-6 w-6' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <path d="M15 5l-7 7 7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconArrowRight({ className = 'h-6 w-6' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <path d="M5 12h14M13 6l6 6-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function RailButton({
+  icon,
+  label,
+  onClick,
+  active = false
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+}) {
+  return (
+    <button type="button" onClick={onClick} className="flex flex-col items-center gap-1 text-ivory drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
+      <span className={`flex h-8 w-8 items-center justify-center ${active ? 'text-gold' : 'text-ivory'}`}>{icon}</span>
+      <span className={`text-[0.65rem] font-semibold ${active ? 'text-gold' : 'text-ivory/90'}`}>{label}</span>
+    </button>
+  );
+}
 
 export default function CreatePostPage() {
   const router = useRouter();
@@ -84,6 +210,7 @@ export default function CreatePostPage() {
   const cameraPreviewRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const recorderTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [audioTime, setAudioTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
@@ -96,6 +223,16 @@ export default function CreatePostPage() {
   const [cameraArmed, setCameraArmed] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const { mixAudio, isProcessing: isMixing, progress: mixProgress, error: mixError } = useAudioMixer();
+
+  // --- Snapchat-style capture UI state ---
+  const [showSoundsSheet, setShowSoundsSheet] = useState(false);
+  const [showFiltersSheet, setShowFiltersSheet] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState<DurationKey>('photo');
+  const [flashOn, setFlashOn] = useState(false);
+  const [timerOption, setTimerOption] = useState<0 | 3 | 10>(0);
+  const [speedOption, setSpeedOption] = useState<number>(1);
+  const [beautifyOn, setBeautifyOn] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -152,6 +289,8 @@ export default function CreatePostPage() {
             cover_art_url: post.audio_cover_art_url || undefined
           });
         }
+
+        setStep('details');
       } catch {
         // ignore
       }
@@ -282,6 +421,17 @@ export default function CreatePostPage() {
     if (cameraStreamRef.current) void preview.play().catch(() => undefined);
   }, [cameraArmed]);
 
+  // Auto-arm the camera on load, Snapchat-style, unless we're editing an
+  // existing post (which already has media) or media has been captured.
+  useEffect(() => {
+    if (!session) return;
+    if (editingId) return;
+    if (previewUrl) return;
+    if (cameraArmed) return;
+    void armCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, editingId, previewUrl]);
+
   const toggleCamera = async () => {
     if (isRecording) return;
     const nextFacingMode = facingMode === 'user' ? 'environment' : 'user';
@@ -289,6 +439,36 @@ export default function CreatePostPage() {
     cameraStreamRef.current = null;
     setFacingMode(nextFacingMode);
     await armCamera(nextFacingMode);
+  };
+
+  const toggleFlash = async () => {
+    const next = !flashOn;
+    setFlashOn(next);
+    const track = cameraStreamRef.current?.getVideoTracks()[0];
+    if (track && 'applyConstraints' in track) {
+      try {
+        await track.applyConstraints({ advanced: [{ torch: next } as any] });
+      } catch {
+        // Torch isn't supported on this device/browser; the UI toggle still works.
+      }
+    }
+  };
+
+  const cycleTimer = () => {
+    setTimerOption((current) => (current === 0 ? 3 : current === 3 ? 10 : 0));
+  };
+
+  const cycleSpeed = () => {
+    setSpeedOption((current) => (current === 1 ? 2 : current === 2 ? 3 : current === 3 ? 0.5 : 1));
+  };
+
+  const selectDuration = (option: (typeof DURATION_OPTIONS)[number]) => {
+    if (isRecording) return;
+    if (option.gold && !isGold) {
+      void upgrade.attemptPurchase();
+      return;
+    }
+    setSelectedDuration(option.key);
   };
 
   const takePhoto = async () => {
@@ -308,7 +488,14 @@ export default function CreatePostPage() {
     const canvas = document.createElement('canvas');
     canvas.width = preview.videoWidth || 1080;
     canvas.height = preview.videoHeight || 1920;
-    canvas.getContext('2d')?.drawImage(preview, 0, 0, canvas.width, canvas.height);
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      if (facingMode === 'user') {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(preview, 0, 0, canvas.width, canvas.height);
+    }
     canvas.toBlob((blob) => {
       if (!blob) return;
       handleMediaChange(new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' }));
@@ -333,6 +520,7 @@ export default function CreatePostPage() {
       if (!cameraStreamRef.current && !(await armCamera())) return;
       const stream = cameraStreamRef.current;
       if (!stream) return;
+      const capSeconds = DURATION_OPTIONS.find((option) => option.key === selectedDuration)?.seconds || maxRecordingSeconds;
       const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4'].find((type) => MediaRecorder.isTypeSupported(type)) || '';
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       const chunks: Blob[] = [];
@@ -357,7 +545,7 @@ export default function CreatePostPage() {
       recorder.start();
       recorderTimerRef.current = setInterval(() => {
         setRecordingSeconds((seconds) => {
-          if (seconds + 1 >= maxRecordingSeconds) {
+          if (seconds + 1 >= capSeconds) {
             stopRecording();
             if (!isGold) setGoldLimitNotice(true);
           }
@@ -369,33 +557,60 @@ export default function CreatePostPage() {
     }
   };
 
+  const runCaptureAction = () => {
+    if (selectedDuration === 'photo') {
+      void takePhoto();
+    } else {
+      void startRecording();
+    }
+  };
+
+  const handleCaptureTap = () => {
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+    if (timerOption > 0) {
+      setCountdown(timerOption);
+      countdownTimerRef.current = setInterval(() => {
+        setCountdown((current) => {
+          if (current === null) return null;
+          if (current <= 1) {
+            if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+            countdownTimerRef.current = null;
+            runCaptureAction();
+            return null;
+          }
+          return current - 1;
+        });
+      }, 1000);
+      return;
+    }
+    runCaptureAction();
+  };
+
   useEffect(() => () => {
     recorderStreamRef.current?.getTracks().forEach((track) => track.stop());
     cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
     if (recorderTimerRef.current) clearInterval(recorderTimerRef.current);
+    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
   }, []);
 
-  const removeMedia = () => {
-    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
-    cameraStreamRef.current = null;
-    setCameraArmed(false);
+  const removeMedia = async () => {
     setMediaFile(null);
     setPreviewUrl(null);
     setSelectedTrack(null);
     setTrackQuery('');
     setTrackResults([]);
-  };
-
-  const handleDrop = (event: DragEvent<HTMLLabelElement>) => {
-    event.preventDefault();
-    const file = event.dataTransfer?.files?.[0] ?? null;
-    void handleMediaChange(file);
+    setError('');
+    await armCamera();
   };
 
   const selectTrack = (track: AudioTrack) => {
     setSelectedTrack(track);
     setTrackQuery('');
     setTrackResults([]);
+    setShowSoundsSheet(false);
   };
 
   const submitPost = async (desiredStatus: 'published' | 'draft') => {
@@ -482,9 +697,14 @@ export default function CreatePostPage() {
     setStep('details');
   };
 
+  const closeToFeed = () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    router.push('/feed');
+  };
+
   if (session === undefined) {
     return (
-      <main className="min-h-[70vh] px-4 py-6 sm:px-6 lg:px-8">
+      <main className="flex min-h-[70vh] items-center justify-center bg-obsidian px-4 py-6">
         <p className="text-sm text-slate">Loading...</p>
       </main>
     );
@@ -499,293 +719,414 @@ export default function CreatePostPage() {
     );
   }
 
+  const mediaFilterClass = `${filterClasses[filterPreset]} ${beautifyOn ? 'brightness-105 contrast-95 saturate-105' : ''}`;
+
   return (
-    <main className="min-h-[70vh] px-4 py-6 sm:px-6 lg:px-8">
-      <section className={`surface-veil rounded-3xl border border-hairline bg-panel-2/80 p-6 shadow-2xl ${accent.glow} sm:p-8`}>
-        <div className={`rounded-[1.6rem] bg-gradient-to-r ${accent.gradient} p-[1px]`}>
-          <div className="rounded-[calc(1.6rem-1px)] bg-panel/90 p-6 sm:p-8">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-black text-ivory">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        className="sr-only"
+        onChange={(event) => void handleMediaChange(event.target.files?.[0] ?? null)}
+      />
+
+      {step === 'details' ? (
+        /* ---------------- SHARE / DETAILS SCREEN ---------------- */
+        <div className="flex h-full flex-col bg-obsidian">
+          <div className="flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
+            <button type="button" onClick={() => setStep('media')} aria-label="Back" className="flex h-10 w-10 items-center justify-center rounded-full text-ivory">
+              <IconChevronLeft />
+            </button>
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate">{editingId ? 'Edit post' : 'New post'}</p>
+            <div className="h-10 w-10" />
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 pb-4">
+              <div className="flex gap-4">
+                <div className="h-28 w-20 flex-shrink-0 overflow-hidden rounded-2xl bg-panel-2">
+                  {previewUrl ? (
+                    mediaType === 'image' ? (
+                      <img src={previewUrl} alt="Preview" className={`h-full w-full object-cover ${mediaFilterClass}`} />
+                    ) : (
+                      <video src={previewUrl} className={`h-full w-full object-cover ${mediaFilterClass}`} muted />
+                    )
+                  ) : null}
+                </div>
+                <textarea
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  maxLength={280}
+                  placeholder="What are you sharing today?"
+                  className="min-h-[112px] flex-1 rounded-2xl border border-hairline bg-panel-2 px-4 py-3 text-sm text-ivory outline-none"
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate">
+                <span>Keep it concise and intimate.</span>
+                <span>{characterCount}/280</span>
+              </div>
+
               <div>
-                <p className="text-xs uppercase tracking-[0.32em] text-slate">Create</p>
-                <h1 className="text-display mt-2 text-3xl text-ivory">Share a new post</h1>
+                <p className="mb-2 text-xs uppercase tracking-[0.3em] text-slate">Who can see this</p>
+                <div className="flex gap-2">
+                  {(['public', 'connections', 'private'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setVisibility(option)}
+                      className={`flex-1 rounded-full border px-3 py-2 text-xs font-semibold capitalize transition ${visibility === option ? 'border-gold bg-gold/10 text-gold' : 'border-hairline text-slate hover:border-hairline-strong'}`}
+                    >
+                      {option === 'connections' ? 'Connections' : option}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="rounded-full border border-hairline bg-gradient-to-r from-panel to-panel px-3 py-1 text-sm font-semibold text-obsidian">
-                {visibility === 'public' ? 'Public' : visibility === 'connections' ? 'Connections only' : 'Private'}
-              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowSoundsSheet(true)}
+                className="flex w-full items-center gap-3 rounded-2xl border border-hairline bg-panel/70 px-4 py-3 text-left"
+              >
+                {selectedTrack?.cover_art_url ? (
+                  <img src={selectedTrack.cover_art_url} alt="" className="h-10 w-10 rounded-xl object-cover" />
+                ) : (
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-panel-2 text-slate"><IconMusic className="h-4 w-4" /></span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-ivory">{selectedTrack ? selectedTrack.title : 'Add a sound'}</span>
+                  <span className="block truncate text-xs text-slate">{selectedTrack ? selectedTrack.artist : 'Search tracks to attach'}</span>
+                </span>
+                <IconChevronLeft className="h-4 w-4 rotate-180 text-slate" />
+              </button>
+
+              {isGold ? (
+                <label className="block text-sm font-medium text-slate">
+                  Schedule for later
+                  <input type="datetime-local" value={scheduledFor} onChange={(event) => setScheduledFor(event.target.value)} min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} className="mt-2 w-full rounded-xl border border-hairline bg-panel-2 px-3 py-2 text-sm text-ivory" />
+                </label>
+              ) : (
+                <GoldUpgradeHint compact perk="Scheduled posts" detail="Choose a future publish time with Gold." />
+              )}
+
+              {error ? <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
+              {mixError ? <p className="text-sm text-rose-200">{mixError}</p> : null}
+              {isMixing ? <p className="text-sm text-gold">Mixing audio… {mixProgress}%</p> : null}
             </div>
 
-            <div className="mt-8 grid gap-4 rounded-3xl border border-hairline bg-panel/80 p-4 sm:grid-cols-[1.3fr_0.9fr] sm:p-6">
-              <div className="space-y-5">
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-                  <div>
-                    <p className="text-sm font-semibold text-ivory">Step {step === 'media' ? '1' : '2'} of 2</p>
-                    <p className="text-xs text-slate">{step === 'media' ? 'Pick your media and prep the preview.' : 'Add caption, visibility, and optional audio.'}</p>
-                  </div>
-                  <div className="flex gap-2 text-xs uppercase tracking-[0.28em] text-slate">
-                    <span className={step === 'media' ? 'text-gold' : 'text-slate'}>Media</span>
-                    <span className="text-slate">→</span>
-                    <span className={step === 'details' ? 'text-gold' : 'text-slate'}>Details</span>
-                  </div>
-                </div>
+            <div className="flex items-center gap-3 border-t border-hairline px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                onClick={() => void submitPost('draft')}
+                className="flex-1 rounded-full border border-hairline bg-panel px-5 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/10"
+              >
+                Save draft
+              </button>
+              <button
+                type="submit"
+                className={`flex-1 rounded-full bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
+                disabled={busy || isMixing}
+              >
+                {busy ? 'Publishing…' : editingId ? 'Update post' : 'Publish post'}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : previewUrl ? (
+        /* ---------------- CAPTURED PREVIEW SCREEN ---------------- */
+        <div className="relative flex-1 overflow-hidden bg-black">
+          <div className={`absolute inset-0 ${mediaFilterClass}`}>
+            {mediaType === 'image' ? (
+              <img src={previewUrl} alt="Captured" className="h-full w-full object-cover" />
+            ) : (
+              <video src={previewUrl} controls autoPlay loop playsInline className="h-full w-full object-cover" />
+            )}
+          </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="overflow-hidden rounded-[2rem] border border-hairline bg-panel-2/70">
-                    <div className="relative aspect-[9/16] min-h-[320px] overflow-hidden bg-panel/70 sm:aspect-[4/5] lg:min-h-[520px]">
-                      {cameraArmed && !previewUrl ? (
-                        <div className="absolute inset-0">
-                          <video ref={cameraPreviewRef} autoPlay playsInline muted className="h-full w-full object-cover" />
-                          <div className="absolute inset-x-0 top-4 flex justify-end px-4">
-                            <button type="button" onClick={() => void toggleCamera()} disabled={isRecording} className="rounded-full bg-black/60 px-3 py-2 text-sm font-semibold text-ivory disabled:opacity-50" aria-label="Switch camera">
-                              Flip camera
-                            </button>
-                          </div>
-                        </div>
-                      ) : previewUrl ? (
-                        <div className={`absolute inset-0 ${filterClasses[filterPreset]}`}>
-                          {mediaType === 'image' ? (
-                            <img src={previewUrl} alt={draft || 'Post preview'} className="h-full w-full object-cover" />
-                          ) : (
-                            <video controls src={previewUrl} className="h-full w-full object-cover" />
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-panel-2 via-panel to-obsidian p-8 text-center text-slate">
-                          <div className="max-w-sm">
-                            <p className="text-xs uppercase tracking-[0.32em] text-gold">Media first</p>
-                            <p className="mt-3 text-lg font-semibold text-ivory">Drop a photo or video here to publish.</p>
-                            <p className="mt-2 text-sm text-slate">The preview stays front and center, while captions, visibility, and audio live below.</p>
-                          </div>
-                        </div>
-                      )}
+          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+            <button type="button" onClick={() => void removeMedia()} aria-label="Discard" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-ivory">
+              <IconX className="h-5 w-5" />
+            </button>
+            <button type="button" onClick={() => setShowFiltersSheet(true)} className="flex items-center gap-2 rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-ivory backdrop-blur">
+              <IconFilters className="h-4 w-4" />
+              Filters
+            </button>
+          </div>
 
-                      <div className="absolute inset-x-0 top-4 flex items-center justify-between px-4 sm:px-6">
-                        <div className="rounded-full border border-hairline bg-obsidian/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-ivory">
-                          {visibility === 'public' ? 'Public' : visibility === 'connections' ? 'Connections' : 'Private'}
-                        </div>
-                        <div className="flex gap-2">
-                          {previewUrl ? (
-                            <>
-                              <button type="button" onClick={removeMedia} className="rounded-full bg-rose-500/20 px-2.5 py-1 text-xs font-semibold text-rose-100">Remove</button>
-                              <button type="button" onClick={openFilePicker} className="rounded-full bg-ivory/10 px-2.5 py-1 text-xs font-semibold text-ivory">Replace</button>
-                            </>
-                          ) : null}
-                        </div>
-                      </div>
+          {error ? (
+            <div className="absolute inset-x-4 top-20 z-10 rounded-2xl border border-rose-500/20 bg-black/70 px-4 py-3 text-sm text-rose-200">{error}</div>
+          ) : null}
 
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-obsidian/95 via-obsidian/65 to-transparent px-4 py-4 sm:px-6">
-                        <div className="flex flex-wrap items-center justify-center gap-2">
-                          <button type="button" onClick={() => isRecording ? stopRecording() : cameraArmed ? void startRecording() : void armCamera()} className="rounded-2xl bg-rose-500/20 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/30">
-                            {isRecording ? `Stop recording ${recordingSeconds}s / ${maxRecordingSeconds}s` : cameraArmed ? 'Start recording' : 'Record'}
-                          </button>
-                          <button type="button" onClick={() => void takePhoto()} disabled={isRecording} className="rounded-2xl bg-ivory/10 px-4 py-3 text-sm font-semibold text-ivory disabled:opacity-50">Take photo</button>
-                          <label onDragOver={(event) => event.preventDefault()} onDrop={handleDrop} className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-hairline bg-panel/50 px-4 py-3 text-sm text-slate transition hover:bg-panel-2">
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*,video/*"
-                            className="sr-only"
-                            onChange={(event) => void handleMediaChange(event.target.files?.[0] ?? null)}
-                          />
-                          {previewUrl ? 'Tap to change media' : 'Drop a photo or video or tap to choose'}
-                          </label>
-                        </div>
-                      </div>
-                    </div>
+          <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+            <button
+              type="button"
+              onClick={() => setShowSoundsSheet(true)}
+              className="flex items-center gap-2 rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-ivory backdrop-blur"
+            >
+              <IconMusic className="h-4 w-4" />
+              {selectedTrack ? selectedTrack.title.slice(0, 14) : 'Sounds'}
+            </button>
+            <button
+              type="button"
+              onClick={goToDetails}
+              aria-label="Next"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-ivory text-obsidian shadow-lg"
+            >
+              <IconArrowRight className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ---------------- LIVE CAMERA SCREEN ---------------- */
+        <div className="relative flex-1 overflow-hidden bg-black">
+          <video
+            ref={cameraPreviewRef}
+            autoPlay
+            playsInline
+            muted
+            className={`absolute inset-0 h-full w-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''} ${mediaFilterClass}`}
+          />
 
-                    <div className="space-y-4 p-4 sm:p-6">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.32em] text-slate">Filters</p>
-                          <p className="mt-1 text-sm text-slate">Choose a preset to tone the preview before publishing.</p>
-                        </div>
-                        <div className="rounded-full border border-hairline bg-ivory/5 px-3 py-1 text-xs uppercase tracking-[0.26em] text-slate">
-                          {mediaType === 'image' ? 'Image' : 'Video'}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {FILTER_PRESETS.map((preset) => (
-                          <button
-                            key={preset.key}
-                            type="button"
-                            onClick={() => {
-                              if (preset.gold && !isGold) {
-                                void upgrade.attemptPurchase();
-                                return;
-                              }
-                              setFilterPreset(preset.key);
-                            }}
-                            aria-disabled={preset.gold && !isGold}
-                            className={`rounded-full border px-3 py-2 text-left text-sm ${filterPreset === preset.key ? 'border-amber-400 bg-gold/10 text-ivory' : 'border-hairline text-slate hover:border-white/20 hover:bg-ivory/5'} ${preset.gold && !isGold ? 'opacity-60' : ''}`}
-                          >
-                            <span className="font-semibold">{preset.gold && !isGold ? '🔒 ' : ''}{preset.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                      {!isGold ? <div className="mt-3"><GoldUpgradeHint perk="Unlock 4 exclusive filters + 3-minute posts with Gold" detail="Tap any locked filter or upgrade here to open the Gold membership flow." /></div> : null}
-                      {goldLimitNotice ? <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-gold/25 bg-gold/5 px-4 py-3 text-sm text-slate"><span>Free limit reached — Gold posts up to 3 minutes.</span><GoldUpgradeHint compact perk="Gold posts" detail="Record up to 3 minutes instead of 1 minute." /></div> : null}
-
-                      {step === 'details' ? (
-                        <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate">Caption</label>
-                            <textarea
-                              value={draft}
-                              onChange={(event) => setDraft(event.target.value)}
-                              maxLength={280}
-                              placeholder="What are you sharing today?"
-                              className="min-h-[120px] w-full rounded-2xl border border-hairline bg-panel-2 px-4 py-3 text-sm text-ivory outline-none"
-                            />
-                            {isGold ? (
-                              <label className="mt-4 block text-sm font-medium text-slate">
-                                Schedule for later
-                                <input type="datetime-local" value={scheduledFor} onChange={(event) => setScheduledFor(event.target.value)} min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} className="mt-2 w-full rounded-xl border border-hairline bg-panel-2 px-3 py-2 text-sm text-ivory" />
-                              </label>
-                            ) : <GoldUpgradeHint compact perk="Scheduled posts" detail="Choose a future publish time with Gold." />}
-                            <div className="mt-2 flex items-center justify-between text-xs text-slate">
-                              <span>Keep it concise and intimate.</span>
-                              <span>{characterCount}/280</span>
-                            </div>
-                          </div>
-
-                          <div className="space-y-4 rounded-2xl border border-hairline bg-panel/60 p-4">
-                            <div className="rounded-2xl border border-hairline bg-gradient-to-r from-obsidian to-panel p-[1px]">
-                              <div className="rounded-[calc(1.2rem-1px)] bg-panel/90 p-4 text-sm text-slate">
-                                <p className="font-semibold text-ivory">Visibility</p>
-                                <select
-                                  value={visibility}
-                                  onChange={(event) => setVisibility(event.target.value as 'public' | 'connections' | 'private')}
-                                  className="mt-3 w-full rounded-xl border border-hairline bg-panel px-3 py-2 text-sm text-ivory outline-none"
-                                >
-                                  <option value="public">Public</option>
-                                  <option value="connections">Connections only</option>
-                                  <option value="private">Private</option>
-                                </select>
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-slate">Audio search</label>
-                              <input
-                                value={trackQuery}
-                                onChange={(event) => {
-                                  setTrackQuery(event.target.value);
-                                  setSelectedTrack(null);
-                                }}
-                                placeholder="Search for a track to attach"
-                                className="mt-3 w-full rounded-xl border border-hairline bg-panel px-4 py-3 text-sm text-ivory outline-none"
-                              />
-
-                              {trackResults.length > 0 ? (
-                                <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
-                                  {trackResults.map((track) => (
-                                    <button
-                                      key={track.id}
-                                      type="button"
-                                      onClick={() => selectTrack(track)}
-                                      className="w-full rounded-2xl border border-hairline bg-panel/80 px-4 py-3 text-left text-sm text-ivory transition hover:border-hairline-strong hover:bg-panel-2"
-                                    >
-                                      <p className="font-semibold">{track.title}</p>
-                                      <p className="text-xs text-slate">{track.artist}</p>
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : null}
-
-                              {selectedTrack ? (
-                                <div className="mt-4 rounded-2xl border border-amber-400/20 bg-panel/90 p-4 text-sm text-ivory">
-                                  <div className="flex items-center gap-3">
-                                    {selectedTrack.cover_art_url ? (
-                                      <img src={selectedTrack.cover_art_url} alt={`${selectedTrack.title} cover`} className="h-14 w-14 rounded-2xl object-cover" />
-                                    ) : (
-                                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-panel-2 text-xs uppercase tracking-[0.25em] text-slate">Audio</div>
-                                    )}
-                                    <div>
-                                      <p className="font-semibold text-ivory">{selectedTrack.title}</p>
-                                      <p className="text-xs text-slate">{selectedTrack.artist}</p>
-                                    </div>
-                                  </div>
-
-                                  {selectedTrack.preview_url ? (
-                                    <div className="mt-4">
-                                      <audio ref={audioRef} src={selectedTrack.preview_url} className="w-full" controls />
-                                      <div className="mt-2 flex items-center gap-2">
-                                        <input
-                                          type="range"
-                                          min={0}
-                                          max={audioDuration || 0}
-                                          step={0.01}
-                                          value={audioTime}
-                                          onChange={(event) => {
-                                            const nextTime = Number(event.target.value);
-                                            if (audioRef.current) {
-                                              audioRef.current.currentTime = nextTime;
-                                            }
-                                            setAudioTime(nextTime);
-                                          }}
-                                          className="w-full"
-                                        />
-                                        <div className="text-xs text-slate">{new Date(audioTime * 1000).toISOString().substr(14, 5)}</div>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <p className="mt-4 text-xs text-slate">No preview available for this track.</p>
-                                  )}
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="rounded-3xl border border-hairline bg-panel/70 p-5 text-sm text-slate">
-                          <p className="font-semibold text-ivory">Ready for the next step</p>
-                          <p className="mt-2">Once your media is selected, continue to add caption, visibility, and optional audio.</p>
-                        </div>
-                      )}
-
-                      {error ? (
-                        <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p>
-                      ) : null}
-                      {mixError ? <p className="text-sm text-rose-200">{mixError}</p> : null}
-                      {isMixing ? <p className="text-sm text-gold">Mixing audio… {mixProgress}%</p> : null}
-
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm text-slate">Posting uses the same upload logic as the feed composer.</p>
-                        {step === 'details' ? (
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => void submitPost('draft')}
-                              className="rounded-full border border-hairline bg-panel px-5 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/10"
-                            >
-                              Save draft
-                            </button>
-                            <button
-                              type="submit"
-                              className={`rounded-full bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
-                              disabled={busy || isMixing}
-                            >
-                              {busy ? 'Publishing…' : editingId ? 'Update post' : 'Publish post'}
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={goToDetails}
-                            className="rounded-full bg-gradient-to-r from-gold to-gold-deep px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110"
-                          >
-                            Continue to details
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </form>
+          {!cameraArmed ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-obsidian/95 px-8 text-center">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.32em] text-gold">Camera</p>
+                <p className="mt-3 text-lg font-semibold text-ivory">Tap to enable your camera</p>
+                <p className="mt-2 text-sm text-slate">We need camera and microphone access to record.</p>
+                <button type="button" onClick={() => void armCamera()} className="mt-5 rounded-full bg-ivory px-6 py-3 text-sm font-semibold text-obsidian">
+                  Enable camera
+                </button>
+                <button type="button" onClick={openFilePicker} className="mt-3 block w-full text-sm font-semibold text-slate underline underline-offset-4">
+                  Upload from device instead
+                </button>
               </div>
+            </div>
+          ) : null}
+
+          {countdown !== null ? (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30">
+              <span className="text-8xl font-bold text-ivory drop-shadow-lg">{countdown}</span>
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="absolute inset-x-4 top-20 z-10 rounded-2xl border border-rose-500/20 bg-black/70 px-4 py-3 text-sm text-rose-200">{error}</div>
+          ) : null}
+
+          {/* Top bar: close, sounds pill, right-hand tool rail */}
+          <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+            <button type="button" onClick={closeToFeed} aria-label="Close" className="flex h-10 w-10 items-center justify-center rounded-full text-ivory drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
+              <IconX />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowSoundsSheet(true)}
+              className="flex items-center gap-2 rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-ivory backdrop-blur"
+            >
+              <IconMusic className="h-4 w-4" />
+              {selectedTrack ? selectedTrack.title.slice(0, 14) : 'Sounds'}
+            </button>
+
+            <div className="flex flex-col items-center gap-4 pt-1">
+              <RailButton icon={<IconFlip />} label="Flip" onClick={() => void toggleCamera()} />
+              <RailButton icon={<IconFlash filled={flashOn} />} label={flashOn ? 'On' : 'Off'} onClick={() => void toggleFlash()} active={flashOn} />
+              <RailButton icon={<IconTimer />} label={timerOption === 0 ? 'Timer' : `${timerOption}s`} onClick={cycleTimer} active={timerOption > 0} />
+              <RailButton icon={<IconSpeed />} label={`${speedOption}x`} onClick={cycleSpeed} active={speedOption !== 1} />
+              <RailButton icon={<IconFilters />} label="Filters" onClick={() => setShowFiltersSheet(true)} active={filterPreset !== 'none'} />
+              <RailButton
+                icon={<IconSparkles />}
+                label="Beautify"
+                active={beautifyOn}
+                onClick={() => {
+                  if (!isGold) {
+                    void upgrade.attemptPurchase();
+                    return;
+                  }
+                  setBeautifyOn((value) => !value);
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Bottom bar: duration pills + effects / shutter / upload */}
+          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+            <div className="flex items-center gap-4 text-sm font-semibold">
+              {DURATION_OPTIONS.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => selectDuration(option)}
+                  className={selectedDuration === option.key ? 'rounded-full bg-ivory px-4 py-1.5 text-obsidian' : 'px-2 py-1.5 text-ivory/85 drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]'}
+                >
+                  {option.gold && !isGold ? `🔒 ${option.label}` : option.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex w-full items-center justify-between px-8">
+              <button type="button" onClick={() => setShowFiltersSheet(true)} className="flex flex-col items-center gap-1.5">
+                <span className="h-12 w-12 overflow-hidden rounded-2xl border-2 border-ivory/70 bg-gradient-to-br from-panel-2 to-panel" />
+                <span className="text-xs font-medium text-ivory/85">Effects</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCaptureTap}
+                disabled={!cameraArmed && !isRecording}
+                className="relative flex h-[4.6rem] w-[4.6rem] items-center justify-center rounded-full border-[3px] border-ivory disabled:opacity-40"
+                aria-label={selectedDuration === 'photo' ? 'Take photo' : isRecording ? 'Stop recording' : 'Start recording'}
+              >
+                <span className={`h-14 w-14 rounded-full transition-all ${isRecording ? 'scale-75 rounded-2xl bg-rose-500' : 'bg-ivory'}`} />
+                {isRecording ? (
+                  <span className="absolute -bottom-6 whitespace-nowrap text-xs font-semibold text-ivory">
+                    {recordingSeconds}s
+                  </span>
+                ) : null}
+              </button>
+
+              <button type="button" onClick={openFilePicker} className="flex flex-col items-center gap-1.5">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ivory/15">
+                  <IconImage className="h-6 w-6 text-ivory" />
+                </span>
+                <span className="text-xs font-medium text-ivory/85">Upload</span>
+              </button>
             </div>
           </div>
         </div>
-      </section>
-    </main>
+      )}
+
+      {/* ---------------- SOUNDS BOTTOM SHEET ---------------- */}
+      {showSoundsSheet ? (
+        <div className="absolute inset-0 z-30 flex flex-col justify-end bg-black/60" onClick={() => setShowSoundsSheet(false)}>
+          <div
+            className="max-h-[72vh] overflow-y-auto rounded-t-3xl border-t border-hairline bg-panel/95 p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ivory/20" />
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate">Sounds</p>
+              <button type="button" onClick={() => setShowSoundsSheet(false)} aria-label="Close" className="text-slate"><IconX className="h-5 w-5" /></button>
+            </div>
+
+            <input
+              value={trackQuery}
+              onChange={(event) => {
+                setTrackQuery(event.target.value);
+                setSelectedTrack(null);
+              }}
+              placeholder="Search for a track to attach"
+              className="w-full rounded-xl border border-hairline bg-panel px-4 py-3 text-sm text-ivory outline-none"
+              autoFocus
+            />
+
+            {trackResults.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {trackResults.map((track) => (
+                  <button
+                    key={track.id}
+                    type="button"
+                    onClick={() => selectTrack(track)}
+                    className="w-full rounded-2xl border border-hairline bg-panel/80 px-4 py-3 text-left text-sm text-ivory transition hover:border-hairline-strong hover:bg-panel-2"
+                  >
+                    <p className="font-semibold">{track.title}</p>
+                    <p className="text-xs text-slate">{track.artist}</p>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {selectedTrack ? (
+              <div className="mt-4 rounded-2xl border border-amber-400/20 bg-panel/90 p-4 text-sm text-ivory">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    {selectedTrack.cover_art_url ? (
+                      <img src={selectedTrack.cover_art_url} alt={`${selectedTrack.title} cover`} className="h-14 w-14 rounded-2xl object-cover" />
+                    ) : (
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-panel-2 text-xs uppercase tracking-[0.25em] text-slate">Audio</div>
+                    )}
+                    <div>
+                      <p className="font-semibold text-ivory">{selectedTrack.title}</p>
+                      <p className="text-xs text-slate">{selectedTrack.artist}</p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setSelectedTrack(null)} className="rounded-full bg-ivory/10 px-3 py-1.5 text-xs font-semibold text-ivory">Remove</button>
+                </div>
+
+                {selectedTrack.preview_url ? (
+                  <div className="mt-4">
+                    <audio ref={audioRef} src={selectedTrack.preview_url} className="w-full" controls />
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={0}
+                        max={audioDuration || 0}
+                        step={0.01}
+                        value={audioTime}
+                        onChange={(event) => {
+                          const nextTime = Number(event.target.value);
+                          if (audioRef.current) {
+                            audioRef.current.currentTime = nextTime;
+                          }
+                          setAudioTime(nextTime);
+                        }}
+                        className="w-full"
+                      />
+                      <div className="text-xs text-slate">{new Date(audioTime * 1000).toISOString().substr(14, 5)}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-xs text-slate">No preview available for this track.</p>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ---------------- FILTERS BOTTOM SHEET ---------------- */}
+      {showFiltersSheet ? (
+        <div className="absolute inset-0 z-30 flex flex-col justify-end bg-black/60" onClick={() => setShowFiltersSheet(false)}>
+          <div
+            className="max-h-[60vh] overflow-y-auto rounded-t-3xl border-t border-hairline bg-panel/95 p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-ivory/20" />
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate">Filters</p>
+              <button type="button" onClick={() => setShowFiltersSheet(false)} aria-label="Close" className="text-slate"><IconX className="h-5 w-5" /></button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {FILTER_PRESETS.map((preset) => (
+                <button
+                  key={preset.key}
+                  type="button"
+                  onClick={() => {
+                    if (preset.gold && !isGold) {
+                      void upgrade.attemptPurchase();
+                      return;
+                    }
+                    setFilterPreset(preset.key);
+                    setShowFiltersSheet(false);
+                  }}
+                  aria-disabled={preset.gold && !isGold}
+                  className={`rounded-full border px-3 py-2 text-left text-sm ${filterPreset === preset.key ? 'border-amber-400 bg-gold/10 text-ivory' : 'border-hairline text-slate hover:border-white/20 hover:bg-ivory/5'} ${preset.gold && !isGold ? 'opacity-60' : ''}`}
+                >
+                  <span className="font-semibold">{preset.gold && !isGold ? '🔒 ' : ''}{preset.label}</span>
+                </button>
+              ))}
+            </div>
+            {!isGold ? <div className="mt-3"><GoldUpgradeHint perk="Unlock 4 exclusive filters + 3-minute posts with Gold" detail="Tap any locked filter or upgrade here to open the Gold membership flow." /></div> : null}
+            {goldLimitNotice ? (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-gold/25 bg-gold/5 px-4 py-3 text-sm text-slate">
+                <span>Free limit reached — Gold posts up to 3 minutes.</span>
+                <GoldUpgradeHint compact perk="Gold posts" detail="Record up to 3 minutes instead of 1 minute." />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
