@@ -68,6 +68,59 @@ export async function POST(request: NextRequest) {
     });
 
     const text = await upstream.text();
+    const contentType = upstream.headers.get('content-type') || '';
+
+    // WimpyAI streams its response as Server-Sent Events ("data: {...}\n\n"
+    // lines terminated by "data: [DONE]"), not a single JSON object. The
+    // old code did a blind JSON.parse(text) on the whole raw stream, which
+    // always failed and fell back to `{ reply: text }` — dumping the raw
+    // SSE text (including any upstream error payload) straight into the
+    // chat as if it were the assistant's reply. Parse it properly instead.
+    if (contentType.includes('text/event-stream') || text.includes('\ndata:') || text.startsWith('data:')) {
+      const lines = text.split('\n').filter((line) => line.startsWith('data:'));
+      let reply = '';
+      let upstreamError: string | null = null;
+
+      for (const line of lines) {
+        const raw = line.slice(5).trim();
+        if (!raw || raw === '[DONE]') continue;
+
+        let parsed: any;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          continue;
+        }
+
+        if (parsed?.error) {
+          // Surface a clean, human-readable message instead of the nested
+          // raw provider JSON (OpenRouter/OpenAI error payloads).
+          let detail = parsed.error;
+          if (typeof parsed.detail === 'string') {
+            try {
+              const parsedDetail = JSON.parse(parsed.detail);
+              detail = parsedDetail?.error?.message || parsed.error;
+            } catch {
+              detail = parsed.detail;
+            }
+          }
+          upstreamError = typeof detail === 'string' ? detail : parsed.error;
+          continue;
+        }
+
+        const delta = parsed?.choices?.[0]?.delta?.content ?? parsed?.choices?.[0]?.message?.content ?? parsed?.content ?? parsed?.reply ?? '';
+        if (typeof delta === 'string') reply += delta;
+      }
+
+      if (upstreamError) {
+        return Response.json({ error: `WimpyAI is temporarily unavailable: ${upstreamError}` }, { status: 502 });
+      }
+      if (!reply.trim()) {
+        return Response.json({ error: 'WimpyAI returned an empty response. Please try again.' }, { status: 502 });
+      }
+      return Response.json({ reply });
+    }
+
     let payload: any;
     try {
       payload = JSON.parse(text);
