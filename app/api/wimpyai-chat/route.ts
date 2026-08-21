@@ -94,12 +94,28 @@ export async function POST(request: NextRequest) {
 
         if (parsed?.error) {
           // Surface a clean, human-readable message instead of the nested
-          // raw provider JSON (OpenRouter/OpenAI error payloads).
-          let detail = parsed.error;
+          // raw provider JSON (OpenRouter/OpenAI error payloads). The real
+          // reason is often two levels deep: parsed.detail is a JSON
+          // string whose .error.message is just OpenRouter's generic
+          // wrapper ("Provider returned error") — the actual provider
+          // message lives one level further, in .error.metadata.raw,
+          // which is itself another JSON string.
+          let detail: string = parsed.error;
           if (typeof parsed.detail === 'string') {
             try {
               const parsedDetail = JSON.parse(parsed.detail);
-              detail = parsedDetail?.error?.message || parsed.error;
+              const wrapperMessage = parsedDetail?.error?.message;
+              const rawMetadata = parsedDetail?.error?.metadata?.raw;
+              if (typeof rawMetadata === 'string') {
+                try {
+                  const parsedRaw = JSON.parse(rawMetadata);
+                  detail = parsedRaw?.error?.message || wrapperMessage || parsed.error;
+                } catch {
+                  detail = wrapperMessage || parsed.error;
+                }
+              } else {
+                detail = wrapperMessage || parsed.error;
+              }
             } catch {
               detail = parsed.detail;
             }
