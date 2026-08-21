@@ -380,6 +380,11 @@ export default function CreatePostPage() {
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMeta);
 
+    // Picking a track should actually let you hear it — start playback as
+    // soon as the preview element is mounted for the newly selected track.
+    audio.currentTime = 0;
+    void audio.play().catch(() => undefined);
+
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMeta);
@@ -678,7 +683,12 @@ export default function CreatePostPage() {
     setSelectedTrack(track);
     setTrackQuery('');
     setTrackResults([]);
-    setShowSoundsSheet(false);
+    // Keep the Sounds sheet open after picking a track — it used to close
+    // immediately here, which unmounted the <audio> preview/trim UI in the
+    // same render as selecting it, so the sound never actually played and
+    // there was no way to scrub/trim it. Now the sheet stays open showing
+    // the selected track's player until the user explicitly confirms it
+    // with "Use this sound" (or closes the sheet manually).
   };
 
   // ---- Text-only post ("Aa" button on the camera screen) ----
@@ -1554,6 +1564,17 @@ export default function CreatePostPage() {
                 ) : (
                   <p className="mt-4 text-xs text-slate">No preview available for this track.</p>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    audioRef.current?.pause();
+                    setShowSoundsSheet(false);
+                  }}
+                  className="mt-4 w-full rounded-full bg-gold px-4 py-3 text-sm font-semibold text-obsidian"
+                >
+                  Use this sound
+                </button>
               </div>
             ) : null}
           </div>
