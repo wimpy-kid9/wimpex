@@ -9,3 +9,6 @@ out
 android/keystore/
 android/keystore.properties
 oracleJdk-26/
+wimpex-release.keystore
+*.keystore
+*.jks
