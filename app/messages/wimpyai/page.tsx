@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { authedFetch } from '@/lib/api-client';
 
 interface WimpyAIMessage {
   id: string;
@@ -69,8 +70,11 @@ export default function WimpyAIChat() {
     try {
       // Call WimpyAI via our own server-side proxy to avoid browser CORS
       // restrictions (the WimpyAI service doesn't send an
-      // Access-Control-Allow-Origin header for this origin).
-      const response = await fetch('/api/wimpyai-chat', {
+      // Access-Control-Allow-Origin header for this origin). Must use
+      // authedFetch — the proxy requires a Bearer token (requireAuth) to
+      // track per-user daily usage limits, and a plain fetch() never sent
+      // one, so every request here was rejected with 401.
+      const response = await authedFetch('/api/wimpyai-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
