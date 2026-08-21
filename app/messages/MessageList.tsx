@@ -131,8 +131,16 @@ export default function MessageList() {
     es.addEventListener('connected', () => void loadState());
     es.onerror = () => {
       es.close();
-      // fallback to polling if SSE fails
-      const id = window.setInterval(() => void loadState(), 500);
+      // Fallback to polling if SSE fails (e.g. the host doesn't support
+      // long-lived connections). This was previously 500 — i.e. 500
+      // *milliseconds* — which hammered /api/messages and /api/connections
+      // twice a second for the entire time the chat page was open. That
+      // constant refetch/re-render was both the source of the slow-feeling
+      // chat list and, because the list layout kept shifting mid-tap, the
+      // reason taps on anything but the fixed-size avatar could get
+      // dropped by the browser. 15s keeps the list reasonably fresh
+      // without re-fetching on every frame.
+      const id = window.setInterval(() => void loadState(), 15000);
       (es as any)._pollId = id;
     };
     return () => {
@@ -471,8 +479,8 @@ export default function MessageList() {
                   <div className="grid h-16 w-16 place-items-center rounded-full bg-panel-2 text-xl text-slate">{initials}</div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                  <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                    <div className="min-w-0 flex-1 basis-40">
                       <div className="flex items-center gap-1.5">
                         <p className="truncate text-lg font-semibold text-ivory">{conversation.title || other?.display_name || other?.username || 'Unknown chat'}</p>
                         {other?.is_gold ? <GoldBadge size="sm" inline /> : null}
@@ -480,12 +488,12 @@ export default function MessageList() {
                       </div>
                       <p className="mt-2 truncate text-sm text-slate">{conversation.previewSentByMe ? 'You: ' : ''}{conversation.preview}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       <p className="whitespace-nowrap text-xs uppercase tracking-[0.24em] text-slate">{timeLabel}</p>
-                      <button type="button" onClick={(event) => { event.stopPropagation(); void togglePinned(conversation); }} className="rounded-full border border-hairline px-2 py-1 text-xs text-slate hover:border-gold hover:text-gold" title={isGold ? (conversation.pinnedAt ? 'Unpin chat' : 'Pin chat') : 'Gold: pin chat'}>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); void togglePinned(conversation); }} className="shrink-0 rounded-full border border-hairline px-2 py-1 text-xs text-slate hover:border-gold hover:text-gold" title={isGold ? (conversation.pinnedAt ? 'Unpin chat' : 'Pin chat') : 'Gold: pin chat'}>
                         {conversation.pinnedAt ? '📌' : isGold ? 'Pin' : <GoldUpgradeHint compact perk="Pin chats" detail="Preview your pinned inbox and unlock quick access with Gold." />}
                       </button>
-                      {isGold ? <select value={conversation.folderName || ''} onClick={(event) => event.stopPropagation()} onChange={async (event) => { event.stopPropagation(); await authedFetch('/api/messages/folder', { method: 'PATCH', body: JSON.stringify({ conversationId: conversation.id, folderName: event.target.value || null }) }); await loadState(); }} className="max-w-24 rounded-full border border-hairline bg-panel px-2 py-1 text-[10px] text-slate"><option value="">Folder</option><option value="Work">Work</option><option value="Close Friends">Close Friends</option><option value="Family">Family</option></select> : null}
+                      {isGold ? <select value={conversation.folderName || ''} onClick={(event) => event.stopPropagation()} onChange={async (event) => { event.stopPropagation(); await authedFetch('/api/messages/folder', { method: 'PATCH', body: JSON.stringify({ conversationId: conversation.id, folderName: event.target.value || null }) }); await loadState(); }} className="w-16 shrink-0 rounded-full border border-hairline bg-panel px-2 py-1 text-[10px] text-slate sm:w-24"><option value="">Folder</option><option value="Work">Work</option><option value="Close Friends">Close Friends</option><option value="Family">Family</option></select> : null}
                     </div>
                   </div>
                   {typeof conversation.unreadCount === 'number' && conversation.unreadCount > 0 ? (

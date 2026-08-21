@@ -370,18 +370,43 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ conversations: [] });
   }
 
-  const { data: conversations, error: conversationError } = await supabaseServer.from('wpx_conversations').select('*').in('id', conversationIds).order('last_activity_at', { ascending: false });
+  // These three queries only depend on conversationIds, not on each other —
+  // they were previously run one after another (conversations, then members,
+  // then a fully separate messages query later), turning every chat-list
+  // load into a chain of round trips to the database. Running them together
+  // cuts that wait roughly in a third.
+  //
+  // The messages query also used to fetch every message in every one of the
+  // user's conversations with no limit at all, just to find each
+  // conversation's single latest message for the preview line — meaning the
+  // chat list got slower forever as message history grew. It's ordered
+  // newest-first and capped instead; that's enough rows to find each
+  // conversation's latest message in all but extreme edge cases, without
+  // scanning the whole table on every page load.
+  const messagesCap = Math.min(Math.max(conversationIds.length * 5, 100), 1000);
+  const [
+    { data: conversations, error: conversationError },
+    { data: members, error: membersError },
+    { data: messages, error: messagesError }
+  ] = await Promise.all([
+    supabaseServer.from('wpx_conversations').select('*').in('id', conversationIds).order('last_activity_at', { ascending: false }),
+    supabaseServer.from('wpx_conversation_members').select('*').in('conversation_id', conversationIds),
+    supabaseServer
+      .from('wpx_messages')
+      .select('conversation_id, sender_id, body, media_type, created_at')
+      .in('conversation_id', conversationIds)
+      .order('created_at', { ascending: false })
+      .limit(messagesCap)
+  ]);
+
   if (conversationError) {
     return NextResponse.json({ error: conversationError.message }, { status: 500 });
   }
-
-  const { data: members, error: membersError } = await supabaseServer
-    .from('wpx_conversation_members')
-    .select('*')
-    .in('conversation_id', conversationIds);
-
   if (membersError) {
     return NextResponse.json({ error: membersError.message }, { status: 500 });
+  }
+  if (messagesError) {
+    return NextResponse.json({ error: messagesError.message }, { status: 500 });
   }
 
   const otherUserIds = Array.from(
@@ -390,10 +415,26 @@ export async function GET(request: NextRequest) {
     )
   );
 
-  const { data: profiles, error: profileError } = await supabaseServer
-    .from('wpx_profiles')
-    .select('user_id, username, display_name, avatar_url')
-    .in('user_id', otherUserIds);
+  // Profiles and subscriptions both only depend on otherUserIds, so they can
+  // also run together instead of one after the other.
+  const [
+    { data: profiles, error: profileError },
+    subscriptions
+  ] = await Promise.all([
+    supabaseServer
+      .from('wpx_profiles')
+      .select('user_id, username, display_name, avatar_url')
+      .in('user_id', otherUserIds),
+    otherUserIds.length > 0
+      ? supabaseServer
+          .from('subscriptions')
+          .select('user_id, status, current_period_end, plan_id, plans!plan_id(id, product_name, name, price, billing_interval)')
+          .in('user_id', otherUserIds)
+          .eq('status', 'active')
+          .order('current_period_end', { ascending: false })
+          .then((res) => res.data)
+      : Promise.resolve(null)
+  ]);
 
   if (profileError) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
@@ -401,13 +442,6 @@ export async function GET(request: NextRequest) {
 
   const profilesWithGold = profiles || [];
   if (otherUserIds.length > 0) {
-    const { data: subscriptions } = await supabaseServer
-      .from('subscriptions')
-      .select('user_id, status, current_period_end, plan_id, plans!plan_id(id, product_name, name, price, billing_interval)')
-      .in('user_id', otherUserIds)
-      .eq('status', 'active')
-      .order('current_period_end', { ascending: false });
-
     const subscriptionMap: Record<string, any> = {};
     (subscriptions || []).forEach((subscription: any) => {
       if (subscription.user_id && !subscriptionMap[subscription.user_id]) {
@@ -418,16 +452,6 @@ export async function GET(request: NextRequest) {
     profilesWithGold.forEach((profile: any) => {
       profile.is_gold = isGoldSubscription(subscriptionMap[profile.user_id]);
     });
-  }
-
-  const { data: messages, error: messagesError } = await supabaseServer
-    .from('wpx_messages')
-    .select('conversation_id, sender_id, body, media_type, created_at')
-    .in('conversation_id', conversationIds)
-    .order('created_at', { ascending: false });
-
-  if (messagesError) {
-    return NextResponse.json({ error: messagesError.message }, { status: 500 });
   }
 
   const summaries = (conversations || []).map((conversation: any) =>
