@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -59,6 +59,7 @@ export default function MessageList() {
   const [notice, setNotice] = useState('');
   const [isGold, setIsGold] = useState(false);
   const [folderFilter, setFolderFilter] = useState('all');
+  const [rowMenuFor, setRowMenuFor] = useState<string | null>(null);
   const upgrade = usePaidUpgradeFlow({ productName: 'wimpex', planName: 'Wimpex Pro' });
 
   useEffect(() => {
@@ -283,7 +284,7 @@ export default function MessageList() {
   };
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-6" onClick={() => { if (rowMenuFor) setRowMenuFor(null); }}>
       {notice ? (
         <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-200">{notice}</div>
       ) : null}
@@ -490,10 +491,64 @@ export default function MessageList() {
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <p className="whitespace-nowrap text-xs uppercase tracking-[0.24em] text-slate">{timeLabel}</p>
-                      <button type="button" onClick={(event) => { event.stopPropagation(); void togglePinned(conversation); }} className="shrink-0 rounded-full border border-hairline px-2 py-1 text-xs text-slate hover:border-gold hover:text-gold" title={isGold ? (conversation.pinnedAt ? 'Unpin chat' : 'Pin chat') : 'Gold: pin chat'}>
-                        {conversation.pinnedAt ? '📌' : isGold ? 'Pin' : <GoldUpgradeHint compact perk="Pin chats" detail="Preview your pinned inbox and unlock quick access with Gold." />}
-                      </button>
-                      {isGold ? <select value={conversation.folderName || ''} onClick={(event) => event.stopPropagation()} onChange={async (event) => { event.stopPropagation(); await authedFetch('/api/messages/folder', { method: 'PATCH', body: JSON.stringify({ conversationId: conversation.id, folderName: event.target.value || null }) }); await loadState(); }} className="w-16 shrink-0 rounded-full border border-hairline bg-panel px-2 py-1 text-[10px] text-slate sm:w-24"><option value="">Folder</option><option value="Work">Work</option><option value="Close Friends">Close Friends</option><option value="Family">Family</option></select> : null}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(event) => { event.stopPropagation(); setRowMenuFor((current) => (current === conversation.id ? null : conversation.id)); }}
+                          className="shrink-0 rounded-full border border-hairline p-1.5 text-slate transition hover:border-gold hover:text-gold"
+                          title="Chat options"
+                          aria-label="Chat options"
+                          aria-expanded={rowMenuFor === conversation.id}
+                        >
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                        </button>
+                        {rowMenuFor === conversation.id ? (
+                          <div
+                            onClick={(event) => event.stopPropagation()}
+                            className="absolute right-0 top-full z-20 mt-2 w-52 space-y-1 rounded-3xl border border-hairline bg-panel p-2 text-left shadow-2xl shadow-black/30"
+                          >
+                            {isGold ? (
+                              <button
+                                type="button"
+                                onClick={() => { setRowMenuFor(null); void togglePinned(conversation); }}
+                                className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm text-ivory transition hover:bg-panel-2"
+                              >
+                                <span className="text-base">📌</span>
+                                {conversation.pinnedAt ? 'Unpin chat' : 'Pin chat'}
+                              </button>
+                            ) : (
+                              <div className="px-3 py-2">
+                                <GoldUpgradeHint compact perk="Pin chats" detail="Preview your pinned inbox and unlock quick access with Gold." />
+                              </div>
+                            )}
+                            <div className="my-1 border-t border-hairline" />
+                            {isGold ? (
+                              <>
+                                <p className="px-3 pt-1 text-[10px] uppercase tracking-[0.2em] text-slate">Folder</p>
+                                {['', 'Work', 'Close Friends', 'Family'].map((folder) => (
+                                  <button
+                                    key={folder || 'none'}
+                                    type="button"
+                                    onClick={async () => {
+                                      setRowMenuFor(null);
+                                      await authedFetch('/api/messages/folder', { method: 'PATCH', body: JSON.stringify({ conversationId: conversation.id, folderName: folder || null }) });
+                                      await loadState();
+                                    }}
+                                    className={`flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm transition hover:bg-panel-2 ${(conversation.folderName || '') === folder ? 'text-gold' : 'text-ivory'}`}
+                                  >
+                                    {folder || 'No folder'}
+                                    {(conversation.folderName || '') === folder ? <span className="text-xs">✓</span> : null}
+                                  </button>
+                                ))}
+                              </>
+                            ) : (
+                              <div className="px-3 py-2">
+                                <GoldUpgradeHint compact perk="Chat folders" detail="Sort chats into folders like Work and Family with Gold." />
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                   {typeof conversation.unreadCount === 'number' && conversation.unreadCount > 0 ? (
