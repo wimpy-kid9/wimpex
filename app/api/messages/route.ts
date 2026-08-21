@@ -419,7 +419,7 @@ export async function GET(request: NextRequest) {
   // also run together instead of one after the other.
   const [
     { data: profiles, error: profileError },
-    subscriptions
+    { data: subscriptions }
   ] = await Promise.all([
     supabaseServer
       .from('wpx_profiles')
@@ -432,8 +432,7 @@ export async function GET(request: NextRequest) {
           .in('user_id', otherUserIds)
           .eq('status', 'active')
           .order('current_period_end', { ascending: false })
-          .then((res) => res.data)
-      : Promise.resolve(null)
+      : Promise.resolve({ data: null, error: null })
   ]);
 
   if (profileError) {
