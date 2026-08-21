@@ -16,9 +16,19 @@ export async function GET(request: Request) {
         }
       };
 
+      // This has no real change-detection behind it (no DB LISTEN/NOTIFY or
+      // Supabase Realtime subscription) — it's a fixed-interval "check now"
+      // ping that the client treats as "something changed, reload the
+      // conversation list." It was previously firing every 500 *milliseconds*,
+      // forever, for as long as the tab was open. Because this runs on the
+      // Edge runtime, the connection stays open reliably on Vercel (unlike a
+      // regular serverless function), so this loop — not the client's
+      // fallback poller — was almost certainly the real source of the
+      // constant /api/messages + /api/connections traffic. 8s keeps the
+      // list feeling reasonably live without re-fetching twice a second.
       interval = setInterval(() => {
         send({ ts: Date.now() });
-      }, 500);
+      }, 8000);
 
       controller.enqueue(encoder.encode(`event: connected\ndata: {"ok":true}\n\n`));
 

@@ -28,6 +28,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [senderIsGold, setSenderIsGold] = useState(false);
   const [wallpaperPickerOpen, setWallpaperPickerOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const wallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [hasEarlier, setHasEarlier] = useState(false);
@@ -497,7 +498,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
 
   return (
     <main
-      onClick={() => actionMenuFor && setActionMenuFor(null)}
+      onClick={() => { if (actionMenuFor) setActionMenuFor(null); if (headerMenuOpen) setHeaderMenuOpen(false); }}
       onTouchStart={handlePageTouchStart}
       onTouchMove={handlePageTouchMove}
       onTouchEnd={handlePageTouchEnd}
@@ -548,25 +549,58 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
               </>
             )}
             <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => void handleStartCall('voice')}
-                disabled={!canStartCall || callLoading}
-                className="rounded-full border border-hairline bg-panel p-2 text-ivory transition hover:bg-ivory/10 disabled:cursor-not-allowed disabled:opacity-50"
-                title="Voice call"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M22 16.92V21a1 1 0 0 1-1.11 1 19.86 19.86 0 0 1-8.63-3.07A19.38 19.38 0 0 1 3.07 9.74 19.86 19.86 0 0 1 0 1.11 1 1 0 0 1 1 0h4.09a1 1 0 0 1 1 .76c.12.83.33 1.64.63 2.42a1 1 0 0 1-.24 1.03L5.2 6.79a16 16 0 0 0 10.45 10.45l1.58-1.58a1 1 0 0 1 1.03-.24c.78.3 1.59.51 2.42.63a1 1 0 0 1 .76 1V22z" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
-              {senderIsGold ? <button type="button" onClick={() => setWallpaperPickerOpen((open) => !open)} className="rounded-full border border-hairline bg-panel p-2 text-ivory transition hover:bg-ivory/10" title="Chat wallpaper">🖼️</button> : <GoldUpgradeHint compact perk="Chat wallpapers" detail="Preview custom colors and images for this conversation, then unlock them with Gold." />}
-              <button
-                type="button"
-                onClick={() => void handleStartCall('video')}
-                disabled={!canStartCall || callLoading}
-                className="rounded-full border border-hairline bg-panel p-2 text-ivory transition hover:bg-ivory/10 disabled:cursor-not-allowed disabled:opacity-50"
-                title="Video call"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path d="M15 7h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="6" width="12" height="12" rx="2" strokeWidth="1.4"/><path d="M9 10v4" strokeWidth="1.4" strokeLinecap="round"/></svg>
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(event) => { event.stopPropagation(); setHeaderMenuOpen((open) => !open); }}
+                  className="rounded-full border border-hairline bg-panel p-2 text-ivory transition hover:bg-ivory/10"
+                  title="Chat options"
+                  aria-label="Chat options"
+                  aria-expanded={headerMenuOpen}
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                </button>
+                {headerMenuOpen ? (
+                  <div
+                    onClick={(event) => event.stopPropagation()}
+                    className="absolute right-0 top-full z-20 mt-2 w-56 space-y-1 rounded-3xl border border-hairline bg-panel p-2 shadow-2xl shadow-black/30"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => { setHeaderMenuOpen(false); void handleStartCall('voice'); }}
+                      disabled={!canStartCall || callLoading}
+                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm text-ivory transition hover:bg-panel-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5 flex-shrink-0"><path d="M22 16.92V21a1 1 0 0 1-1.11 1 19.86 19.86 0 0 1-8.63-3.07A19.38 19.38 0 0 1 3.07 9.74 19.86 19.86 0 0 1 0 1.11 1 1 0 0 1 1 0h4.09a1 1 0 0 1 1 .76c.12.83.33 1.64.63 2.42a1 1 0 0 1-.24 1.03L5.2 6.79a16 16 0 0 0 10.45 10.45l1.58-1.58a1 1 0 0 1 1.03-.24c.78.3 1.59.51 2.42.63a1 1 0 0 1 .76 1V22z" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      Voice call
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setHeaderMenuOpen(false); void handleStartCall('video'); }}
+                      disabled={!canStartCall || callLoading}
+                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm text-ivory transition hover:bg-panel-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5 flex-shrink-0"><path d="M15 7h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="6" width="12" height="12" rx="2" strokeWidth="1.4"/><path d="M9 10v4" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                      Video call
+                    </button>
+                    <div className="my-1 border-t border-hairline" />
+                    {senderIsGold ? (
+                      <button
+                        type="button"
+                        onClick={() => { setHeaderMenuOpen(false); setWallpaperPickerOpen((open) => !open); }}
+                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm text-ivory transition hover:bg-panel-2"
+                      >
+                        <span className="text-base">🖼️</span>
+                        Chat wallpaper
+                      </button>
+                    ) : (
+                      <div className="px-3 py-2">
+                        <GoldUpgradeHint compact perk="Chat wallpapers" detail="Preview custom colors and images for this conversation, then unlock them with Gold." />
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
           {wallpaperPickerOpen ? (
@@ -628,7 +662,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                       )
                     ) : null}
                     <div
-                      className={`relative max-w-[84%] rounded-3xl px-4 py-3 text-sm leading-7 ${incoming ? 'bg-panel/90 text-ivory' : 'bg-gold/10 text-obsidian'} ${isHighlighted ? 'ring-2 ring-gold/60' : ''}`}
+                      className={`relative max-w-[84%] rounded-3xl px-4 py-3 text-sm leading-7 ${incoming ? 'bg-panel/90 text-ivory' : 'bg-gold text-[color:var(--gold-contrast)]'} ${isHighlighted ? 'ring-2 ring-gold/60' : ''}`}
                       style={{ transform: messageItem.id === touchStateRef.current.messageId ? `translateX(${replySwipeOffset}px)` : undefined }}
                     >
                       {replyPreview ? (
@@ -681,14 +715,14 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                           )}
                         </div>
                       ) : null}
-                      <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate">
+                      <div className={`mt-3 flex items-center justify-between gap-2 text-xs ${incoming ? 'text-slate' : 'text-[color:var(--gold-contrast)] opacity-70'}`}>
                         <span>{new Date(messageItem.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{messageItem.edited_at ? ' · edited' : ''}</span>
                         {messageItem.id === mostRecentOwnMessageId && messageItem.read_at ? (
-                          <span className="text-[10px] text-slate">{senderIsGold ? `Read ${new Date(messageItem.read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Read'}</span>
+                          <span className="text-[10px]">{senderIsGold ? `Read ${new Date(messageItem.read_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Read'}</span>
                         ) : null}
                         <div className="flex items-center gap-2">
-                          <button type="button" onClick={(event) => { event.stopPropagation(); handleReplyToMessage(messageItem); }} className="rounded-full px-2 py-1 transition hover:bg-panel/80">Reply</button>
-                          <button type="button" onClick={(event) => { event.stopPropagation(); toggleReactionPicker(messageItem.id); }} className="rounded-full px-2 py-1 transition hover:bg-panel/80">React</button>
+                          <button type="button" onClick={(event) => { event.stopPropagation(); handleReplyToMessage(messageItem); }} className={`rounded-full px-2 py-1 transition ${incoming ? 'hover:bg-panel/80' : 'hover:bg-black/10'}`}>Reply</button>
+                          <button type="button" onClick={(event) => { event.stopPropagation(); toggleReactionPicker(messageItem.id); }} className={`rounded-full px-2 py-1 transition ${incoming ? 'hover:bg-panel/80' : 'hover:bg-black/10'}`}>React</button>
                           {messageItem.media_url ? (
                             <button
                               type="button"
@@ -703,7 +737,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                                 link.click();
                                 document.body.removeChild(link);
                               }}
-                              className="rounded-full px-2 py-1 transition hover:bg-panel/80"
+                              className={`rounded-full px-2 py-1 transition ${incoming ? 'hover:bg-panel/80' : 'hover:bg-black/10'}`}
                               title="Download"
                             >
                               ↓

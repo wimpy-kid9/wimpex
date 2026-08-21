@@ -16,16 +16,21 @@
   --gold-deep: #8b6f3d;
   --house: var(--gold);
   --house-deep: var(--gold-deep);
+  /* Text color that stays readable on top of --gold. Each theme below sets
+     its own value based on how light/dark its accent actually is — a single
+     fixed text color (the old --obsidian everywhere) looked fine on gold's
+     light tan but was low-contrast on darker accents like blue and violet. */
+  --gold-contrast: var(--obsidian);
 }
 
-[data-theme='blue'] { --gold: #4f8ff7; --gold-deep: #2f5fc7; }
-[data-theme='green'] { --gold: #4fbf6e; --gold-deep: #2f8f4a; }
-[data-theme='red'] { --gold: #e0524f; --gold-deep: #a83431; }
-[data-theme='pink'] { --gold: #e668a3; --gold-deep: #b8437a; }
-[data-theme='yellow'] { --gold: #e0c34f; --gold-deep: #b09526; }
-[data-theme='violet'] { --gold: #9a6fe0; --gold-deep: #6f45b0; }
-[data-theme='orange'] { --gold: #e08a3f; --gold-deep: #b3651f; }
-[data-theme='black'] { --gold: #a8a8a8; --gold-deep: #555555; }
+[data-theme='blue'] { --gold: #4f8ff7; --gold-deep: #2f5fc7; --gold-contrast: var(--ivory); }
+[data-theme='green'] { --gold: #4fbf6e; --gold-deep: #2f8f4a; --gold-contrast: var(--obsidian); }
+[data-theme='red'] { --gold: #e0524f; --gold-deep: #a83431; --gold-contrast: var(--ivory); }
+[data-theme='pink'] { --gold: #e668a3; --gold-deep: #b8437a; --gold-contrast: var(--obsidian); }
+[data-theme='yellow'] { --gold: #e0c34f; --gold-deep: #b09526; --gold-contrast: var(--obsidian); }
+[data-theme='violet'] { --gold: #9a6fe0; --gold-deep: #6f45b0; --gold-contrast: var(--ivory); }
+[data-theme='orange'] { --gold: #e08a3f; --gold-deep: #b3651f; --gold-contrast: var(--obsidian); }
+[data-theme='black'] { --gold: #a8a8a8; --gold-deep: #555555; --gold-contrast: var(--obsidian); }
 
 html {
   scroll-behavior: smooth;
