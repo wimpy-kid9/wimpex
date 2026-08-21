@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { authedFetch } from '@/lib/api-client';
 
 type ExplorePost = {
@@ -86,7 +87,7 @@ export default function ExplorePage() {
     return copy;
   }, [posts, sortMode]);
 
-  const handleSearchSubmit = (event: React.FormEvent) => {
+  const handleSearchSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (query.trim()) {
       router.push(`/search?q=${encodeURIComponent(query.trim())}`);
@@ -99,7 +100,7 @@ export default function ExplorePage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-gold">Explore</p>
-            <h1 className="text-display mt-3 text-3xl text-ivory">What's trending on WIMPEX</h1>
+            <h1 className="text-display mt-3 text-3xl text-ivory">What&apos;s trending on WIMPEX</h1>
             <p className="mt-2 max-w-2xl text-sm text-slate">Trending videos and hashtags across the whole platform, refreshed from what people are liking, favoriting, and sharing right now.</p>
           </div>
           <Link href="/search" className="inline-flex rounded-md bg-ivory/10 px-4 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/15">
@@ -160,7 +161,7 @@ export default function ExplorePage() {
 
       <section className="space-y-3">
         {loading ? (
-          <div className="rounded-md border border-hairline bg-panel/70 p-8 text-center text-sm text-slate">Loading what's trending…</div>
+          <div className="rounded-md border border-hairline bg-panel/70 p-8 text-center text-sm text-slate">Loading what&apos;s trending…</div>
         ) : sortedPosts.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {sortedPosts.map((post) => (
