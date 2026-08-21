@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     const upstream = await fetch(`${wimpyaiUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message })
+      body: JSON.stringify({ prompt: message })
     });
 
     const text = await upstream.text();
