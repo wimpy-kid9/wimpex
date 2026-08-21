@@ -206,16 +206,6 @@ export async function GET(request: NextRequest) {
       )
     );
 
-    const { data: replyMessages, error: replyMessagesError } = replyToIds.length
-      ? await supabaseServer.from('wpx_messages').select('id, body, sender_id').in('id', replyToIds)
-      : { data: [], error: null };
-
-    if (replyMessagesError) {
-      return NextResponse.json({ error: replyMessagesError.message }, { status: 500 });
-    }
-
-    const replyMessageMap = new Map((replyMessages || []).map((reply: any) => [reply.id, reply]));
-
     const sharedPostIds = Array.from(
       new Set(
         (messages || [])
@@ -223,17 +213,56 @@ export async function GET(request: NextRequest) {
           .filter((id: string | null): id is string => Boolean(id))
       )
     );
-    const { data: sharedPosts, error: sharedPostsError } = sharedPostIds.length
-      ? await supabaseServer
-        .from('wpx_posts')
-        .select('id, caption, video_url, image_url, thumbnail_url, author_id')
-        .in('id', sharedPostIds)
-      : { data: [], error: null };
 
+    // None of these five queries depend on each other — only on `messages`
+    // or `members`, both already in hand — so they run as one parallel
+    // round trip instead of five sequential ones. That's the main reason
+    // opening a chat used to feel slow: each `await` here was a full
+    // network round trip to the database, one after another.
+    const [
+      { data: replyMessages, error: replyMessagesError },
+      { data: sharedPosts, error: sharedPostsError },
+      { data: reactions, error: reactionsError },
+      { data: profiles, error: profileError },
+      { data: subscriptions }
+    ] = await Promise.all([
+      replyToIds.length
+        ? supabaseServer.from('wpx_messages').select('id, body, sender_id').in('id', replyToIds)
+        : Promise.resolve({ data: [], error: null }),
+      sharedPostIds.length
+        ? supabaseServer.from('wpx_posts').select('id, caption, video_url, image_url, thumbnail_url, author_id').in('id', sharedPostIds)
+        : Promise.resolve({ data: [], error: null }),
+      supabaseServer.from('wpx_message_reactions').select('message_id, emoji, user_id').in('message_id', (messages || []).map((message: any) => message.id)),
+      supabaseServer.from('wpx_profiles').select('user_id, username, display_name, avatar_url').in('user_id', otherUserIds),
+      otherUserIds.length > 0
+        ? supabaseServer
+          .from('subscriptions')
+          .select('user_id, status, current_period_end, plan_id, plans!plan_id(id, product_name, name, price, billing_interval)')
+          .in('user_id', otherUserIds)
+          .eq('status', 'active')
+          .order('current_period_end', { ascending: false })
+        : Promise.resolve({ data: [], error: null })
+    ]);
+
+    if (replyMessagesError) {
+      return NextResponse.json({ error: replyMessagesError.message }, { status: 500 });
+    }
     if (sharedPostsError) {
       return NextResponse.json({ error: sharedPostsError.message }, { status: 500 });
     }
+    if (reactionsError) {
+      return NextResponse.json({ error: reactionsError.message }, { status: 500 });
+    }
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
 
+    const replyMessageMap = new Map((replyMessages || []).map((reply: any) => [reply.id, reply]));
+
+    // sharedAuthors genuinely depends on sharedPosts' result (we don't know
+    // the author ids until sharedPosts comes back), so it's the one query
+    // that has to stay sequential — but it's a no-op in the common case
+    // where a chat has no shared posts at all.
     const sharedAuthorIds = Array.from(new Set((sharedPosts || []).map((post: any) => post.author_id).filter(Boolean)));
     const { data: sharedAuthors } = sharedAuthorIds.length
       ? await supabaseServer
@@ -248,15 +277,6 @@ export async function GET(request: NextRequest) {
         author: (sharedAuthors || []).find((author: any) => author.user_id === post.author_id) || null
       }
     ]));
-
-    const { data: reactions, error: reactionsError } = await supabaseServer
-      .from('wpx_message_reactions')
-      .select('message_id, emoji, user_id')
-      .in('message_id', (messages || []).map((message: any) => message.id));
-
-    if (reactionsError) {
-      return NextResponse.json({ error: reactionsError.message }, { status: 500 });
-    }
 
     const reactionGroups = (reactions || []).reduce(
       (acc: Record<string, Record<string, { count: number; reactedByMe: boolean }>>, reaction: any) => {
@@ -278,24 +298,8 @@ export async function GET(request: NextRequest) {
       reactions: reactionGroups[message.id] || {}
     }));
 
-    const { data: profiles, error: profileError } = await supabaseServer
-      .from('wpx_profiles')
-      .select('user_id, username, display_name, avatar_url')
-      .in('user_id', otherUserIds);
-
-    if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 500 });
-    }
-
     const profilesWithGold = profiles || [];
     if (otherUserIds.length > 0) {
-      const { data: subscriptions } = await supabaseServer
-        .from('subscriptions')
-        .select('user_id, status, current_period_end, plan_id, plans!plan_id(id, product_name, name, price, billing_interval)')
-        .in('user_id', otherUserIds)
-        .eq('status', 'active')
-        .order('current_period_end', { ascending: false });
-
       const subscriptionMap: Record<string, any> = {};
       (subscriptions || []).forEach((subscription: any) => {
         if (subscription.user_id && !subscriptionMap[subscription.user_id]) {
