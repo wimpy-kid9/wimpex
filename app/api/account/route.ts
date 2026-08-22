@@ -127,7 +127,7 @@ export async function DELETE(request: NextRequest) {
     const { data: files } = await supabaseServer.storage.from(bucket).list(userId);
     if (files?.length) {
       await run(`storage:${bucket}`, () =>
-        supabaseServer.storage.from(bucket).remove(files.map((f) => `${userId}/${f.name}`)));
+       supabaseServer.storage.from(bucket).remove(files.map((f: { name: string }) => `${userId}/${f.name}`)));
     }
   }
 
