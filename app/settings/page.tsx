@@ -36,6 +36,12 @@ export default function SettingsPage() {
   const [pushNotifications, setPushNotifications] = useState(true);
   const isGold = isGoldSubscription(subscription);
 
+  // Account deletion
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   const upgrade = usePaidUpgradeFlow({
     productName: 'wimpex',
     planName: WIMPEX_PLAN_NAME,
@@ -187,6 +193,27 @@ export default function SettingsPage() {
 
   const runUpgradePurchase = async () => {
     await upgrade.attemptPurchase();
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      const response = await authedFetch('/api/account', {
+        method: 'DELETE',
+        body: JSON.stringify({ confirmation: 'DELETE' })
+      });
+      if (!response.ok && response.status !== 207) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Could not delete your WIMPEX data.');
+      }
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    } catch (error: any) {
+      setDeleteError(error.message || 'Something went wrong. Please try again.');
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -390,6 +417,55 @@ export default function SettingsPage() {
           </button>
 
           {message ? <p className="text-sm text-slate">{message}</p> : null}
+
+          <div className="rounded-3xl border border-red-900/40 bg-red-950/10 p-6">
+            <h2 className="text-lg font-semibold text-red-400">Danger zone</h2>
+            <p className="mt-1 text-xs text-slate">
+              This permanently deletes your WIMPEX profile, posts, messages, connections, calls, and
+              media. It does not delete your WimpyID account — WimpyID is shared across Wimpy
+              Cooperations apps, so it&apos;s managed separately at{' '}
+              <a href="https://id.wimpy-corp.com.ng" className="underline">id.wimpy-corp.com.ng</a>.
+            </p>
+
+            {!showDeleteConfirm ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="mt-4 rounded-2xl border border-red-800 px-6 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-950/30"
+              >
+                Delete my WIMPEX data
+              </button>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-slate">
+                  Type <span className="font-mono font-semibold text-red-400">DELETE</span> to confirm.
+                  This can&apos;t be undone.
+                </p>
+                <input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  className="w-full rounded-2xl border border-red-800 bg-panel-2 px-4 py-3 text-ivory outline-none"
+                  placeholder="DELETE"
+                />
+                {deleteError ? <p className="text-sm text-red-400">{deleteError}</p> : null}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleteConfirmText !== 'DELETE' || deleting}
+                    className="rounded-2xl bg-red-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
+                  >
+                    {deleting ? 'Deleting…' : 'Permanently delete'}
+                  </button>
+                  <button
+                    onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); setDeleteError(''); }}
+                    disabled={deleting}
+                    className="rounded-2xl border border-hairline px-6 py-3 text-sm font-semibold text-slate transition hover:bg-panel-2"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </main>

@@ -36,7 +36,21 @@ export default function PrivacyPolicyPage() {
         <div>
           <h2 className="text-2xl font-semibold text-ivory">Your choices</h2>
           <p className="mt-3 text-sm leading-7 text-slate">
-            You can control your profile, visibility, messaging privacy, and call privacy from your settings. If you want to remove your account, use the WimpyID service that issued your login.
+            You can control your profile, visibility, messaging privacy, and call privacy from your settings.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="text-2xl font-semibold text-ivory">Deleting your data</h2>
+          <p className="mt-3 text-sm leading-7 text-slate">
+            You can permanently delete your WIMPEX profile, posts, messages, connections, calls, and uploaded media at any time from Settings → Danger zone → &quot;Delete my WIMPEX data.&quot; This action is immediate and cannot be undone.
+          </p>
+          <p className="mt-3 text-sm leading-7 text-slate">
+            WIMPEX uses WimpyID as its identity provider, and your WimpyID account is shared across other Wimpy Cooperations products. Deleting your WIMPEX data does not delete your WimpyID account. To delete your WimpyID account entirely, manage it directly at{' '}
+            <a href="https://id.wimpy-corp.com.ng" className="text-gold hover:text-gold">id.wimpy-corp.com.ng</a>.
+          </p>
+          <p className="mt-3 text-sm leading-7 text-slate">
+            Some records — reports made about you or by you, and billing/subscription history — are retained after deletion for fraud-prevention, moderation, and legal/accounting purposes, consistent with applicable law.
           </p>
         </div>
       </section>
