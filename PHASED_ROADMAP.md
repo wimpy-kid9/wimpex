@@ -146,6 +146,52 @@ Companion to `wimpex-build-prompt.md`, which has full technical detail (API call
 - Multi-language support beyond English (Yoruba, Hausa, Igbo, Nigerian Pidgin) — §7 recommends structuring copy for this from Phase 1 even though the actual translations land here.
 - Group messaging, if deferred out of Phase 3.
 
+## Gold premium feature backlog
+
+**Goal:** package the premium and Gold-only capabilities into one roadmap bucket that can be prioritized independently of the core app phases.
+
+### Post creation
+- Cloud-synced drafts
+- Multi-clip stitching
+- Custom thumbnail selection
+- Priority upload/processing queue
+
+### Feed and discovery
+- Persistent Gold ad/nudge-free feed preference
+- Advanced feed filters
+- Gold-weighted “Not interested” tuning
+- Named favorites collections
+
+### Messaging
+- Larger Gold chat upload limits
+- Voice-message transcription
+- Scheduled messages
+- Group chat admin tools
+- Typing-indicator privacy
+
+### Calls
+- Extended/unlimited call-history retention
+- Call recording and consent flow
+- Larger group-call participant limits
+- Custom call ringtone
+- Video-call background blur/virtual backgrounds
+
+### Profile and identity
+- Animated/video avatars
+- Gold priority in suggested accounts
+
+### Stories
+- Longer story expiry/highlights
+- Story highlights/archive
+- Story analytics
+
+### Connections
+- Higher connection-request limits
+- Connection-request read receipts
+
+### Account
+- Gold username cooldown bypass/reservation
+
 ---
 
 *Each phase should be individually demoable before starting the next. If a phase's scope turns out to be bigger than expected mid-build, split it rather than silently rolling incomplete work into the next phase's start date.*

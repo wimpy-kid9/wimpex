@@ -66,7 +66,16 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (body.caption !== undefined) updates.caption = body.caption;
   if (body.visibility !== undefined) updates.visibility = body.visibility;
   if (body.filter_preset !== undefined) updates.filter_preset = body.filter_preset;
-  if (body.status !== undefined) updates.status = body.status === 'draft' ? 'draft' : 'published';
+  if (body.status !== undefined) {
+    if (body.status === 'draft' && !(await isUserGold(authContext.user.id))) {
+      return NextResponse.json({ error: 'Gold membership is required for cloud-synced drafts.' }, { status: 403 });
+    }
+    updates.status = body.status === 'draft' ? 'draft' : 'published';
+  }
+  if (body.thumbnail_url !== undefined && !(await isUserGold(authContext.user.id))) {
+    return NextResponse.json({ error: 'Gold membership is required for custom thumbnails.' }, { status: 403 });
+  }
+  if (body.thumbnail_url !== undefined) updates.thumbnail_url = body.thumbnail_url;
   if (body.scheduled_for !== undefined) {
     if (!(await isUserGold(authContext.user.id))) return NextResponse.json({ error: 'Gold membership is required for scheduled posts.' }, { status: 403 });
     const scheduledDate = body.scheduled_for ? new Date(body.scheduled_for) : null;

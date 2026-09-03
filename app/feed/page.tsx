@@ -15,6 +15,7 @@ export default function FeedPage() {
   // const [actionMessage, setActionMessage] = useState('');
   const [showCreatedToast, setShowCreatedToast] = useState(false);
   const [activeTab, setActiveTab] = useState<'books' | 'feed' | 'friends'>('feed');
+  const [feedFilter, setFeedFilter] = useState<'all' | 'video' | 'image' | 'recent' | 'popular'>('all');
   const [followingIds, setFollowingIds] = useState<string[] | null>(null);
   const [isGold, setIsGold] = useState(false);
   const [hideGoldNudge, setHideGoldNudge] = useState(false);
@@ -34,6 +35,20 @@ export default function FeedPage() {
     };
 
     void loadPosts();
+  }, []);
+
+  useEffect(() => {
+    const loadProfilePrefs = async () => {
+      try {
+        const response = await authedFetch('/api/profile');
+        const payload = await response.json();
+        setHideGoldNudge(Boolean(payload.profile?.gold_feed_nudges_hidden));
+      } catch {
+        setHideGoldNudge(false);
+      }
+    };
+
+    void loadProfilePrefs();
   }, []);
 
   useEffect(() => {
@@ -62,6 +77,41 @@ export default function FeedPage() {
     return undefined;
   }, []);
 
+  const handleDismissGoldNudge = async () => {
+    setHideGoldNudge(true);
+    try {
+      const response = await authedFetch('/api/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ gold_feed_nudges_hidden: true })
+      });
+      if (!response.ok) {
+        setHideGoldNudge(false);
+      }
+    } catch {
+      setHideGoldNudge(false);
+    }
+  };
+
+  const visiblePosts = posts
+    .filter((post) => {
+      if (activeTab === 'friends') {
+        if (!followingIds || !post.author_id) return false;
+        return followingIds.includes(post.author_id);
+      }
+      return true;
+    })
+    .filter((post) => {
+      if (feedFilter === 'video' && post.mediaType !== 'video') return false;
+      if (feedFilter === 'image' && post.mediaType !== 'image') return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (feedFilter === 'popular') {
+        return (b.like_count ?? 0) + (b.favorite_count ?? 0) + (b.share_count ?? 0) - ((a.like_count ?? 0) + (a.favorite_count ?? 0) + (a.share_count ?? 0));
+      }
+      return new Date(b.createdAt || b.created_at).getTime() - new Date(a.createdAt || a.created_at).getTime();
+    });
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-obsidian text-ivory [--header-h:72px] [--bottomnav-h:calc(4.5rem+env(safe-area-inset-bottom))]">
       <div className="fixed inset-x-0 top-0 z-20 border-b border-hairline bg-panel/95 backdrop-blur-xl px-4 py-4 sm:px-6">
@@ -69,6 +119,18 @@ export default function FeedPage() {
           <div className="flex gap-2">
             <button onClick={() => setActiveTab('feed')} className={`rounded-full px-3 py-2 text-sm font-semibold ${activeTab === 'feed' ? 'bg-gold/20 text-ivory' : 'text-slate hover:bg-ivory/10'}`}>For You</button>
             <button onClick={() => setActiveTab('friends')} className={`rounded-full px-3 py-2 text-sm font-semibold ${activeTab === 'friends' ? 'bg-gold/20 text-ivory' : 'text-slate hover:bg-ivory/10'}`}>Following</button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {(['all', 'video', 'image', 'popular'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setFeedFilter(option)}
+                className={`rounded-full px-2.5 py-1.5 text-xs font-semibold ${feedFilter === option ? 'bg-gold text-obsidian' : 'bg-panel-2 text-slate hover:text-ivory'}`}
+              >
+                {option === 'all' ? 'All' : option === 'video' ? 'Videos' : option === 'image' ? 'Images' : 'Popular'}
+              </button>
+            ))}
           </div>
           <div className="flex items-center gap-2">
             <Link href="/search" className="inline-flex items-center gap-2 rounded-full border border-hairline bg-panel/70 px-3 py-2 text-sm text-slate hover:bg-ivory/10">
@@ -87,13 +149,7 @@ export default function FeedPage() {
         {error ? <div className="mx-4 mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div> : null}
         {loading ? <div className="mx-4 mt-5 rounded-2xl border border-hairline bg-panel-2/70 px-4 py-3 text-sm text-slate">Loading feed…</div> : null}
 
-        {posts.filter((post) => {
-          if (activeTab === 'friends') {
-            if (!followingIds || !post.author_id) return false;
-            return followingIds.includes(post.author_id);
-          }
-          return true;
-        }).map((post, index) => (
+        {visiblePosts.map((post, index) => (
           <Fragment key={post.id}>
             {/* Each post gets its own dedicated, exactly-one-screen snap slot.
                Nothing else shares this slot, so the next post can never
@@ -109,7 +165,7 @@ export default function FeedPage() {
               <div className="snap-start flex min-h-[3.5rem] items-center justify-between gap-3 bg-obsidian px-4 py-3">
                 <div className="flex w-full items-center justify-between gap-3 rounded-2xl border border-gold/20 bg-panel-2/90 px-4 py-3 text-sm text-slate">
                   <span>Make more of every post with Gold.</span>
-                  <div className="flex items-center gap-2"><GoldUpgradeHint compact perk="Gold creator perks" detail="Unlock exclusive filters and 3-minute posts." /><button type="button" onClick={() => setHideGoldNudge(true)} className="text-xs text-slate hover:text-ivory" aria-label="Dismiss Gold feed nudge">Dismiss</button></div>
+                  <div className="flex items-center gap-2"><GoldUpgradeHint compact perk="Gold creator perks" detail="Unlock exclusive filters and 3-minute posts." /><button type="button" onClick={() => void handleDismissGoldNudge()} className="text-xs text-slate hover:text-ivory" aria-label="Dismiss Gold feed nudge">Dismiss</button></div>
                 </div>
               </div>
             ) : null}

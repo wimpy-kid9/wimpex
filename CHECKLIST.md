@@ -100,6 +100,49 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [ ] Add multi-language support beyond English
 - [ ] Add group messaging if deferred
 
+## Gold premium feature backlog
+### Post creation
+- [x] Cloud-synced drafts
+- [x] Custom thumbnail selection
+- [ ] Multi-clip stitching
+- [ ] Priority upload/processing queue
+
+### Feed and discovery
+- [ ] Persistent Gold ad/nudge-free feed preference
+- [ ] Advanced feed filters
+- [ ] Gold-weighted “Not interested” tuning
+- [ ] Named favorites collections
+
+### Messaging
+- [ ] Larger Gold chat upload limits
+- [ ] Voice-message transcription
+- [ ] Scheduled messages
+- [ ] Group chat admin tools
+- [ ] Typing-indicator privacy
+
+### Calls
+- [ ] Extended/unlimited call-history retention
+- [ ] Call recording and consent flow
+- [ ] Larger group-call participant limits
+- [ ] Custom call ringtone
+- [ ] Video-call background blur/virtual backgrounds
+
+### Profile and identity
+- [ ] Animated/video avatars
+- [ ] Gold priority in suggested accounts
+
+### Stories
+- [ ] Longer story expiry/highlights
+- [ ] Story highlights/archive
+- [ ] Story analytics
+
+### Connections
+- [ ] Higher connection-request limits
+- [ ] Connection-request read receipts
+
+### Account
+- [ ] Gold username cooldown bypass/reservation
+
 ---
 
 Use this checklist to track progress and mark each milestone as complete before moving to the next phase.

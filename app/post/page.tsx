@@ -244,11 +244,16 @@ export default function CreatePostPage() {
   const [trackQuery, setTrackQuery] = useState('');
   const [trackResults, setTrackResults] = useState<AudioTrack[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<AudioTrack | null>(null);
+  const [audioClipStartTime, setAudioClipStartTime] = useState(0); // Start time of selected audio clip in seconds
+  const [audioClipDuration, setAudioClipDuration] = useState(30); // Duration of audio clip in seconds
   const [session, setSession] = useState<any | null | undefined>(undefined);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [customThumbnailFile, setCustomThumbnailFile] = useState<File | null>(null);
+  const [customThumbnailUrl, setCustomThumbnailUrl] = useState<string | null>(null);
   const [step, setStep] = useState<'media' | 'details'>('media');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -260,6 +265,7 @@ export default function CreatePostPage() {
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [audioTime, setAudioTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [priorityUploadQueue, setPriorityUploadQueue] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [isGold, setIsGold] = useState(false);
@@ -314,6 +320,17 @@ export default function CreatePostPage() {
   const maxRecordingSeconds = isGold ? 180 : 60;
 
   useEffect(() => {
+    if (!selectedTrack || !audioDuration) return;
+    const maxDuration = Math.min(30, audioDuration);
+    setAudioClipDuration((current) => Math.min(current, Math.max(5, maxDuration)));
+    setAudioClipStartTime((current) => Math.min(current, Math.max(0, audioDuration - Math.min(maxDuration, audioClipDuration))));
+  }, [selectedTrack, audioDuration, audioClipDuration]);
+
+  useEffect(() => {
+    setPriorityUploadQueue(isGold);
+  }, [isGold]);
+
+  useEffect(() => {
     supabase.auth.getSession().then((result: { data: { session: any } | null }) => {
       setSession(result?.data?.session ?? null);
     });
@@ -362,6 +379,71 @@ export default function CreatePostPage() {
 
     void loadPost();
   }, [editingId]);
+
+  useEffect(() => {
+    if (!session || !isGold || editingId || !goldStatusLoaded) return;
+
+    const loadDraft = async () => {
+      try {
+        const response = await authedFetch('/api/posts?type=drafts');
+        if (!response.ok) return;
+        const payload = await response.json();
+        const draftPost = payload.posts?.[0];
+        if (!draftPost) return;
+
+        setDraftId(draftPost.id);
+        setDraft(draftPost.caption || '');
+        setVisibility(draftPost.visibility || 'public');
+        setFilterPreset(draftPost.filter_preset || 'none');
+        setScheduledFor(draftPost.scheduled_for ? new Date(draftPost.scheduled_for).toISOString().slice(0, 16) : '');
+        setStep('details');
+      } catch {
+        // ignore
+      }
+    };
+
+    void loadDraft();
+  }, [session, isGold, editingId, goldStatusLoaded]);
+
+  useEffect(() => {
+    if (!session || !isGold || editingId || goldStatusLoaded === false || mediaFile || previewUrl) return;
+
+    const payload = draft.trim();
+    if (!payload && !selectedTrack && !scheduledFor) return;
+
+    const timeout = window.setTimeout(async () => {
+      try {
+        const body = {
+          caption: draft.trim(),
+          visibility,
+          filter_preset: filterPreset,
+          status: 'draft',
+          scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : null
+        };
+
+        if (draftId) {
+          const response = await authedFetch(`/api/posts/${draftId}`, { method: 'PATCH', body: JSON.stringify(body) });
+          if (!response.ok) {
+            const payload = await response.json().catch(() => ({}));
+            if (payload.error && payload.error.includes('Gold membership')) {
+              setError('Cloud-synced drafts require Gold.');
+            }
+          }
+          return;
+        }
+
+        const response = await authedFetch('/api/posts', { method: 'POST', body: JSON.stringify(body) });
+        if (response.ok) {
+          const data = await response.json().catch(() => ({}));
+          if (data.post?.id) setDraftId(data.post.id);
+        }
+      } catch {
+        // ignore
+      }
+    }, 1200);
+
+    return () => window.clearTimeout(timeout);
+  }, [session, isGold, editingId, goldStatusLoaded, draftId, draft, visibility, filterPreset, scheduledFor, mediaFile, previewUrl, selectedTrack]);
 
   useEffect(() => {
     if (!mediaFile) return;
@@ -415,14 +497,109 @@ export default function CreatePostPage() {
   const accent = useMemo(() => getUserAccent(session?.user?.id ?? 'post-creator'), [session?.user?.id]);
   const characterCount = draft.length;
 
-  const handleMediaChange = async (file: File | null) => {
+  const stitchVideoClips = async (videoFiles: File[]) => {
+    if (videoFiles.length < 2) {
+      return videoFiles[0];
+    }
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context || typeof MediaRecorder === 'undefined') {
+      throw new Error('This browser cannot stitch multiple clips together.');
+    }
+
+    const prepared = await Promise.all(videoFiles.map(async (file) => {
+      const objectUrl = URL.createObjectURL(file);
+      const video = document.createElement('video');
+      video.src = objectUrl;
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      await new Promise<void>((resolve, reject) => {
+        video.onloadedmetadata = () => resolve();
+        video.onerror = () => reject(new Error('Unable to load a selected video clip.'));
+      });
+      return { file, objectUrl, video, width: video.videoWidth || 720, height: video.videoHeight || 1280, duration: video.duration || 0 };
+    }));
+
+    const outputWidth = Math.min(1080, Math.max(...prepared.map((clip) => clip.width)));
+    const outputHeight = Math.min(1920, Math.max(...prepared.map((clip) => clip.height)));
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
+
+    const stream = canvas.captureStream ? canvas.captureStream() : null;
+    if (!stream) {
+      throw new Error('This browser cannot capture the stitched output stream.');
+    }
+
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+      ? 'video/webm;codecs=vp9'
+      : MediaRecorder.isTypeSupported('video/webm')
+        ? 'video/webm'
+        : '';
+
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const chunks: BlobPart[] = [];
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) chunks.push(event.data);
+    };
+
+    recorder.start();
+
+    for (const clip of prepared) {
+      const video = clip.video;
+      video.currentTime = 0;
+      await video.play().catch(() => undefined);
+      while (video.currentTime < video.duration) {
+        context.drawImage(video, 0, 0, outputWidth, outputHeight);
+        await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
+      }
+      video.pause();
+    }
+
+    await new Promise<void>((resolve) => {
+      recorder.onstop = () => resolve();
+      recorder.stop();
+    });
+
+    prepared.forEach((clip) => URL.revokeObjectURL(clip.objectUrl));
+    const stitchedBlob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+    return new File([stitchedBlob], `stitched-${Date.now()}.webm`, { type: stitchedBlob.type || 'video/webm' });
+  };
+
+  const handleMediaChange = async (incoming: File[] | File | null) => {
     setError('');
-    if (!file) {
+
+    const files = incoming instanceof File ? [incoming] : incoming ?? [];
+    if (files.length === 0) {
       setMediaFile(null);
       setPreviewUrl(null);
       return;
     }
 
+    if (files.length > 1) {
+      if (!isGold) {
+        setError('Multi-clip stitching is a Gold feature.');
+        setMediaFile(null);
+        setPreviewUrl(null);
+        return;
+      }
+
+      try {
+        const stitched = await stitchVideoClips(files.filter((file) => file.type.startsWith('video/')));
+        setMediaType('video');
+        setMediaFile(stitched);
+        setPreviewUrl(URL.createObjectURL(stitched));
+        return;
+      } catch (stitchError) {
+        setError(stitchError instanceof Error ? stitchError.message : 'Unable to stitch the selected clips.');
+        setMediaFile(null);
+        setPreviewUrl(null);
+        return;
+      }
+    }
+
+    const file = files[0];
     if (file.type.startsWith('image/')) {
       setMediaType('image');
       setMediaFile(file);
@@ -669,7 +846,11 @@ export default function CreatePostPage() {
   const removeMedia = async () => {
     setMediaFile(null);
     setPreviewUrl(null);
+    setCustomThumbnailFile(null);
+    setCustomThumbnailUrl(null);
     setSelectedTrack(null);
+    setAudioClipStartTime(0);
+    setAudioClipDuration(30);
     setTrackQuery('');
     setTrackResults([]);
     setError('');
@@ -679,8 +860,47 @@ export default function CreatePostPage() {
     await armCamera();
   };
 
+  const extractThumbnailFromVideo = async () => {
+    if (!previewUrl || mediaType !== 'video') return;
+    try {
+      const video = document.createElement('video');
+      video.src = previewUrl;
+      await new Promise<void>((resolve) => {
+        video.onloadedmetadata = () => {
+          video.currentTime = Math.min(2, video.duration * 0.1);
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          canvas.getContext('2d')?.drawImage(video, 0, 0);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const file = new File([blob], `thumbnail-${Date.now()}.jpg`, { type: 'image/jpeg' });
+              setCustomThumbnailFile(file);
+              setCustomThumbnailUrl(URL.createObjectURL(file));
+            }
+            resolve();
+          }, 'image/jpeg', 0.85);
+        };
+      });
+    } catch (e) {
+      setError('Unable to extract thumbnail from video.');
+    }
+  };
+
+  const handleCustomThumbnailUpload = async (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Thumbnail must be an image file.');
+      return;
+    }
+    setCustomThumbnailFile(file);
+    setCustomThumbnailUrl(URL.createObjectURL(file));
+  };
+
   const selectTrack = (track: AudioTrack) => {
     setSelectedTrack(track);
+    setAudioClipStartTime(0);
+    setAudioClipDuration(30);
     setTrackQuery('');
     setTrackResults([]);
     // Keep the Sounds sheet open after picking a track — it used to close
@@ -952,6 +1172,12 @@ export default function CreatePostPage() {
       formData.append('audio_artist_name', selectedTrack.artist);
       formData.append('audio_preview_url', selectedTrack.preview_url || '');
       formData.append('audio_cover_art_url', selectedTrack.cover_art_url || '');
+      formData.append('audio_clip_start_time', String(audioClipStartTime));
+      formData.append('audio_clip_duration', String(audioClipDuration));
+    }
+
+    if (customThumbnailFile) {
+      formData.append('thumbnail', customThumbnailFile, 'thumbnail-upload');
     }
 
     const endpoint = editingId ? `/api/posts/${editingId}` : '/api/posts';
@@ -1034,8 +1260,9 @@ export default function CreatePostPage() {
         ref={fileInputRef}
         type="file"
         accept="image/*,video/*"
+        multiple={isGold}
         className="sr-only"
-        onChange={(event) => void handleMediaChange(event.target.files?.[0] ?? null)}
+        onChange={(event) => void handleMediaChange(Array.from(event.target.files ?? []))}
       />
 
       {step === 'details' ? (
@@ -1116,19 +1343,76 @@ export default function CreatePostPage() {
                 <GoldUpgradeHint compact perk="Scheduled posts" detail="Choose a future publish time with Gold." />
               )}
 
+              {isGold && mediaType === 'video' ? (
+                <div className="rounded-2xl border border-gold/20 bg-gold/5 p-4">
+                  <p className="text-sm font-semibold text-ivory">Custom thumbnail</p>
+                  <p className="mt-1 text-xs text-slate">Choose a frame or upload an image as the post thumbnail.</p>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void extractThumbnailFromVideo()}
+                      className="flex-1 rounded-xl border border-gold/30 bg-gold/5 px-3 py-2 text-xs font-semibold text-gold transition hover:bg-gold/10"
+                    >
+                      Extract frame
+                    </button>
+                    <label className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => void handleCustomThumbnailUpload(event.target.files?.[0] || null)}
+                        className="sr-only"
+                      />
+                      <div className="rounded-xl border border-gold/30 bg-gold/5 px-3 py-2 text-center text-xs font-semibold text-gold transition hover:bg-gold/10 cursor-pointer">
+                        Upload image
+                      </div>
+                    </label>
+                  </div>
+                  {customThumbnailUrl ? (
+                    <div className="mt-3 flex items-center justify-between">
+                      <img src={customThumbnailUrl} alt="Custom thumbnail" className="h-16 w-16 rounded-lg object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => { setCustomThumbnailFile(null); setCustomThumbnailUrl(null); }}
+                        className="text-xs text-rose-400 hover:text-rose-300"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {!isGold && mediaType === 'video' && goldStatusLoaded ? (
+                <GoldUpgradeHint compact perk="Custom thumbnails" detail="Choose or extract a custom frame as your video thumbnail with Gold." />
+              ) : null}
+
+              {!isGold && goldStatusLoaded ? (
+                <div className="mt-2">
+                  <GoldUpgradeHint compact perk="Cloud-synced drafts" detail="Autosave unfinished posts to your account with Gold." />
+                </div>
+              ) : null}
+
+              {draftId ? <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-gold">Draft autosaved</p> : null}
+
               {error ? <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
               {mixError ? <p className="text-sm text-rose-200">{mixError}</p> : null}
               {isMixing ? <p className="text-sm text-gold">Mixing audio… {mixProgress}%</p> : null}
             </div>
 
             <div className="flex items-center gap-3 border-t border-hairline px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              <button
-                type="button"
-                onClick={() => void submitPost('draft')}
-                className="flex-1 rounded-full border border-hairline bg-panel px-5 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/10"
-              >
-                Save draft
-              </button>
+              {isGold ? (
+                <button
+                  type="button"
+                  onClick={() => void submitPost('draft')}
+                  className="flex-1 rounded-full border border-hairline bg-panel px-5 py-3 text-sm font-semibold text-ivory transition hover:bg-ivory/10"
+                >
+                  Save draft
+                </button>
+              ) : (
+                <div className="flex-1">
+                  <GoldUpgradeHint compact perk="Cloud draft" detail="Save a draft to your account with Gold." />
+                </div>
+              )}
               <button
                 type="submit"
                 className={`flex-1 rounded-full bg-gradient-to-r ${accent.gradient} px-5 py-3 text-sm font-semibold text-obsidian transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50`}
@@ -1541,6 +1825,10 @@ export default function CreatePostPage() {
 
                 {selectedTrack.preview_url ? (
                   <div className="mt-4">
+                    <div className="mb-3 flex items-center justify-between rounded-xl border border-gold/20 bg-gold/5 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-gold">
+                      <span>Priority queue</span>
+                      <span>{priorityUploadQueue ? 'Gold enabled' : 'Standard'}</span>
+                    </div>
                     <audio ref={audioRef} src={selectedTrack.preview_url} className="w-full" controls />
                     <div className="mt-2 flex items-center gap-2">
                       <input
@@ -1559,6 +1847,30 @@ export default function CreatePostPage() {
                         className="w-full"
                       />
                       <div className="text-xs text-slate">{new Date(audioTime * 1000).toISOString().substr(14, 5)}</div>
+                    </div>
+
+                    {/* Audio Clip Selector */}
+                    <div className="mt-4 space-y-3 rounded-lg bg-panel-2 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate">Select clip ({audioClipDuration}s)</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-slate">Start:</label>
+                          <input
+                            type="range"
+                            min={0}
+                            max={Math.max(0, (audioDuration || 0) - audioClipDuration)}
+                            step={0.5}
+                            value={audioClipStartTime}
+                            onChange={(event) => setAudioClipStartTime(Number(event.target.value))}
+                            className="flex-1"
+                          />
+                          <div className="w-12 text-right text-xs text-slate">{new Date(audioClipStartTime * 1000).toISOString().substr(14, 5)}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-slate">End:</label>
+                          <div className="flex-1 text-right text-xs text-slate font-semibold text-gold">{new Date((audioClipStartTime + audioClipDuration) * 1000).toISOString().substr(14, 5)}</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : (

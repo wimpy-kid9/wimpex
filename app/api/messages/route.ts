@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 import { isGoldSubscription } from '@/lib/subscription';
+import { isUserGold } from '@/lib/gold';
 import { findOrCreateDirectConversation } from '@/lib/conversations';
 import { createNotification } from '@/lib/notifications';
 
@@ -23,6 +24,8 @@ const CHAT_MIME_TYPES = [
   'audio/webm',
   'audio/ogg'
 ];
+const CHAT_FILE_SIZE_LIMIT_FREE = 100 * 1024 * 1024; // 100 MB
+const CHAT_FILE_SIZE_LIMIT_GOLD = 1024 * 1024 * 1024; // 1 GB
 
 function getConversationTitle(conversation: any, members: any[], profiles: any[], currentUserId: string) {
   const otherMemberIds = members.map((member) => member.user_id).filter((id: string) => id !== currentUserId);
@@ -492,7 +495,17 @@ export async function POST(request: NextRequest) {
 
     const mediaFile = formData.get('media');
     if (mediaFile && typeof mediaFile !== 'string' && 'arrayBuffer' in mediaFile) {
-      const upload = await uploadChatMedia(mediaFile as File, authContext.user.id);
+      const file = mediaFile as File;
+      const isGold = await isUserGold(authContext.user.id);
+      const maxSize = isGold ? CHAT_FILE_SIZE_LIMIT_GOLD : CHAT_FILE_SIZE_LIMIT_FREE;
+      if (file.size > maxSize) {
+        const maxSizeMB = Math.round(maxSize / (1024 * 1024));
+        return NextResponse.json(
+          { error: `File size exceeds the ${maxSizeMB}MB limit for your account.` },
+          { status: 413 }
+        );
+      }
+      const upload = await uploadChatMedia(file, authContext.user.id);
       mediaUrl = upload.mediaUrl;
       mediaType = upload.mediaType;
     }

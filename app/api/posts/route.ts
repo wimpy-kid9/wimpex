@@ -581,12 +581,15 @@ export async function POST(request: NextRequest) {
   let videoUrl = '';
   let imageUrl = '';
   let thumbnailUrl = '';
+  let thumbnailFile: File | null = null;
   let mediaType = 'video';
   let audioTrackId = '';
   let audioTrackName = '';
   let audioArtistName = '';
   let audioPreviewUrl = '';
   let audioCoverArtUrl = '';
+  let audioClipStartTime = 0;
+  let audioClipDuration = 30;
   let filterPreset = 'none';
   let durationSeconds = 0;
   let scheduledFor: string | null = null;
@@ -607,6 +610,13 @@ export async function POST(request: NextRequest) {
     audioArtistName = formData.get('audio_artist_name')?.toString() || '';
     audioPreviewUrl = formData.get('audio_preview_url')?.toString() || '';
     audioCoverArtUrl = formData.get('audio_cover_art_url')?.toString() || '';
+    audioClipStartTime = Number(formData.get('audio_clip_start_time') || 0);
+    audioClipDuration = Number(formData.get('audio_clip_duration') || 30);
+
+    const thumbFile = formData.get('thumbnail');
+    if (thumbFile && typeof thumbFile !== 'string' && 'arrayBuffer' in thumbFile) {
+      thumbnailFile = thumbFile as File;
+    }
 
     const videoFile = formData.get('video');
     const imageFile = formData.get('image');
@@ -684,6 +694,12 @@ export async function POST(request: NextRequest) {
   }
 
   const posterIsGold = await isUserGold(authContext.user.id);
+  if (status === 'draft' && !posterIsGold) {
+    return NextResponse.json({ error: 'Gold membership is required for cloud-synced drafts.' }, { status: 403 });
+  }
+  if (thumbnailFile && !posterIsGold) {
+    return NextResponse.json({ error: 'Gold membership is required for custom thumbnails.' }, { status: 403 });
+  }
   if (scheduledFor) {
     if (!posterIsGold) return NextResponse.json({ error: 'Gold membership is required for scheduled posts.' }, { status: 403 });
     const scheduledDate = new Date(scheduledFor);
@@ -698,6 +714,26 @@ export async function POST(request: NextRequest) {
   const maximumVideoSeconds = posterIsGold ? 180 : 60;
   if (mediaType === 'video' && Number.isFinite(durationSeconds) && durationSeconds > maximumVideoSeconds) {
     return NextResponse.json({ error: `Videos longer than ${maximumVideoSeconds} seconds are not supported for this account.` }, { status: 403 });
+  }
+
+  if (thumbnailFile) {
+    try {
+      const bucket = IMAGE_BUCKET;
+      const fileName = `${Date.now()}-thumbnail-${Math.random().toString(36).slice(2)}.jpg`;
+      const arrayBuffer = await thumbnailFile.arrayBuffer();
+      const { data: uploadData, error: uploadError } = await supabaseServer.storage.from(bucket).upload(`thumbnails/${authContext.user.id}/${fileName}`, new Uint8Array(arrayBuffer), {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: 'image/jpeg'
+      });
+      if (uploadError) {
+        return NextResponse.json({ error: uploadError.message }, { status: 500 });
+      }
+      const { data: publicUrlData } = supabaseServer.storage.from(bucket).getPublicUrl(uploadData?.path || fileName);
+      thumbnailUrl = publicUrlData?.publicUrl || '';
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to upload thumbnail.' }, { status: 500 });
+    }
   }
 
   const { data, error } = await supabaseServer
@@ -716,8 +752,10 @@ export async function POST(request: NextRequest) {
       audio_artist_name: audioArtistName || null,
       audio_preview_url: audioPreviewUrl || null,
       audio_cover_art_url: audioCoverArtUrl || null,
-      filter_preset: filterPreset || null
-      ,scheduled_for: scheduledFor
+      audio_clip_start_time: audioTrackId ? audioClipStartTime : null,
+      audio_clip_duration: audioTrackId ? audioClipDuration : null,
+      filter_preset: filterPreset || null,
+      scheduled_for: scheduledFor
     })
     .select()
     .single();
