@@ -3,6 +3,8 @@ BEGIN;
 -- Consolidated migration for schema changes introduced in this implementation pass.
 ALTER TABLE wpx_posts ADD COLUMN IF NOT EXISTS audio_clip_start_time numeric DEFAULT 0;
 ALTER TABLE wpx_posts ADD COLUMN IF NOT EXISTS audio_clip_duration numeric DEFAULT 30;
+ALTER TABLE wpx_posts ADD COLUMN IF NOT EXISTS remix_type text CHECK (remix_type IN ('duet', 'stitch'));
+ALTER TABLE wpx_posts ADD COLUMN IF NOT EXISTS remix_source_url text;
 ALTER TABLE wpx_profiles ADD COLUMN IF NOT EXISTS language_preference text NOT NULL DEFAULT 'en';
 DO $$
 BEGIN

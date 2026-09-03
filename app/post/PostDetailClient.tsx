@@ -14,6 +14,14 @@ export default function PostDetailClient({ post }: { post: any }) {
   const currentIndex = search?.get('index') ? parseInt(search.get('index')!) : undefined;
   const [showToast, setShowToast] = useState<boolean>(edited);
   const [collectionPosts, setCollectionPosts] = useState<any[]>([]);
+  const [remixNotice, setRemixNotice] = useState('');
+
+  const startRemix = async (type: 'duet' | 'stitch') => {
+    const response = await authedFetch(`/api/posts/${post.id}/remix`, { method: 'POST', body: JSON.stringify({ type }) });
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok && payload.draft?.id) router.push(`/post?edit=${payload.draft.id}`);
+    else setRemixNotice(payload.error || 'Unable to start remix.');
+  };
 
   useEffect(() => {
     if (showToast) {
@@ -78,6 +86,11 @@ export default function PostDetailClient({ post }: { post: any }) {
       ) : null}
 
       <PostCard post={post} isFeedItem={false} />
+      <div className="absolute bottom-6 right-6 z-40 flex gap-2">
+        <button type="button" onClick={() => void startRemix('duet')} className="rounded-full border border-gold/40 bg-black/70 px-3 py-2 text-xs font-semibold text-gold">Duet</button>
+        <button type="button" onClick={() => void startRemix('stitch')} className="rounded-full border border-gold/40 bg-black/70 px-3 py-2 text-xs font-semibold text-gold">Stitch</button>
+      </div>
+      {remixNotice ? <p className="absolute bottom-20 right-6 z-40 rounded-xl bg-rose-500/80 px-3 py-2 text-xs text-white">{remixNotice}</p> : null}
 
       {fromCollection && (
         <>
