@@ -111,7 +111,7 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [x] Persistent Gold ad/nudge-free feed preference
 - [x] Advanced feed filters
 - [x] Gold-weighted “Not interested” tuning
-- [ ] Named favorites collections
+- [x] Named favorites collections
 
 ### Messaging
 - [x] Larger Gold chat upload limits

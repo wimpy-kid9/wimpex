@@ -34,6 +34,8 @@ export default function PostCard({ post, isFeedItem, variant, onNotInterested }:
   const [likeCount, setLikeCount] = useState<number | null>(post?.like_count ?? null);
   const [favorited, setFavorited] = useState<boolean>(post?.favorited_by_me ?? false);
   const [favoriteCount, setFavoriteCount] = useState<number | null>(post?.favorite_count ?? null);
+  const [favoriteCollections, setFavoriteCollections] = useState<Array<{ id: string; name: string }>>([]);
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false);
   const [shareCount, setShareCount] = useState<number | null>(post?.share_count ?? null);
   const [showComments, setShowComments] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
@@ -234,13 +236,13 @@ export default function PostCard({ post, isFeedItem, variant, onNotInterested }:
     }, 220);
   };
 
-  const toggleFavorite = async () => {
+  const saveFavorite = async (collectionId?: string) => {
     const prevFav = favorited;
     const prevCount = favoriteCount ?? 0;
     setFavorited(!prevFav);
     setFavoriteCount(prevFav ? Math.max(0, prevCount - 1) : prevCount + 1);
 
-    const resp = await authedFetch(`/api/posts/${post.id}/favorite`, { method: 'POST' });
+    const resp = await authedFetch(`/api/posts/${post.id}/favorite`, { method: 'POST', body: collectionId ? JSON.stringify({ collection_id: collectionId }) : undefined });
     if (!resp.ok) {
       setFavorited(prevFav);
       setFavoriteCount(prevCount);
@@ -249,6 +251,22 @@ export default function PostCard({ post, isFeedItem, variant, onNotInterested }:
     const json = await resp.json();
     setFavorited(json.favorited);
     setFavoriteCount(json.count ?? prevCount);
+    setShowCollectionPicker(false);
+  };
+
+  const toggleFavorite = async () => {
+    if (!favorited) {
+      const response = await authedFetch('/api/favorites/collections');
+      if (response.ok) {
+        const payload = await response.json();
+        if (Array.isArray(payload.collections) && payload.collections.length > 0) {
+          setFavoriteCollections(payload.collections);
+          setShowCollectionPicker(true);
+          return;
+        }
+      }
+    }
+    await saveFavorite();
   };
 
   const markNotInterested = async () => {
@@ -348,6 +366,13 @@ export default function PostCard({ post, isFeedItem, variant, onNotInterested }:
           <span className="text-lg">📌</span>
           <span className="text-xs font-semibold text-ivory">{favoriteCount ?? 0}</span>
         </button>
+        {showCollectionPicker ? (
+          <div className="absolute right-14 top-28 z-40 w-44 rounded-2xl border border-gold/30 bg-panel p-2 shadow-xl">
+            <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-gold">Save to</p>
+            {favoriteCollections.map((collection) => <button key={collection.id} type="button" onClick={() => void saveFavorite(collection.id)} className="block w-full rounded-xl px-2 py-2 text-left text-xs text-ivory hover:bg-gold/10">{collection.name}</button>)}
+            <button type="button" onClick={() => void saveFavorite()} className="block w-full rounded-xl px-2 py-2 text-left text-xs text-slate hover:bg-ivory/10">General favorites</button>
+          </div>
+        ) : null}
 
         <button type="button" onClick={() => setShowShareSheet(true)} className="flex flex-col items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-center transition hover:bg-black/80">
           <span className="text-lg">↗️</span>

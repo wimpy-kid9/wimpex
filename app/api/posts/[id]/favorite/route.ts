@@ -13,6 +13,18 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   }
 
   const userId = authContext.user.id;
+  const body = await request.json().catch(() => ({}));
+  const collectionId = typeof body.collection_id === 'string' ? body.collection_id : null;
+  if (collectionId) {
+    const { data: collection, error: collectionError } = await supabaseServer
+      .from('wpx_favorite_collections')
+      .select('id')
+      .eq('id', collectionId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (collectionError) return NextResponse.json({ error: collectionError.message }, { status: 500 });
+    if (!collection) return NextResponse.json({ error: 'Favorite collection not found.' }, { status: 404 });
+  }
   const { data: existing, error: existingError } = await supabaseServer.from('wpx_post_favorites').select('*').eq('post_id', postId).eq('user_id', userId).maybeSingle();
   if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
 
@@ -20,7 +32,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const { error: delError } = await supabaseServer.from('wpx_post_favorites').delete().eq('post_id', postId).eq('user_id', userId);
     if (delError) return NextResponse.json({ error: delError.message }, { status: 500 });
   } else {
-    const { error: insError } = await supabaseServer.from('wpx_post_favorites').insert({ post_id: postId, user_id: userId });
+    const { error: insError } = await supabaseServer.from('wpx_post_favorites').insert({ post_id: postId, user_id: userId, collection_id: collectionId });
     if (insError) return NextResponse.json({ error: insError.message }, { status: 500 });
     try {
       const { data: postData } = await supabaseServer.from('wpx_posts').select('author_id').eq('id', postId).maybeSingle();
