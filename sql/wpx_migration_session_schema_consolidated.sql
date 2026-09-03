@@ -8,9 +8,8 @@ ALTER TABLE wpx_posts ADD COLUMN IF NOT EXISTS remix_source_url text;
 ALTER TABLE wpx_profiles ADD COLUMN IF NOT EXISTS language_preference text NOT NULL DEFAULT 'en';
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'wpx_profiles_language_preference_check') THEN
-    ALTER TABLE wpx_profiles ADD CONSTRAINT wpx_profiles_language_preference_check CHECK (language_preference IN ('en', 'yo', 'ha', 'ig', 'pcm'));
-  END IF;
+  ALTER TABLE wpx_profiles DROP CONSTRAINT IF EXISTS wpx_profiles_language_preference_check;
+  ALTER TABLE wpx_profiles ADD CONSTRAINT wpx_profiles_language_preference_check CHECK (language_preference ~ '^[a-z]{2,3}$');
 END $$;
 
 ALTER TABLE wpx_conversation_members ADD COLUMN IF NOT EXISTS pinned_at timestamptz;
