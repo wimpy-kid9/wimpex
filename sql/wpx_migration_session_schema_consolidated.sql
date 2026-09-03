@@ -8,6 +8,14 @@ ALTER TABLE wpx_conversation_members ADD COLUMN IF NOT EXISTS pinned_at timestam
 ALTER TABLE wpx_conversation_members ADD COLUMN IF NOT EXISTS wallpaper_url text;
 ALTER TABLE wpx_conversation_members ADD COLUMN IF NOT EXISTS wallpaper_color text;
 ALTER TABLE wpx_conversation_members ADD COLUMN IF NOT EXISTS show_typing_indicator boolean NOT NULL DEFAULT true;
+UPDATE wpx_conversation_members AS member
+SET role = 'owner'
+WHERE member.role = 'member'
+  AND NOT EXISTS (
+    SELECT 1 FROM wpx_conversation_members AS earlier
+    WHERE earlier.conversation_id = member.conversation_id
+      AND earlier.joined_at < member.joined_at
+  );
 
 ALTER TABLE wpx_messages ADD COLUMN IF NOT EXISTS scheduled_at timestamptz;
 CREATE INDEX IF NOT EXISTS wpx_messages_scheduled_idx ON wpx_messages (scheduled_at)
