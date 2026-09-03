@@ -104,17 +104,17 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 ### Post creation
 - [x] Cloud-synced drafts
 - [x] Custom thumbnail selection
-- [ ] Multi-clip stitching
-- [ ] Priority upload/processing queue
+- [x] Multi-clip stitching
+- [x] Priority upload/processing queue
 
 ### Feed and discovery
-- [ ] Persistent Gold ad/nudge-free feed preference
-- [ ] Advanced feed filters
+- [x] Persistent Gold ad/nudge-free feed preference
+- [x] Advanced feed filters
 - [ ] Gold-weighted “Not interested” tuning
 - [ ] Named favorites collections
 
 ### Messaging
-- [ ] Larger Gold chat upload limits
+- [x] Larger Gold chat upload limits
 - [ ] Voice-message transcription
 - [ ] Scheduled messages
 - [ ] Group chat admin tools

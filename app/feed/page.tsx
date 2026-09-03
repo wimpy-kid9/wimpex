@@ -16,6 +16,7 @@ export default function FeedPage() {
   const [showCreatedToast, setShowCreatedToast] = useState(false);
   const [activeTab, setActiveTab] = useState<'books' | 'feed' | 'friends'>('feed');
   const [feedFilter, setFeedFilter] = useState<'all' | 'video' | 'image' | 'recent' | 'popular'>('all');
+  const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [followingIds, setFollowingIds] = useState<string[] | null>(null);
   const [isGold, setIsGold] = useState(false);
   const [hideGoldNudge, setHideGoldNudge] = useState(false);
@@ -103,6 +104,12 @@ export default function FeedPage() {
     .filter((post) => {
       if (feedFilter === 'video' && post.mediaType !== 'video') return false;
       if (feedFilter === 'image' && post.mediaType !== 'image') return false;
+      if (dateRange !== 'all') {
+        const createdAt = new Date(post.createdAt || post.created_at).getTime();
+        const now = Date.now();
+        const rangeMs = dateRange === 'today' ? 24 * 60 * 60 * 1000 : dateRange === 'week' ? 7 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+        if (!Number.isFinite(createdAt) || createdAt < now - rangeMs) return false;
+      }
       return true;
     })
     .sort((a, b) => {
@@ -131,6 +138,19 @@ export default function FeedPage() {
                 {option === 'all' ? 'All' : option === 'video' ? 'Videos' : option === 'image' ? 'Images' : 'Popular'}
               </button>
             ))}
+            <label className="sr-only" htmlFor="feed-date-range">Date range</label>
+            <select
+              id="feed-date-range"
+              value={dateRange}
+              onChange={(event) => setDateRange(event.target.value as typeof dateRange)}
+              disabled={!isGold}
+              className="rounded-full border border-hairline bg-panel-2 px-2.5 py-1.5 text-xs font-semibold text-slate outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="all">Any time</option>
+              <option value="today">Today</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+            </select>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/search" className="inline-flex items-center gap-2 rounded-full border border-hairline bg-panel/70 px-3 py-2 text-sm text-slate hover:bg-ivory/10">
