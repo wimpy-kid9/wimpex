@@ -254,6 +254,16 @@ async function loadRecentlyViewedPostIds(userId: string) {
   return new Set((data || []).map((row: any) => row.post_id));
 }
 
+async function loadNotInterestedPostIds(userId: string) {
+  const { data } = await supabaseServer
+    .from('wpx_user_post_interactions')
+    .select('post_id')
+    .eq('user_id', userId)
+    .eq('interaction_type', 'not_interested');
+
+  return new Set((data || []).map((row: any) => row.post_id));
+}
+
 async function buildPersonalizedFeed(candidatePosts: any[], userId: string, authorMap: Record<string, any>, likeCounts: Record<string, number>, favoriteCounts: Record<string, number>) {
   // Add engagement counts
   const postsWithCounts = candidatePosts.map((post) => ({
@@ -266,9 +276,13 @@ async function buildPersonalizedFeed(candidatePosts: any[], userId: string, auth
   // in the last week. If filtering would leave almost nothing to show
   // (e.g. they've watched the whole catalog), fall back to the full pool
   // rather than showing an empty/tiny feed.
-  const seenIds = await loadRecentlyViewedPostIds(userId);
-  const unseen = postsWithCounts.filter((post) => !seenIds.has(post.id));
-  const pool = unseen.length >= 8 ? unseen : postsWithCounts;
+  const [seenIds, notInterestedIds] = await Promise.all([
+    loadRecentlyViewedPostIds(userId),
+    loadNotInterestedPostIds(userId)
+  ]);
+  const eligiblePosts = postsWithCounts.filter((post) => !notInterestedIds.has(post.id));
+  const unseen = eligiblePosts.filter((post) => !seenIds.has(post.id));
+  const pool = unseen.length >= 8 ? unseen : eligiblePosts;
 
   const affinity = await buildUserAffinity(userId);
   const scoredPosts = await scorePostsForFYP(pool, userId, authorMap, affinity);

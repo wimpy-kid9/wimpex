@@ -110,7 +110,7 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 ### Feed and discovery
 - [x] Persistent Gold ad/nudge-free feed preference
 - [x] Advanced feed filters
-- [ ] Gold-weighted “Not interested” tuning
+- [x] Gold-weighted “Not interested” tuning
 - [ ] Named favorites collections
 
 ### Messaging

@@ -29,7 +29,7 @@ const FILTER_CLASSES: Record<string, string> = {
     sunset: 'filter sepia saturate-150 hue-rotate-[-15deg] contrast-110'
 };
 
-export default function PostCard({ post, isFeedItem, variant }: { post: any; isFeedItem?: boolean; variant?: 'grid' }) {
+export default function PostCard({ post, isFeedItem, variant, onNotInterested }: { post: any; isFeedItem?: boolean; variant?: 'grid'; onNotInterested?: (postId: string) => void }) {
   const [liked, setLiked] = useState<boolean>(post?.liked_by_me ?? false);
   const [likeCount, setLikeCount] = useState<number | null>(post?.like_count ?? null);
   const [favorited, setFavorited] = useState<boolean>(post?.favorited_by_me ?? false);
@@ -251,6 +251,11 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
     setFavoriteCount(json.count ?? prevCount);
   };
 
+  const markNotInterested = async () => {
+    const response = await authedFetch(`/api/posts/${post.id}/not-interested`, { method: 'POST' });
+    if (response.ok) onNotInterested?.(post.id);
+  };
+
   // follow/unfollow handled elsewhere; keep follower state updated but remove unused toggle
 
   const loadComments = async () => {
@@ -348,6 +353,13 @@ export default function PostCard({ post, isFeedItem, variant }: { post: any; isF
           <span className="text-lg">↗️</span>
           <span className="text-xs font-semibold text-ivory">{shareCount ?? 0}</span>
         </button>
+
+        {isFeedItem ? (
+          <button type="button" onClick={() => void markNotInterested()} className="flex flex-col items-center gap-1 rounded-full bg-black/60 px-3 py-2 text-center text-xs text-slate transition hover:bg-black/80 hover:text-ivory" aria-label="Not interested in this post">
+            <span className="text-lg">×</span>
+            <span>Not for me</span>
+          </button>
+        ) : null}
 
         {/* Unmute / mute control — same column, same width, so it lines up
            with every other icon instead of floating over them. */}

@@ -93,6 +93,10 @@ export default function FeedPage() {
     }
   };
 
+  const handleNotInterested = (postId: string) => {
+    setPosts((current) => current.filter((post) => post.id !== postId));
+  };
+
   const visiblePosts = posts
     .filter((post) => {
       if (activeTab === 'friends') {
@@ -179,7 +183,7 @@ export default function FeedPage() {
                header height again as scroll-margin would make every snap
                land short and leave the previous post's tail showing. */}
             <div className="snap-start [scroll-snap-stop:always]">
-              <PostCard post={post} isFeedItem />
+              <PostCard post={post} isFeedItem onNotInterested={handleNotInterested} />
             </div>
             {!isGold && !hideGoldNudge && index > 0 && index % 6 === 5 ? (
               <div className="snap-start flex min-h-[3.5rem] items-center justify-between gap-3 bg-obsidian px-4 py-3">
