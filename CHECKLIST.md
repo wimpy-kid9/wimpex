@@ -64,7 +64,7 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [ ] Add streak-preservation notifications
 - [ ] Implement share/repost flow
 - [x] Add connection-thread motif to shared screens
-- [ ] Integrate WimpyAI or WimpyBooks if available
+- [x] Integrate WimpyAI or WimpyBooks if available
 - [ ] Confirm streaks and sharing work end-to-end
 
 ## Phase 6 — Monetization (WimpyPay)
@@ -94,11 +94,11 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [ ] Add live streaming if supported
 - [ ] Add duets/stitches for video posts
 - [ ] Add AI-powered captions via WimpyAI
-- [ ] Add creator analytics/dashboard
-- [ ] Add 24-hour ephemeral stories
-- [ ] Add save/bookmark functionality
+- [x] Add creator analytics/dashboard
+- [x] Add 24-hour ephemeral stories
+- [x] Add save/bookmark functionality
 - [ ] Add multi-language support beyond English
-- [ ] Add group messaging if deferred
+- [x] Add group messaging if deferred
 
 ## Gold premium feature backlog
 ### Post creation
@@ -133,7 +133,7 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 
 ### Stories
 - [ ] Longer story expiry/highlights
-- [ ] Story highlights/archive
+- [x] Story highlights/archive
 - [ ] Story analytics
 
 ### Connections

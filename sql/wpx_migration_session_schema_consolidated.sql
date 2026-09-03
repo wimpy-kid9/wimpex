@@ -31,4 +31,19 @@ ALTER TABLE wpx_post_favorites
 CREATE INDEX IF NOT EXISTS wpx_favorite_collections_user_idx ON wpx_favorite_collections (user_id, created_at);
 CREATE INDEX IF NOT EXISTS wpx_post_favorites_collection_idx ON wpx_post_favorites (collection_id);
 
+CREATE TABLE IF NOT EXISTS wpx_story_highlights (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  story_id uuid NOT NULL REFERENCES wpx_stories(id) ON DELETE CASCADE,
+  title text NOT NULL CHECK (char_length(trim(title)) BETWEEN 1 AND 40),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, story_id)
+);
+
+ALTER TABLE wpx_story_highlights ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS wpx_story_highlights_own ON wpx_story_highlights;
+CREATE POLICY wpx_story_highlights_own ON wpx_story_highlights
+  FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+CREATE INDEX IF NOT EXISTS wpx_story_highlights_user_idx ON wpx_story_highlights (user_id, created_at);
+
 COMMIT;

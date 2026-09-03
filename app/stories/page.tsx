@@ -125,6 +125,10 @@ export default function StoriesPage() {
   const [ownAvatarUrl, setOwnAvatarUrl] = useState<string | null>(null);
   const [ownName, setOwnName] = useState('You');
   const [groups, setGroups] = useState<StoryGroup[]>([]);
+  const [archive, setArchive] = useState<any[]>([]);
+  const [highlights, setHighlights] = useState<any[]>([]);
+  const [highlightTitle, setHighlightTitle] = useState('');
+  const [highlightStoryId, setHighlightStoryId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -135,12 +139,16 @@ export default function StoriesPage() {
 
   const loadStories = async () => {
     try {
-      const [profileResp, storiesResp] = await Promise.all([authedFetch('/api/profile'), authedFetch('/api/stories')]);
+      const [profileResp, storiesResp, archiveResp, highlightsResp] = await Promise.all([authedFetch('/api/profile'), authedFetch('/api/stories'), authedFetch('/api/stories/archive'), authedFetch('/api/stories/highlights')]);
       const profileJson = await profileResp.json();
       const storiesJson = await storiesResp.json();
+      const archiveJson = await archiveResp.json();
+      const highlightsJson = await highlightsResp.json();
 
       setOwnAvatarUrl(profileJson.profile?.avatar_url ?? null);
       setOwnName(profileJson.profile?.display_name || profileJson.profile?.username || 'You');
+      setArchive(archiveJson.stories || []);
+      setHighlights(highlightsJson.highlights || []);
 
       const items: StoryItem[] = storiesJson.stories || [];
       const initiallyViewed = new Set(items.filter((s) => s.viewedByMe).map((s) => s.id));
@@ -170,6 +178,22 @@ export default function StoriesPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const addHighlight = async () => {
+    if (!highlightStoryId || !highlightTitle.trim()) return;
+    const response = await authedFetch('/api/stories/highlights', { method: 'POST', body: JSON.stringify({ story_id: highlightStoryId, title: highlightTitle }) });
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok) {
+      setHighlights((current) => [...current.filter((item) => item.story_id !== payload.highlight.story_id), payload.highlight]);
+      setHighlightTitle('');
+      setHighlightStoryId('');
+    } else setError(payload.error || 'Unable to save highlight.');
+  };
+
+  const removeHighlight = async (id: string) => {
+    const response = await authedFetch(`/api/stories/highlights?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (response.ok) setHighlights((current) => current.filter((item) => item.id !== id));
   };
 
   useEffect(() => {
@@ -277,6 +301,12 @@ export default function StoriesPage() {
           </button>
         ))}
       </div>
+
+      <section className="surface-veil rounded-md bg-panel-2/75 p-5">
+        <p className="text-xs uppercase tracking-[0.28em] text-gold">Your archive</p>
+        <div className="mt-3 flex flex-wrap gap-2">{highlights.map((item) => <span key={item.id} className="flex items-center gap-2 rounded-full border border-gold/20 px-3 py-2 text-xs text-ivory">{item.title}<button type="button" onClick={() => void removeHighlight(item.id)} aria-label={`Remove ${item.title} highlight`} className="text-slate hover:text-rose-200">×</button></span>)}{highlights.length === 0 ? <span className="text-sm text-slate">No highlights yet.</span> : null}</div>
+        {archive.length > 0 ? <form className="mt-4 flex flex-wrap gap-2" onSubmit={(event) => { event.preventDefault(); void addHighlight(); }}><select value={highlightStoryId} onChange={(event) => setHighlightStoryId(event.target.value)} className="rounded-xl border border-hairline bg-panel px-3 py-2 text-sm text-ivory"><option value="">Choose an archived story</option>{archive.slice(0, 20).map((story) => <option key={story.id} value={story.id}>{story.caption || story.text_content || new Date(story.created_at).toLocaleDateString()}</option>)}</select><input value={highlightTitle} onChange={(event) => setHighlightTitle(event.target.value)} maxLength={40} placeholder="Highlight name" className="rounded-xl border border-hairline bg-panel px-3 py-2 text-sm text-ivory" /><button type="submit" disabled={!highlightStoryId || !highlightTitle.trim()} className="rounded-full bg-gold px-4 py-2 text-xs font-semibold text-obsidian disabled:opacity-50">Add highlight</button></form> : <p className="mt-3 text-xs text-slate">Your expired stories will stay here as an archive.</p>}
+      </section>
 
       {loading ? <p className="text-sm text-slate">Loading stories…</p> : null}
       {error ? <p className="text-sm text-rose-300">{error}</p> : null}
