@@ -45,21 +45,25 @@ export default function GoldSettingsPage() {
   const [quietStart, setQuietStart] = useState('');
   const [quietEnd, setQuietEnd] = useState('');
   const [links, setLinks] = useState<Array<{ label: string; url: string }>>([]);
+  const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
+  const [collectionName, setCollectionName] = useState('');
   const [tab, setTab] = useState('Appearance');
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
     const load = async () => {
-      const [profileResponse, payResponse, messagesResponse, postsResponse] = await Promise.all([
+      const [profileResponse, payResponse, messagesResponse, postsResponse, collectionsResponse] = await Promise.all([
         authedFetch('/api/profile'),
         authedFetch('/api/wimpypay'),
         authedFetch('/api/messages'),
-        authedFetch('/api/posts?current_only=true')
+        authedFetch('/api/posts?current_only=true'),
+        authedFetch('/api/favorites/collections')
       ]);
       const profilePayload = await profileResponse.json().catch(() => ({}));
       const payPayload = await payResponse.json().catch(() => ({}));
       const messagesPayload = await messagesResponse.json().catch(() => ({}));
       const postsPayload = await postsResponse.json().catch(() => ({}));
+      const collectionsPayload = await collectionsResponse.json().catch(() => ({}));
       const gold = isGoldSubscription(payPayload.subscription);
       setProfile(profilePayload.profile || null);
       setStreak(profilePayload.streak || null);
@@ -72,6 +76,7 @@ export default function GoldSettingsPage() {
       setQuietStart(profilePayload.profile?.quiet_hours_start?.slice?.(0, 5) || '');
       setQuietEnd(profilePayload.profile?.quiet_hours_end?.slice?.(0, 5) || '');
       setLinks(Array.isArray(profilePayload.profile?.custom_links) ? profilePayload.profile.custom_links : []);
+      setCollections(Array.isArray(collectionsPayload.collections) ? collectionsPayload.collections : []);
       setConversations(messagesPayload.conversations || []);
       setPosts(postsPayload.posts || []);
       setLoading(false);
@@ -121,6 +126,23 @@ export default function GoldSettingsPage() {
   const saveLinks = async () => {
     const response = await authedFetch('/api/profile', { method: 'PATCH', body: JSON.stringify({ custom_links: links }) });
     if (!response.ok) setNotice((await response.json()).error || 'Unable to save links.');
+  };
+
+  const createCollection = async () => {
+    const response = await authedFetch('/api/favorites/collections', { method: 'POST', body: JSON.stringify({ name: collectionName }) });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setNotice(payload.error || 'Unable to create collection.');
+      return;
+    }
+    setCollections((current) => [...current, payload.collection]);
+    setCollectionName('');
+  };
+
+  const deleteCollection = async (id: string) => {
+    const response = await authedFetch(`/api/favorites/collections?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (response.ok) setCollections((current) => current.filter((item) => item.id !== id));
+    else setNotice((await response.json().catch(() => ({}))).error || 'Unable to delete collection.');
   };
 
   if (loading || !isGold) return <main className="min-h-screen px-4 py-8"><p className="text-sm text-slate">Loading Gold…</p></main>;
@@ -208,6 +230,19 @@ export default function GoldSettingsPage() {
             <div className="mt-4 grid grid-cols-2 gap-2"><label className="text-xs text-slate">Quiet starts<input type="time" value={quietStart} onChange={(event) => setQuietStart(event.target.value)} className="mt-1 w-full rounded-xl border border-hairline bg-panel px-2 py-2 text-sm text-ivory" /></label><label className="text-xs text-slate">Quiet ends<input type="time" value={quietEnd} onChange={(event) => setQuietEnd(event.target.value)} className="mt-1 w-full rounded-xl border border-hairline bg-panel px-2 py-2 text-sm text-ivory" /></label></div>
             <button type="button" onClick={() => void saveNotificationControls({ quiet_hours_start: quietStart || null, quiet_hours_end: quietEnd || null })} className="mt-3 rounded-full border border-gold/40 px-3 py-2 text-xs font-semibold text-gold">Save quiet hours</button>
           </div>
+        </section>
+        <section className="gold-panel gold-reveal">
+          <p className="text-xs uppercase tracking-[0.3em] text-gold">Favorites</p>
+          <h2 className="mt-2 text-2xl font-semibold">Name the things you keep.</h2>
+          <p className="mt-2 text-sm text-slate">Create private collections for saved posts.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {collections.map((collection) => <div key={collection.id} className="flex items-center gap-2 rounded-full border border-gold/20 bg-gold/5 px-3 py-2 text-sm text-ivory"><span>{collection.name}</span><button type="button" onClick={() => void deleteCollection(collection.id)} className="text-xs text-slate hover:text-rose-200" aria-label={`Delete ${collection.name} collection`}>×</button></div>)}
+            {collections.length === 0 ? <span className="text-sm text-slate">No named collections yet.</span> : null}
+          </div>
+          <form className="mt-4 flex max-w-md gap-2" onSubmit={(event) => { event.preventDefault(); void createCollection(); }}>
+            <input value={collectionName} onChange={(event) => setCollectionName(event.target.value)} maxLength={40} placeholder="Collection name" className="min-w-0 flex-1 rounded-xl border border-hairline bg-panel px-3 py-2 text-sm text-ivory" />
+            <button type="submit" disabled={!collectionName.trim()} className="rounded-full bg-gold px-4 py-2 text-xs font-semibold text-obsidian disabled:opacity-50">Create</button>
+          </form>
         </section>
         {notice ? <p className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-3 text-sm text-rose-200">{notice}</p> : null}
         <footer className="gold-panel flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-sm font-semibold text-ivory">Gold is active on this account.</p><p className="mt-1 text-xs text-slate">Manage billing through your WimpyPay membership.</p></div><Link href="/settings" className="rounded-full border border-gold/40 px-4 py-2 text-sm font-semibold text-gold">Billing settings</Link></footer>
