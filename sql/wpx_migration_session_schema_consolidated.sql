@@ -27,6 +27,7 @@ WHERE member.role = 'member'
   );
 
 ALTER TABLE wpx_messages ADD COLUMN IF NOT EXISTS scheduled_at timestamptz;
+ALTER TABLE wpx_messages ADD COLUMN IF NOT EXISTS transcript text;
 CREATE INDEX IF NOT EXISTS wpx_messages_scheduled_idx ON wpx_messages (scheduled_at)
   WHERE scheduled_at IS NOT NULL;
 

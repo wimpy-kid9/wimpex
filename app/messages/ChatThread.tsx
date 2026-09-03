@@ -25,6 +25,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [notice, setNotice] = useState('');
+  const [transcribing, setTranscribing] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [senderIsGold, setSenderIsGold] = useState(false);
@@ -333,7 +334,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     []
   );
 
-  const sendMessage = async (overrideAttachment?: File) => {
+  const sendMessage = async (overrideAttachment?: File, overrideTranscript?: string) => {
     const effectiveAttachment = overrideAttachment ?? attachment;
     const trimmedDraft = draft.trim();
     if (!trimmedDraft && !effectiveAttachment) {
@@ -343,6 +344,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
 
     const form = new FormData();
     form.append('body', trimmedDraft);
+    if (overrideTranscript) form.append('transcript', overrideTranscript);
     form.append('conversation_id', conversationId);
     if (replyingTo) {
       form.append('reply_to_message_id', replyingTo.id);
@@ -399,7 +401,20 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
         mediaRecorderRef.current = null;
         setIsRecording(false);
         setAttachment(file);
-        await sendMessage(file);
+        setTranscribing(true);
+        let transcript = '';
+        try {
+          const form = new FormData();
+          form.append('media', file, file.name);
+          const response = await authedFetch('/api/ai/transcribe', { method: 'POST', body: form });
+          const payload = await response.json().catch(() => ({}));
+          transcript = typeof payload.transcript === 'string' ? payload.transcript : typeof payload.text === 'string' ? payload.text : '';
+        } catch {
+          transcript = '';
+        } finally {
+          setTranscribing(false);
+        }
+        await sendMessage(file, transcript);
       };
       mediaRecorderRef.current = mr;
       mr.start();
@@ -737,6 +752,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                           {messageItem.metadata?.duration != null ? <p className="mt-1 text-xs text-slate">Duration {Math.floor(messageItem.metadata.duration / 60)}:{String(messageItem.metadata.duration % 60).padStart(2, '0')}</p> : null}
                         </div>
                       ) : messageItem.unsent_at ? <div className="italic text-slate">Message unsent</div> : messageItem.body ? <div>{renderRichText(messageItem.body || '', { className: 'break-words', linkClassName: 'text-sky-400 underline decoration-sky-400/80 underline-offset-2 hover:text-sky-300' })}</div> : null}
+                      {messageItem.transcript ? <p className="mt-2 border-t border-white/10 pt-2 text-xs text-slate">Transcript: {messageItem.transcript}</p> : null}
                       {messageItem.media_url ? (
                         <div className="mt-3 overflow-hidden rounded-3xl border border-hairline bg-panel/80">
                           {messageItem.media_type?.startsWith('image') ? (
@@ -916,7 +932,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                     }
                   }}
                   className="rounded-full bg-gold p-3 text-ivory transition hover:brightness-105"
-                  title={draft.trim() || attachment ? 'Send message' : isRecording ? 'Stop recording' : 'Record voice note'}
+                  title={draft.trim() || attachment ? 'Send message' : isRecording ? 'Stop recording' : transcribing ? 'Transcribing voice note' : 'Record voice note'}
                 >
                   {draft.trim() || attachment ? (
 

@@ -14,6 +14,7 @@ import { InstallPrompt } from './InstallPrompt';
 import IncomingCallNotification from './IncomingCallNotification';
 import CallWindow from './CallWindow';
 import { applyTheme, getStoredTheme } from '@/lib/theme';
+import { isLanguageCode, translate, type LanguageCode } from '@/lib/i18n';
 
 interface AppShellProps {
   children: ReactNode;
@@ -22,10 +23,13 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     applyTheme(getStoredTheme());
+    const storedLanguage = window.localStorage.getItem('wimpex-language');
+    if (isLanguageCode(storedLanguage)) setLanguage(storedLanguage);
     void authedFetch('/api/profile').then(async (response) => {
       if (!response.ok) return;
       const payload = await response.json();
       if (payload.profile?.theme_preference) applyTheme(payload.profile.theme_preference);
+      if (isLanguageCode(payload.profile?.language_preference)) setLanguage(payload.profile.language_preference);
     }).catch(() => undefined);
   }, []);
 
@@ -38,13 +42,14 @@ export default function AppShell({ children }: AppShellProps) {
   const [indicatorStyle, setIndicatorStyle] = useState<{ top?: number; height?: number }>({});
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | undefined>(undefined);
+  const [language, setLanguage] = useState<LanguageCode>('en');
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const navItems = [
-    { label: 'Feed', href: '/feed' },
-    { label: 'Post', href: '/post' },
-    { label: 'Messages', href: '/messages' },
-    { label: 'Stories', href: '/stories' },
-    { label: 'Profile', href: '/profile' }
+    { label: translate(language, 'feed'), href: '/feed' },
+    { label: translate(language, 'post'), href: '/post' },
+    { label: translate(language, 'messages'), href: '/messages' },
+    { label: translate(language, 'stories'), href: '/stories' },
+    { label: translate(language, 'profile'), href: '/profile' }
   ];
   // mobileNavItems was removed in redesign; keep navItems for desktop and mobile BottomNav
 

@@ -186,6 +186,7 @@ export default function SettingsPage() {
     });
 
     if (response.ok) {
+      window.localStorage.setItem('wimpex-language', language);
       setMessage('Profile updated.');
     } else {
       const result = await response.json();

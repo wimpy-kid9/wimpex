@@ -526,6 +526,7 @@ export async function POST(request: NextRequest) {
   const title = body.title || '';
   const conversationId = body.conversation_id;
   const textBody = body.body?.trim() || '';
+  const transcript = typeof body.transcript === 'string' ? body.transcript.trim().slice(0, 10000) : '';
   const scheduledAt = body.scheduled_at ? new Date(body.scheduled_at) : null;
 
   if (body.scheduled_at && (!scheduledAt || Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now())) {
@@ -602,6 +603,7 @@ export async function POST(request: NextRequest) {
     conversation_id: conversationData.id,
     sender_id: authContext.user.id,
     body: textBody,
+    transcript: transcript || null,
     media_type: mediaUrl ? mediaType : 'text',
     media_url: mediaUrl || null,
     reply_to_message_id: body.reply_to_message_id || null,
