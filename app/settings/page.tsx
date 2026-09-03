@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { authedFetch } from '@/lib/api-client';
 import { usePaidUpgradeFlow } from '@/app/components/PaidUpgradeFlow';
 import { isGoldSubscription } from '@/lib/subscription';
+import { supportedLanguages, type LanguageCode } from '@/lib/i18n';
 
 const WIMPEX_PLAN_NAME = 'Wimpex Pro';
 function formatNaira(amount: number) {
@@ -34,6 +35,7 @@ export default function SettingsPage() {
   const [disappearingMessagesTimer, setDisappearingMessagesTimer] = useState(3600);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
+  const [language, setLanguage] = useState<LanguageCode>('en');
   const isGold = isGoldSubscription(subscription);
 
   // Account deletion
@@ -88,6 +90,7 @@ export default function SettingsPage() {
       setDisappearingMessagesTimer(result.profile?.disappearing_messages_timer ?? 3600);
       setEmailNotifications(result.profile?.email_notifications ?? true);
       setPushNotifications(result.profile?.push_notifications ?? true);
+      setLanguage(result.profile?.language_preference || 'en');
       await loadSubscription();
       setLoading(false);
     };
@@ -178,6 +181,7 @@ export default function SettingsPage() {
         disappearing_messages_timer: disappearingMessagesTimer,
         email_notifications: emailNotifications,
         push_notifications: pushNotifications,
+        language_preference: language,
       })
     });
 
@@ -405,6 +409,14 @@ export default function SettingsPage() {
                 onChange={(e) => setPushNotifications(e.target.checked)}
                 className="h-5 w-5 rounded border-hairline"
               />
+            </div>
+
+            <div className="mt-5 border-t border-hairline pt-4">
+              <label htmlFor="language-preference" className="block text-sm font-medium text-slate">App language</label>
+              <p className="mt-1 text-xs text-slate">Choose the language used as translation coverage is added.</p>
+              <select id="language-preference" value={language} onChange={(event) => setLanguage(event.target.value as LanguageCode)} className="mt-2 w-full rounded-2xl border border-hairline bg-panel-2 px-4 py-3 text-ivory outline-none">
+                {supportedLanguages.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
+              </select>
             </div>
           </div>
 

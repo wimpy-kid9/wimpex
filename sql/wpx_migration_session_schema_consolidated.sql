@@ -3,6 +3,13 @@ BEGIN;
 -- Consolidated migration for schema changes introduced in this implementation pass.
 ALTER TABLE wpx_posts ADD COLUMN IF NOT EXISTS audio_clip_start_time numeric DEFAULT 0;
 ALTER TABLE wpx_posts ADD COLUMN IF NOT EXISTS audio_clip_duration numeric DEFAULT 30;
+ALTER TABLE wpx_profiles ADD COLUMN IF NOT EXISTS language_preference text NOT NULL DEFAULT 'en';
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'wpx_profiles_language_preference_check') THEN
+    ALTER TABLE wpx_profiles ADD CONSTRAINT wpx_profiles_language_preference_check CHECK (language_preference IN ('en', 'yo', 'ha', 'ig', 'pcm'));
+  END IF;
+END $$;
 
 ALTER TABLE wpx_conversation_members ADD COLUMN IF NOT EXISTS pinned_at timestamptz;
 ALTER TABLE wpx_conversation_members ADD COLUMN IF NOT EXISTS wallpaper_url text;
@@ -53,5 +60,23 @@ DROP POLICY IF EXISTS wpx_story_highlights_own ON wpx_story_highlights;
 CREATE POLICY wpx_story_highlights_own ON wpx_story_highlights
   FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 CREATE INDEX IF NOT EXISTS wpx_story_highlights_user_idx ON wpx_story_highlights (user_id, created_at);
+
+CREATE TABLE IF NOT EXISTS wpx_live_streams (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  host_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title text NOT NULL CHECK (char_length(trim(title)) BETWEEN 1 AND 120),
+  provider text NOT NULL DEFAULT 'external',
+  provider_stream_id text,
+  status text NOT NULL DEFAULT 'live' CHECK (status IN ('live', 'ended')),
+  started_at timestamptz NOT NULL DEFAULT now(),
+  ended_at timestamptz
+);
+
+ALTER TABLE wpx_live_streams ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS wpx_live_streams_view ON wpx_live_streams;
+CREATE POLICY wpx_live_streams_view ON wpx_live_streams FOR SELECT USING (status = 'live' OR host_id = auth.uid());
+DROP POLICY IF EXISTS wpx_live_streams_manage ON wpx_live_streams;
+CREATE POLICY wpx_live_streams_manage ON wpx_live_streams FOR ALL USING (host_id = auth.uid()) WITH CHECK (host_id = auth.uid());
+CREATE INDEX IF NOT EXISTS wpx_live_streams_status_idx ON wpx_live_streams (status, started_at DESC);
 
 COMMIT;

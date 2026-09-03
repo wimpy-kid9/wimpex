@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { isSupabaseServerConfigured, supabaseServer } from '@/lib/supabase-server';
 import { isUserGold } from '@/lib/gold';
 import { isThemeName } from '@/lib/theme';
+import { isLanguageCode } from '@/lib/i18n';
 
 const usernamePattern = /^[A-Za-z0-9_]{3,20}$/;
 
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
 }
 
 async function updateProfileFromBody(body: any, authContext: any) {
-  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at, avatar_url, message_privacy, call_privacy, notification_sound, theme_preference, custom_links, digest_notifications, quiet_hours_start, quiet_hours_end, gold_feed_nudges_hidden } = body;
+  const { username, display_name, date_of_birth, bio, gender, onboarding_completed_at, avatar_url, message_privacy, call_privacy, notification_sound, theme_preference, custom_links, digest_notifications, quiet_hours_start, quiet_hours_end, gold_feed_nudges_hidden, language_preference } = body;
 
   const normalizedUsername = typeof username === 'string' ? username.trim() : username;
 
@@ -113,6 +114,10 @@ async function updateProfileFromBody(body: any, authContext: any) {
       return NextResponse.json({ error: 'Gold membership is required for custom themes.' }, { status: 403 });
     }
     updates.theme_preference = theme_preference;
+  }
+  if (language_preference !== undefined) {
+    if (!isLanguageCode(language_preference)) return NextResponse.json({ error: 'Invalid language selection.' }, { status: 400 });
+    updates.language_preference = language_preference;
   }
   if (gold_feed_nudges_hidden !== undefined) {
     if (typeof gold_feed_nudges_hidden !== 'boolean') return NextResponse.json({ error: 'Invalid Gold feed preference.' }, { status: 400 });
