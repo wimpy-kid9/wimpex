@@ -186,7 +186,8 @@ export async function GET(request: NextRequest) {
       supabaseServer.from('wpx_conversation_members').select('*').eq('conversation_id', conversationId)
     ]);
 
-    const messages = (recentMessages || []).reverse();
+    const now = Date.now();
+    const messages = (recentMessages || []).reverse().filter((message: any) => !message.scheduled_at || new Date(message.scheduled_at).getTime() <= now);
 
     if (messagesError) {
       return NextResponse.json({ error: messagesError.message }, { status: 500 });
@@ -524,6 +525,14 @@ export async function POST(request: NextRequest) {
   const title = body.title || '';
   const conversationId = body.conversation_id;
   const textBody = body.body?.trim() || '';
+  const scheduledAt = body.scheduled_at ? new Date(body.scheduled_at) : null;
+
+  if (body.scheduled_at && (!scheduledAt || Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now())) {
+    return NextResponse.json({ error: 'Scheduled time must be in the future.' }, { status: 400 });
+  }
+  if (scheduledAt && !(await isUserGold(authContext.user.id))) {
+    return NextResponse.json({ error: 'Gold membership is required for scheduled messages.' }, { status: 403 });
+  }
 
   if (!conversationId && recipientIds.length === 0) {
     return NextResponse.json({ error: 'Select at least one recipient or an existing conversation.' }, { status: 400 });
@@ -594,7 +603,8 @@ export async function POST(request: NextRequest) {
     body: textBody,
     media_type: mediaUrl ? mediaType : 'text',
     media_url: mediaUrl || null,
-    reply_to_message_id: body.reply_to_message_id || null
+    reply_to_message_id: body.reply_to_message_id || null,
+    scheduled_at: scheduledAt?.toISOString() || null
   }).select().single();
 
   if (messageError) {

@@ -21,6 +21,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [messages, setMessages] = useState<any[]>([]);
   const [conversation, setConversation] = useState<any | null>(null);
   const [draft, setDraft] = useState('');
+  const [scheduledAt, setScheduledAt] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [notice, setNotice] = useState('');
@@ -331,6 +332,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     if (replyingTo) {
       form.append('reply_to_message_id', replyingTo.id);
     }
+    if (scheduledAt) form.append('scheduled_at', new Date(scheduledAt).toISOString());
     if (effectiveAttachment) form.append('media', effectiveAttachment);
 
     const resp = await authedFetch('/api/messages', { method: 'POST', body: form });
@@ -342,6 +344,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
 
     setDraft('');
     setAttachment(null);
+    setScheduledAt('');
     clearReply();
     void loadThread();
   };
@@ -875,6 +878,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                 placeholder={editingMessageId ? 'Edit message' : 'Message'}
                 className="w-0 min-w-0 flex-1 rounded-full border border-transparent bg-panel px-4 py-3 text-sm text-ivory outline-none focus:border-gold focus:ring-2 focus:ring-gold/20"
               />
+              {senderIsGold ? <input type="datetime-local" value={scheduledAt} min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} onChange={(event) => setScheduledAt(event.target.value)} className="w-36 rounded-full border border-transparent bg-panel px-2 py-2 text-xs text-slate outline-none focus:border-gold" aria-label="Schedule message" /> : null}
               <div className="relative shrink-0">
                 <button
                   type="button"
