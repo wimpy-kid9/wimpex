@@ -117,7 +117,7 @@ This checklist is a quick reference for the phased roadmap and the key milestone
 - [x] Larger Gold chat upload limits
 - [ ] Voice-message transcription
 - [x] Scheduled messages
-- [ ] Group chat admin tools
+- [x] Group chat admin tools
 - [ ] Typing-indicator privacy
 
 ### Calls

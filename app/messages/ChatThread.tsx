@@ -31,6 +31,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [showTypingIndicator, setShowTypingIndicator] = useState(true);
   const [wallpaperPickerOpen, setWallpaperPickerOpen] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [groupAdminOpen, setGroupAdminOpen] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const wallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const attachInputRef = useRef<HTMLInputElement | null>(null);
@@ -249,6 +250,20 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
       setNotice((await response.json()).error || 'Unable to update typing privacy.');
     }
   }, [conversationId, senderIsGold]);
+
+  const updateGroupMember = useCallback(async (userId: string, action: 'remove' | 'promote' | 'demote') => {
+    const response = await authedFetch('/api/messages/group-admin', {
+      method: 'PATCH',
+      body: JSON.stringify({ conversation_id: conversationId, user_id: userId, action })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setNotice(payload.error || 'Unable to update group member.');
+      return;
+    }
+    setGroupAdminOpen(false);
+    await loadThread();
+  }, [conversationId, loadThread]);
 
   const uploadWallpaper = useCallback(async (file: File | null) => {
     if (!file || !senderIsGold) return;
@@ -619,6 +634,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                       </div>
                     )}
                     {senderIsGold ? <label className="flex items-center gap-3 rounded-2xl px-3 py-2 text-sm text-ivory"><input type="checkbox" checked={showTypingIndicator} onChange={(event) => void updateTypingPreference(event.target.checked)} /> Show typing indicator</label> : null}
+                    {senderIsGold && conversation?.isGroup ? <button type="button" onClick={() => { setHeaderMenuOpen(false); setGroupAdminOpen((open) => !open); }} className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm text-ivory transition hover:bg-panel-2"><span className="text-base">👥</span> Manage members</button> : null}
                   </div>
                 ) : null}
               </div>
@@ -634,6 +650,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
               <input ref={wallpaperInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => void uploadWallpaper(event.target.files?.[0] || null)} />
             </div>
           ) : null}
+          {groupAdminOpen && senderIsGold && conversation?.isGroup ? <div className="mt-4 space-y-2 rounded-2xl border border-gold/30 bg-panel/95 p-3"><p className="text-xs uppercase tracking-[0.25em] text-gold">Group members</p>{(conversation.members || []).map((member: any) => <div key={member.user_id} className="flex items-center justify-between gap-3 rounded-xl border border-hairline px-3 py-2 text-xs text-ivory"><span className="min-w-0 truncate">{member.user_id} <span className="text-slate">({member.role})</span></span>{member.user_id !== currentUserId ? <div className="flex gap-1"><button type="button" onClick={() => void updateGroupMember(member.user_id, member.role === 'admin' ? 'demote' : 'promote')} className="rounded-full border border-gold/30 px-2 py-1 text-gold">{member.role === 'admin' ? 'Demote' : 'Promote'}</button><button type="button" onClick={() => void updateGroupMember(member.user_id, 'remove')} className="rounded-full border border-rose-400/30 px-2 py-1 text-rose-200">Remove</button></div> : null}</div>)}</div> : null}
         </section>
 
         <section className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-3xl border border-hairline bg-panel-2/70 shadow-inner shadow-black/10">

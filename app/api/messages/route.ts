@@ -67,7 +67,8 @@ function getConversationSummary(conversation: any, members: any[], profiles: any
     pinnedAt: currentMember?.pinned_at || null,
     folderName: currentMember?.folder_name || null,
     wallpaperUrl: currentMember?.wallpaper_url || null,
-    wallpaperColor: currentMember?.wallpaper_color || null
+    wallpaperColor: currentMember?.wallpaper_color || null,
+    members: members.map((member: any) => ({ user_id: member.user_id, role: member.role }))
   };
 }
 
