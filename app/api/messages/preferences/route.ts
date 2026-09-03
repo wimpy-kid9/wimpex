@@ -53,6 +53,8 @@ export async function PATCH(request: NextRequest) {
 
   if (typeof body.conversationId !== 'string') return NextResponse.json({ error: 'conversationId is required.' }, { status: 400 });
   const wallpaperColor = body.wallpaperColor == null || body.wallpaperColor === '' ? null : String(body.wallpaperColor);
+  const showTypingIndicator = body.showTypingIndicator === undefined ? undefined : body.showTypingIndicator;
+  if (showTypingIndicator !== undefined && typeof showTypingIndicator !== 'boolean') return NextResponse.json({ error: 'Invalid typing indicator preference.' }, { status: 400 });
   if (wallpaperColor && !/^#[0-9a-f]{6}$/i.test(wallpaperColor)) return NextResponse.json({ error: 'Invalid wallpaper color.' }, { status: 400 });
   if (body.reset === true) wallpaperUrl = null;
   if (wallpaperUrl === undefined && body.wallpaperUrl !== undefined) wallpaperUrl = body.wallpaperUrl || null;
@@ -65,7 +67,9 @@ export async function PATCH(request: NextRequest) {
     .maybeSingle();
   if (!membership) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const updates: Record<string, string | null> = { wallpaper_color: wallpaperColor };
+  const updates: Record<string, string | boolean | null> = {};
+  if (body.wallpaperColor !== undefined || body.reset === true || wallpaperUrl !== undefined) updates.wallpaper_color = wallpaperColor;
+  if (showTypingIndicator !== undefined) updates.show_typing_indicator = showTypingIndicator;
   if (wallpaperUrl !== undefined) updates.wallpaper_url = wallpaperUrl;
   if (body.reset === true) updates.wallpaper_color = null;
   const { error } = await supabaseServer

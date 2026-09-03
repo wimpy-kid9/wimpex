@@ -27,6 +27,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [senderIsGold, setSenderIsGold] = useState(false);
+  const [showTypingIndicator, setShowTypingIndicator] = useState(true);
   const [wallpaperPickerOpen, setWallpaperPickerOpen] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
@@ -233,6 +234,19 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
     }
     setConversation((current: any) => ({ ...current, wallpaperColor, wallpaperUrl: null }));
     setWallpaperPickerOpen(false);
+  }, [conversationId, senderIsGold]);
+
+  const updateTypingPreference = useCallback(async (enabled: boolean) => {
+    if (!senderIsGold) return;
+    setShowTypingIndicator(enabled);
+    const response = await authedFetch('/api/messages/preferences', {
+      method: 'PATCH',
+      body: JSON.stringify({ conversationId, showTypingIndicator: enabled })
+    });
+    if (!response.ok) {
+      setShowTypingIndicator(!enabled);
+      setNotice((await response.json()).error || 'Unable to update typing privacy.');
+    }
   }, [conversationId, senderIsGold]);
 
   const uploadWallpaper = useCallback(async (file: File | null) => {
@@ -601,6 +615,7 @@ export default function ChatThread({ conversationId, showBackButton = false }: C
                         <GoldUpgradeHint compact perk="Chat wallpapers" detail="Preview custom colors and images for this conversation, then unlock them with Gold." />
                       </div>
                     )}
+                    {senderIsGold ? <label className="flex items-center gap-3 rounded-2xl px-3 py-2 text-sm text-ivory"><input type="checkbox" checked={showTypingIndicator} onChange={(event) => void updateTypingPreference(event.target.checked)} /> Show typing indicator</label> : null}
                   </div>
                 ) : null}
               </div>
