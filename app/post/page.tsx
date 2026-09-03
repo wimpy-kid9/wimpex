@@ -585,8 +585,15 @@ export default function CreatePostPage() {
         return;
       }
 
+      if (files.some((file) => !file.type.startsWith('video/'))) {
+        setError('Select two or more video clips to stitch them together.');
+        setMediaFile(null);
+        setPreviewUrl(null);
+        return;
+      }
+
       try {
-        const stitched = await stitchVideoClips(files.filter((file) => file.type.startsWith('video/')));
+        const stitched = await stitchVideoClips(files);
         setMediaType('video');
         setMediaFile(stitched);
         setPreviewUrl(URL.createObjectURL(stitched));
