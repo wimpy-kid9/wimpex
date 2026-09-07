@@ -539,7 +539,7 @@ export default function CreatePostPage() {
         : '';
 
     const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-    const chunks: BlobPart[] = [];
+    const chunks: Array<Blob> = [];
     recorder.ondataavailable = (event) => {
       if (event.data.size > 0) chunks.push(event.data);
     };
